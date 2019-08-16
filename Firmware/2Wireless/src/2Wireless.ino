@@ -7,8 +7,12 @@
 
 #pragma SPARK_NO_PREPROCESSOR
 
+
 #include "Particle.h"
+#include "Arduino.h"
 #include "softap_http.h"
+#include "Wire.h"
+
 
 SYSTEM_THREAD(ENABLED);
 
@@ -51,9 +55,26 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
         Serial.println(g);
         Serial.println(b);
         if (r > 0) {
-            System.set(SYSTEM_CONFIG_SOFTAP_DISABLE_BROADCAST,"1");
+            //System.set(SYSTEM_CONFIG_SOFTAP_DISABLE_BROADCAST,"1");
+            //Remote Enable
+            Wire.beginTransmission(0);
+            Wire.write(0x04);
+            Wire.write(0x00);
+            Wire.write(0x22);
+            Wire.write(0x16);
+            Wire.write(0xFF);
+            Wire.endTransmission();
+
         } else {
-            System.set(SYSTEM_CONFIG_SOFTAP_DISABLE_BROADCAST,"0");
+            //System.set(SYSTEM_CONFIG_SOFTAP_DISABLE_BROADCAST,"0");
+            //Remote Disable
+            Wire.beginTransmission(0);
+            Wire.write(0x04);
+            Wire.write(0x00);
+            Wire.write(0x22);
+            Wire.write(0x17);
+            Wire.write(0xFF);
+            Wire.endTransmission();
         }
         
 
@@ -88,6 +109,7 @@ STARTUP(softap_set_application_page_handler(myPage, nullptr));
 
 void setup() {
     WiFi.listen();
+    Wire.begin();
 }
 
 void loop() {
