@@ -16,6 +16,59 @@
 
 SYSTEM_THREAD(ENABLED);
 
+#define CARD_ADDRESS 0x00
+
+volatile int bytes_read = 0;
+
+void receiveEvent(int howMany) {
+  while (1 < Wire.available()) { // loop through all but the last
+    char c = Wire.read(); // receive byte as a character
+    Serial.print(c);         // print the character
+    bytes_read++;
+  }
+  int x = Wire.read();    // receive byte as an integer
+  Serial.println(x);         // print the integer
+  bytes_read++;
+}
+
+void sendRemoteEnable() {
+    //Remote Enable
+    Wire.beginTransmission(0);
+    Wire.write(0x04);
+    Wire.write(0x00);
+    Wire.write(0x22);
+    Wire.write(0x16);
+    Wire.write(0xFF);
+    Wire.endTransmission();
+}
+
+void sendRemoteDisable() {
+    //Remote Disable
+    Wire.beginTransmission(0);
+    Wire.write(0x04);
+    Wire.write(0x00);
+    Wire.write(0x22);
+    Wire.write(0x17);
+    Wire.write(0xFF);
+    Wire.endTransmission();
+
+}
+
+void getPresetData(int address) {
+    //Fetch presets from specified module
+    bytes_read = 0;
+    Wire.beginTransmission(0);
+    Wire.write(0x07);
+    Wire.write(0x00);
+    Wire.write(0x22);
+    Wire.write(0x04);
+    Wire.write(address); //Module address
+    Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x05. 
+    Wire.write(0x00); //Card memory address LSB
+    Wire.write(0x00); //Card memory address MSB
+    Wire.endTransmission();
+}
+
 int r, g, b = 0;
 
 struct Page
@@ -37,6 +90,7 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
 {
     String urlString = String(url);
     Serial.printlnf("handling page %s", url);
+    Serial.printlnf("urlString is %s", urlString);
     char* data = body->fetch_as_string();
     Serial.println(String(data));
     free(data);
@@ -56,25 +110,9 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
         Serial.println(b);
         if (r > 0) {
             //System.set(SYSTEM_CONFIG_SOFTAP_DISABLE_BROADCAST,"1");
-            //Remote Enable
-            Wire.beginTransmission(0);
-            Wire.write(0x04);
-            Wire.write(0x00);
-            Wire.write(0x22);
-            Wire.write(0x16);
-            Wire.write(0xFF);
-            Wire.endTransmission();
 
         } else {
             //System.set(SYSTEM_CONFIG_SOFTAP_DISABLE_BROADCAST,"0");
-            //Remote Disable
-            Wire.beginTransmission(0);
-            Wire.write(0x04);
-            Wire.write(0x00);
-            Wire.write(0x22);
-            Wire.write(0x17);
-            Wire.write(0xFF);
-            Wire.endTransmission();
         }
         
 
@@ -92,26 +130,55 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
         }
     }
 
-    if (idx==-1) {
-        Header h("Location: /index.html\r\n");
-        cb(cbArg, 0, 301, "text/plain", &h);
+    if (!strcmp(url, "/remoteenable")) {
+        cb(cbArg, 0, 200, "application/json", nullptr);
+        sendRemoteEnable();
+    } 
+    else if (!strcmp(url, "/remotedisable")) {
+        cb(cbArg, 0, 200, "application/json", nullptr);
+        sendRemoteDisable();
+    }
+    else if (!strcmp(url, "/getpresetdata")) {
+        cb(cbArg, 0, 200, "application/json", nullptr);
+        getPresetData(0x44);//Test with 291e
+    } 
+    else if (!strcmp(url, "/favicon.ico")) {
+        cb(cbArg, 0, 200, "image/x-icon", nullptr);
+        //return URL icon here, if desired.
+    } 
+    else if (!strcmp(url, "/generate_204")) {
+        cb(cbArg, 0, 204, "text/plain", nullptr);
+    } 
+    else if (idx==-1) {
+        //Redirect not found to index.html
+        //Header h("Location: /index.html\r\n");
+        //cb(cbArg, 0, 301, "text/plain", &h);
+        cb(cbArg, 0, 301, "text/plain", nullptr);
     }
     else {
         cb(cbArg, 0, 200, myPages[idx].mime_type, nullptr);
-        result->write(myPages[idx].data);
+        if (bytes_read > 10){
+            result->write("<html>Yes</html>"); 
+        } else {
+            result->write(myPages[idx].data);
+        }
     }
 }
 
-unsigned long t = 0;
+//unsigned long t = 0;
 
 
 STARTUP(softap_set_application_page_handler(myPage, nullptr));
 
 void setup() {
     WiFi.listen();
-    Wire.begin();
+    Wire.begin(); //Can't use card address here because GC broadcasts
+    
 }
 
 void loop() {
 
 }
+
+
+
