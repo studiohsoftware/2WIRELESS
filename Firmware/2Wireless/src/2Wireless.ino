@@ -63,7 +63,7 @@ void getPresetData(int address) {
     Wire.write(0x22);
     Wire.write(0x04);
     Wire.write(address); //Module address
-    Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x05. 
+    Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
     Wire.write(0x00); //Card memory address LSB
     Wire.write(0x00); //Card memory address MSB
     Wire.endTransmission();
@@ -90,7 +90,6 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
 {
     String urlString = String(url);
     Serial.printlnf("handling page %s", url);
-    Serial.printlnf("urlString is %s", urlString);
     char* data = body->fetch_as_string();
     Serial.println(String(data));
     free(data);
@@ -141,6 +140,14 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
     else if (!strcmp(url, "/getpresetdata")) {
         cb(cbArg, 0, 200, "application/json", nullptr);
         getPresetData(0x44);//Test with 291e
+        Wire.end();
+        Wire.begin(0x50 | CARD_ADDRESS);
+        Wire.onReceive(receiveEvent);
+        while (bytes_read < 10){
+
+        }
+        Wire.end();
+        Wire.begin();
     } 
     else if (!strcmp(url, "/favicon.ico")) {
         cb(cbArg, 0, 200, "image/x-icon", nullptr);
@@ -157,11 +164,12 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
     }
     else {
         cb(cbArg, 0, 200, myPages[idx].mime_type, nullptr);
-        if (bytes_read > 10){
-            result->write("<html>Yes</html>"); 
-        } else {
+        if (bytes_read == 0){
             result->write(myPages[idx].data);
+        } else {
+            result->write("<html>Yes</html>");
         }
+        
     }
 }
 
