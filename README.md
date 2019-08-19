@@ -1,6 +1,6 @@
 # 2WIRELESS
-## Wireless Preset Manager
+# Wireless Preset Manager
 ### Supported REST Calls (so far)
 - http://192.168.0.1/remoteenable
 - http://192.168.0.1/remotedisable
-- http://192.168.0.1/getpresets?addr=<module addr in hex>
+- http://192.168.0.1/getpresets?addr=module addr in hex

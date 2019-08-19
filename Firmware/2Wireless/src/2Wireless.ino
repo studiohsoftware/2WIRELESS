@@ -17,11 +17,12 @@
 SYSTEM_THREAD(ENABLED);
 
 #define CARD_ADDRESS 0x00
-#define MAX_DATA_SIZE 4000 //max number of i2c bytes permitted
+#define MAX_DATA_SIZE 8000 //max number of i2c bytes permitted
 
 volatile int bytes_read = 0; //i2c bytes received
 volatile uint8_t data[MAX_DATA_SIZE]; //i2c data received
 
+Writer* response;
 
 void receiveEvent(int howMany) {
   while (1 < Wire.available()) { // loop through all but the last
@@ -32,6 +33,47 @@ void receiveEvent(int howMany) {
   data[bytes_read] = Wire.read();    // receive byte as an integer
   //Serial.println(x);         // print the integer
   bytes_read++;
+}
+
+void receiveEventNew(int howMany) {
+    String tmp;
+    if (response != nullptr){
+        //response->write(":");
+    }
+    
+    while (1 < Wire.available()) { // loop through all but the last
+        tmp = String(Wire.read(),HEX);
+        if (tmp.length() == 1) tmp = "0" + tmp;
+        if (response != nullptr) {
+           // response->write(tmp);
+        }
+        
+        if (((bytes_read % 8) == 0) && (bytes_read != 0)){
+            if (response != nullptr){
+                //response->write("\r\n");
+            }
+           
+        }
+        bytes_read++;
+    }
+    tmp = String(Wire.read(),HEX);
+    if (tmp.length() == 1) tmp = "0" + tmp;
+    if (response != nullptr){
+        //response->write(tmp);
+    }
+    
+    bytes_read++;
+}
+
+void switchToMaster(){
+    Wire.end();
+    Wire.begin();
+}
+
+void switchToSlave(){
+    Wire.end();
+    Wire.begin(0x50 | CARD_ADDRESS);
+    Wire.onReceive(receiveEvent);
 }
 
 void sendRemoteEnable() {
@@ -59,7 +101,6 @@ void sendRemoteDisable() {
 
 void getPresetData(int address) {
     //Fetch presets from specified module
-    bytes_read = 0;
     Wire.beginTransmission(0);
     Wire.write(0x07);
     Wire.write(0x00);
@@ -134,21 +175,28 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
 
     if (!strcmp(url, "/remoteenable")) {
         cb(cbArg, 0, 200, "application/json", nullptr);
+        switchToMaster();
         sendRemoteEnable();
+        switchToSlave();
     } 
     else if (!strcmp(url, "/remotedisable")) {
         cb(cbArg, 0, 200, "application/json", nullptr);
+        switchToMaster();
         sendRemoteDisable();
+        switchToSlave();
     }
     else if (urlString.indexOf("/getpresets?addr") == 0) {
         cb(cbArg, 0, 200, "application/json", nullptr);
         int len = urlString.length();
         int address = (int)strtol(urlString.substring(len - 2, len).c_str(), nullptr, 16);
         Serial.println(address,HEX);
-        getPresetData(address);
-        Wire.end();
-        Wire.begin(0x50 | CARD_ADDRESS);
-        Wire.onReceive(receiveEvent);
+        //Begin the message
+        result->write("{ \"data\": {\r\n"); 
+        bytes_read = 0;
+        switchToMaster(); //Send preset backup request to module
+        getPresetData(address); 
+        switchToSlave(); //Switch to slave to receive the response.
+         //Wait for all of the data to come in.
         int bytes_read_last = 0;
         int done = false;
         unsigned long lastTime = millis();
@@ -163,22 +211,18 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
                 bytes_read_last = bytes_read; 
             }
         }
-        Wire.end();
-        Wire.begin();
-        String response;
         String tmp;
-        response = "{ \"data\": {\r\n"; 
         for (int i = 0; i < bytes_read; i++) {
             tmp = String(data[i],HEX);
             if (tmp.length() == 1) tmp = "0" + tmp;
-            response = response + tmp;
+            result->write(tmp);
             if (((i % 8) == 0) && (i != 0)){
-                response = response + "\r\n";
+                result->write("\r\n");
             }
         }
-        response = response + "}\r\n";
-        response = response + "}\r\n";
-        result->write(response);
+        //Finish the message.
+        result->write("}\r\n");
+        result->write("}\r\n");
     } 
     else if (!strcmp(url, "/favicon.ico")) {
         cb(cbArg, 0, 200, "image/x-icon", nullptr);
@@ -206,8 +250,7 @@ STARTUP(softap_set_application_page_handler(myPage, nullptr));
 
 void setup() {
     WiFi.listen();
-    Wire.begin(); //Can't use card address here because GC broadcasts
-    
+    switchToSlave(); //Run in slave mode so that other modules can be master 
 }
 
 void loop() {
