@@ -17,17 +17,20 @@
 SYSTEM_THREAD(ENABLED);
 
 #define CARD_ADDRESS 0x00
+#define MAX_DATA_SIZE 4000 //max number of i2c bytes permitted
 
-volatile int bytes_read = 0;
+volatile int bytes_read = 0; //i2c bytes received
+volatile uint8_t data[MAX_DATA_SIZE]; //i2c data received
+
 
 void receiveEvent(int howMany) {
   while (1 < Wire.available()) { // loop through all but the last
-    char c = Wire.read(); // receive byte as a character
-    Serial.print(c);         // print the character
+    data[bytes_read] = Wire.read(); // receive byte as a character
+    //Serial.print(c);         // print the character
     bytes_read++;
   }
-  int x = Wire.read();    // receive byte as an integer
-  Serial.println(x);         // print the integer
+  data[bytes_read] = Wire.read();    // receive byte as an integer
+  //Serial.println(x);         // print the integer
   bytes_read++;
 }
 
@@ -137,17 +140,45 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
         cb(cbArg, 0, 200, "application/json", nullptr);
         sendRemoteDisable();
     }
-    else if (!strcmp(url, "/getpresetdata")) {
+    else if (urlString.indexOf("/getpresets?addr") == 0) {
         cb(cbArg, 0, 200, "application/json", nullptr);
-        getPresetData(0x44);//Test with 291e
+        int len = urlString.length();
+        int address = (int)strtol(urlString.substring(len - 2, len).c_str(), nullptr, 16);
+        Serial.println(address,HEX);
+        getPresetData(address);
         Wire.end();
         Wire.begin(0x50 | CARD_ADDRESS);
         Wire.onReceive(receiveEvent);
-        while (bytes_read < 10){
-
+        int bytes_read_last = 0;
+        int done = false;
+        unsigned long lastTime = millis();
+        while (!done){ 
+            unsigned long now = millis();
+            if ((now - lastTime) >= 1000) {
+                Serial.printlnf("%lu", now);
+                lastTime = now;
+                if (bytes_read == bytes_read_last){
+                    done = true;
+                }
+                bytes_read_last = bytes_read; 
+            }
         }
         Wire.end();
         Wire.begin();
+        String response;
+        String tmp;
+        response = "{ \"data\": {\r\n"; 
+        for (int i = 0; i < bytes_read; i++) {
+            tmp = String(data[i],HEX);
+            if (tmp.length() == 1) tmp = "0" + tmp;
+            response = response + tmp;
+            if (((i % 8) == 0) && (i != 0)){
+                response = response + "\r\n";
+            }
+        }
+        response = response + "}\r\n";
+        response = response + "}\r\n";
+        result->write(response);
     } 
     else if (!strcmp(url, "/favicon.ico")) {
         cb(cbArg, 0, 200, "image/x-icon", nullptr);
@@ -164,12 +195,7 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
     }
     else {
         cb(cbArg, 0, 200, myPages[idx].mime_type, nullptr);
-        if (bytes_read == 0){
-            result->write(myPages[idx].data);
-        } else {
-            result->write("<html>Yes</html>");
-        }
-        
+        result->write(myPages[idx].data);        
     }
 }
 
