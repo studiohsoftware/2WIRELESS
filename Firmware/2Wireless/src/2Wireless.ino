@@ -17,52 +17,66 @@
 SYSTEM_THREAD(ENABLED);
 
 #define CARD_ADDRESS 0x00
-#define MAX_DATA_SIZE 8000 //max number of i2c bytes permitted
+#define BUFFER_SIZE 2400
 
-volatile int bytes_read = 0; //i2c bytes received
-volatile uint8_t data[MAX_DATA_SIZE]; //i2c data received
 
-Writer* response;
+class RingBuffer {
+    private:
+        volatile uint8_t buffer[BUFFER_SIZE];
+        volatile uint32_t head;
+        volatile uint32_t tail;  
+    public:
+        RingBuffer();
+        int bytesFree(void);
+        int bytesQueued(void);
+        uint8_t read(void);
+        void write(uint8_t byte);
+};
 
-void receiveEvent(int howMany) {
-  while (1 < Wire.available()) { // loop through all but the last
-    data[bytes_read] = Wire.read(); // receive byte as a character
-    //Serial.print(c);         // print the character
-    bytes_read++;
-  }
-  data[bytes_read] = Wire.read();    // receive byte as an integer
-  //Serial.println(x);         // print the integer
-  bytes_read++;
+RingBuffer::RingBuffer() {
+    this->head = 0;
+    this->tail = 0;
+    this->buffer[0] = 0;
 }
 
-void receiveEventNew(int howMany) {
-    String tmp;
-    if (response != nullptr){
-        //response->write(":");
+int RingBuffer::bytesQueued(void) {
+     int result = 0;
+    result = (unsigned int)(BUFFER_SIZE + this->head - this->tail) % BUFFER_SIZE;
+    return result;
+}
+
+int RingBuffer::bytesFree(void) {
+    return BUFFER_SIZE - this->bytesQueued();
+}
+
+uint8_t RingBuffer::read(void){
+    uint8_t result = 0xFF;
+    if (this->bytesQueued() > 0){
+        result = this->buffer[this->tail];
+        this->tail = (uint32_t)(this->tail+1) % BUFFER_SIZE;
     }
-    
-    while (1 < Wire.available()) { // loop through all but the last
-        tmp = String(Wire.read(),HEX);
-        if (tmp.length() == 1) tmp = "0" + tmp;
-        if (response != nullptr) {
-           // response->write(tmp);
+    return result; //Note zero returned, so always call used() first to check.
+}
+ 
+void RingBuffer::write(uint8_t byte){
+    if (this->bytesFree()>0) {
+        this->buffer[this->head] = byte;
+        this->head = (uint32_t)(this->head + 1) % BUFFER_SIZE;
+    }
+}
+
+RingBuffer ringBuffer = RingBuffer();
+
+volatile int bytes_read = 0; //i2c bytes received
+os_mutex_t myMutex;
+
+void receiveEvent(int howMany) {
+    while (Wire.available()) {   
+        if (ringBuffer.bytesFree() > 0){
+            ringBuffer.write(Wire.read());
+            bytes_read++;
         }
-        
-        if (((bytes_read % 8) == 0) && (bytes_read != 0)){
-            if (response != nullptr){
-                //response->write("\r\n");
-            }
-           
-        }
-        bytes_read++;
     }
-    tmp = String(Wire.read(),HEX);
-    if (tmp.length() == 1) tmp = "0" + tmp;
-    if (response != nullptr){
-        //response->write(tmp);
-    }
-    
-    bytes_read++;
 }
 
 void switchToMaster(){
@@ -99,7 +113,31 @@ void sendRemoteDisable() {
 
 }
 
-void getPresetData(int address) {
+void sendSavePreset(int preset) {
+    //Save Preset
+    Wire.beginTransmission(0);
+    Wire.write(0x04);
+    Wire.write(0x00);
+    Wire.write(0x22);
+    Wire.write(0x02);
+    Wire.write(preset);
+    Wire.endTransmission();
+
+}
+
+void sendRecallPreset(int preset) {
+    //Recall Preset
+    Wire.beginTransmission(0);
+    Wire.write(0x04);
+    Wire.write(0x00);
+    Wire.write(0x22);
+    Wire.write(0x01);
+    Wire.write(preset);
+    Wire.endTransmission();
+
+}
+
+void sendBackupPresets(int address) {
     //Fetch presets from specified module
     Wire.beginTransmission(0);
     Wire.write(0x07);
@@ -133,13 +171,13 @@ Page myPages[] = {
 void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Writer* result, void* reserved)
 {
     String urlString = String(url);
-    Serial.printlnf("handling page %s", url);
+    //Serial.printlnf("handling page %s", url);
     char* data = body->fetch_as_string();
-    Serial.println(String(data));
+    //Serial.println(String(data));
     free(data);
 
     if (strcmp(url,"/index")==0) {
-        Serial.println("sending redirect");
+        //Serial.println("sending redirect");
         Header h("Location: /index.html\r\n");
         cb(cbArg, 0, 301, "text/plain", &h);
         return;
@@ -148,9 +186,9 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
         r = (int)strtol(urlString.substring(14, 16).c_str(), nullptr, 16);
         g = (int)strtol(urlString.substring(16, 18).c_str(), nullptr, 16);
         b = (int)strtol(urlString.substring(18).c_str(), nullptr, 16);
-        Serial.println(r);
-        Serial.println(g);
-        Serial.println(b);
+        //Serial.println(r);
+        //Serial.println(g);
+        //Serial.println(b);
         if (r > 0) {
             //System.set(SYSTEM_CONFIG_SOFTAP_DISABLE_BROADCAST,"1");
 
@@ -185,25 +223,62 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
         sendRemoteDisable();
         switchToSlave();
     }
+    else if (urlString.indexOf("/savepreset?preset") == 0) {
+        cb(cbArg, 0, 200, "application/json", nullptr);
+        int len = urlString.length();
+        int eqloc = urlString.indexOf('=');
+        int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+        preset = preset % 29;
+        //Serial.println(preset);
+        switchToMaster();
+        sendSavePreset(preset);
+        switchToSlave();
+    }
+    else if (urlString.indexOf("/recallpreset?preset") == 0) {
+        cb(cbArg, 0, 200, "application/json", nullptr);
+        int len = urlString.length();
+        int eqloc = urlString.indexOf('=');
+        int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+        preset = preset % 29;
+        //Serial.println(preset);
+        switchToMaster();
+        sendRecallPreset(preset);
+        switchToSlave();
+    }
     else if (urlString.indexOf("/getpresets?addr") == 0) {
         cb(cbArg, 0, 200, "application/json", nullptr);
         int len = urlString.length();
         int address = (int)strtol(urlString.substring(len - 2, len).c_str(), nullptr, 16);
-        Serial.println(address,HEX);
+        //Serial.println(address,HEX);
         //Begin the message
         result->write("{ \"data\": {\r\n"); 
         bytes_read = 0;
         switchToMaster(); //Send preset backup request to module
-        getPresetData(address); 
+        sendBackupPresets(address); 
         switchToSlave(); //Switch to slave to receive the response.
          //Wait for all of the data to come in.
         int bytes_read_last = 0;
-        int done = false;
+        bool done = false;
+        int bytes_written = 0;
         unsigned long lastTime = millis();
+        String tmp;
         while (!done){ 
+            tmp = "";      
+            if (ringBuffer.bytesQueued() > 0) {
+                tmp = String(ringBuffer.read(),HEX);
+            }
+            if (tmp.length() == 1) tmp = "0" + tmp;
+            if (tmp.length() > 0) {
+                result->write(tmp);
+                bytes_written++;
+                if (((bytes_written % 8) == 0) && (bytes_written != 0)){
+                    result->write("\r\n");
+                }
+            }
+            //Check to see if bytes are still arriving
             unsigned long now = millis();
             if ((now - lastTime) >= 1000) {
-                Serial.printlnf("%lu", now);
+                //Serial.printlnf("%lu", now);
                 lastTime = now;
                 if (bytes_read == bytes_read_last){
                     done = true;
@@ -211,15 +286,7 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
                 bytes_read_last = bytes_read; 
             }
         }
-        String tmp;
-        for (int i = 0; i < bytes_read; i++) {
-            tmp = String(data[i],HEX);
-            if (tmp.length() == 1) tmp = "0" + tmp;
-            result->write(tmp);
-            if (((i % 8) == 0) && (i != 0)){
-                result->write("\r\n");
-            }
-        }
+
         //Finish the message.
         result->write("}\r\n");
         result->write("}\r\n");
