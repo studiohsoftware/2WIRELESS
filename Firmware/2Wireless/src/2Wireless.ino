@@ -31,6 +31,7 @@ class RingBuffer {
         int bytesQueued(void);
         uint8_t read(void);
         void write(uint8_t byte);
+        void flush();
 };
 
 RingBuffer::RingBuffer() {
@@ -55,7 +56,7 @@ uint8_t RingBuffer::read(void){
         result = this->buffer[this->tail];
         this->tail = (uint32_t)(this->tail+1) % BUFFER_SIZE;
     }
-    return result; //Note zero returned, so always call used() first to check.
+    return result; //Note zero returned, so always call bytesQueued() first to check.
 }
  
 void RingBuffer::write(uint8_t byte){
@@ -63,6 +64,10 @@ void RingBuffer::write(uint8_t byte){
         this->buffer[this->head] = byte;
         this->head = (uint32_t)(this->head + 1) % BUFFER_SIZE;
     }
+}
+
+void RingBuffer::flush() {
+    this->tail = this->head;
 }
 
 RingBuffer ringBuffer = RingBuffer();
@@ -113,8 +118,9 @@ void sendRemoteDisable() {
 
 }
 
-void sendSavePreset(int preset) {
+void sendSavePreset(byte preset) {
     //Save Preset
+    //Preset=0-29
     Wire.beginTransmission(0);
     Wire.write(0x04);
     Wire.write(0x00);
@@ -125,8 +131,9 @@ void sendSavePreset(int preset) {
 
 }
 
-void sendRecallPreset(int preset) {
+void sendRecallPreset(byte preset) {
     //Recall Preset
+    //Preset=0-29
     Wire.beginTransmission(0);
     Wire.write(0x04);
     Wire.write(0x00);
@@ -137,8 +144,9 @@ void sendRecallPreset(int preset) {
 
 }
 
-void sendBackupPresets(int address) {
+void sendBackupPresets(byte address) {
     //Fetch presets from specified module
+    //Address 0x44=291e.
     Wire.beginTransmission(0);
     Wire.write(0x07);
     Wire.write(0x00);
@@ -148,6 +156,122 @@ void sendBackupPresets(int address) {
     Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
     Wire.write(0x00); //Card memory address LSB
     Wire.write(0x00); //Card memory address MSB
+    Wire.endTransmission();
+}
+
+void sendMidiNoteOn(byte mask, byte note, byte velo){
+    //Send MIDI note ON event.
+    //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
+    //Note 0=C-1, 127=G9.
+    //Velo=0-255.
+    Wire.beginTransmission(0);
+    Wire.write(0x08);
+    Wire.write(0x00);
+    Wire.write(0x22); //addr
+    Wire.write(0x0F);
+    Wire.write(0x90 | mask);
+    Wire.write(0x00);
+    Wire.write(note);
+    Wire.write(velo);
+    Wire.write(0x00);
+    Wire.endTransmission();
+}
+
+void sendMidiNoteOff(byte mask, byte note, byte velo){
+    //Send MIDI note OFF event.
+    //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
+    //Note 0=C-1, 127=G9.
+    //Velo=0-255.
+    Wire.beginTransmission(0);
+    Wire.write(0x08);
+    Wire.write(0x00);
+    Wire.write(0x22);//addr
+    Wire.write(0x0F);
+    Wire.write(0x80 | mask);
+    Wire.write(0x00);
+    Wire.write(note);
+    Wire.write(velo);
+    Wire.write(0x00);
+    Wire.endTransmission();
+}
+
+void sendMidiClockStart(){
+    //Send MIDI clock start event.
+    Wire.beginTransmission(0);
+    Wire.write(0x08);
+    Wire.write(0x00);
+    Wire.write(0x22);//addr
+    Wire.write(0x0F);
+    Wire.write(0xFA);
+    Wire.write(0x00);
+    Wire.write(0x00); //not sure what this is
+    Wire.write(0x00);
+    Wire.write(0x00);
+    Wire.endTransmission();
+}
+
+void sendMidiClockStop(){
+    //Send MIDI clock stop event.
+    Wire.beginTransmission(0);
+    Wire.write(0x08);
+    Wire.write(0x00);
+    Wire.write(0x22);//addr
+    Wire.write(0x0F);
+    Wire.write(0xFC);
+    Wire.write(0x00);
+    Wire.write(0x00); //not sure what this is
+    Wire.write(0x00);
+    Wire.write(0x00);
+    Wire.endTransmission();
+}
+
+void sendMidiClock(){
+    //Send MIDI clock event. 24 per beat required?
+    Wire.beginTransmission(0);
+    Wire.write(0x08);
+    Wire.write(0x00);
+    Wire.write(0x22);//addr
+    Wire.write(0x0F);
+    Wire.write(0xF8);
+    Wire.write(0x00);
+    Wire.write(0x00); //not sure what this is
+    Wire.write(0x00);
+    Wire.write(0x00);
+    Wire.endTransmission();
+}
+
+void sendMidiFineTune(byte mask, byte tune){
+    //Send MIDI Fine Tune event.
+    //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
+    //Tune 0x00=-49, 0x32=An, 0x63=49
+    Wire.beginTransmission(0);
+    Wire.write(0x08);
+    Wire.write(0x00);
+    Wire.write(0x22);//addr
+    Wire.write(0x0F);
+    Wire.write(0xB0 | mask);
+    Wire.write(0x00);
+    Wire.write(0x1F);
+    Wire.write(tune);
+    Wire.write(0x00);
+    Wire.endTransmission();
+}
+
+void sendMidiBend(byte mask, byte bend_lsb, byte bend_msb){
+    //Send MIDI Bend.
+    //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
+    //bend_msb 0x00=min bend, 0x40=no bend, 0x7F=max bend.
+    //bend_lsb=0x00-0x7F fine tune of bend.
+    Wire.beginTransmission(0);
+    Wire.write(0x08);
+    Wire.write(0x00);
+    Wire.write(0x22);//addr
+    Wire.write(0x0F);
+    Wire.write(0xE0 | mask);
+    Wire.write(0x00);
+    Wire.write(bend_lsb);
+    Wire.write(bend_msb);
+    Wire.write(0x00);
     Wire.endTransmission();
 }
 
@@ -171,7 +295,7 @@ Page myPages[] = {
 void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Writer* result, void* reserved)
 {
     String urlString = String(url);
-    //Serial.printlnf("handling page %s", url);
+    Serial.printlnf("handling page %s", url);
     char* data = body->fetch_as_string();
     //Serial.println(String(data));
     free(data);
@@ -245,6 +369,28 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
         sendRecallPreset(preset);
         switchToSlave();
     }
+    else if (urlString.indexOf("/midinoteon?mask") == 0) {
+        cb(cbArg, 0, 200, "application/json", nullptr);
+        int len = urlString.length();
+        int eqloc = urlString.indexOf('=');
+        int amploc = urlString.indexOf('&');
+        int mask = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+        mask = mask & 0x0F;
+        eqloc = urlString.indexOf('=',amploc);
+        amploc = urlString.indexOf('&',eqloc);
+        int note = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
+        eqloc = urlString.indexOf('=',amploc);
+        int velo = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+        mask = mask & 0x0F;
+        note = note & 0x7F;
+        velo = velo & 0xFF;
+        //Serial.println(mask);
+        //Serial.println(note);
+        //Serial.println(velo);
+        switchToMaster();
+        sendMidiNoteOn(mask,note,velo);
+        switchToSlave();
+    }
     else if (urlString.indexOf("/getpresets?addr") == 0) {
         cb(cbArg, 0, 200, "application/json", nullptr);
         int len = urlString.length();
@@ -253,6 +399,7 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
         //Begin the message
         result->write("{ \"data\": {\r\n"); 
         bytes_read = 0;
+        ringBuffer.flush();
         switchToMaster(); //Send preset backup request to module
         sendBackupPresets(address); 
         switchToSlave(); //Switch to slave to receive the response.
@@ -277,7 +424,7 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
             }
             //Check to see if bytes are still arriving
             unsigned long now = millis();
-            if ((now - lastTime) >= 1000) {
+            if ((now - lastTime) >= 2000) {
                 //Serial.printlnf("%lu", now);
                 lastTime = now;
                 if (bytes_read == bytes_read_last){
