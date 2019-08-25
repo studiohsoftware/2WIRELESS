@@ -295,7 +295,7 @@ Page myPages[] = {
 void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Writer* result, void* reserved)
 {
     String urlString = String(url);
-    Serial.printlnf("handling page %s", url);
+    //Serial.printlnf("handling page %s", url);
     char* data = body->fetch_as_string();
     //Serial.println(String(data));
     free(data);
@@ -391,6 +391,83 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
         sendMidiNoteOn(mask,note,velo);
         switchToSlave();
     }
+    else if (urlString.indexOf("/midinoteoff?mask") == 0) {
+        cb(cbArg, 0, 200, "application/json", nullptr);
+        int len = urlString.length();
+        int eqloc = urlString.indexOf('=');
+        int amploc = urlString.indexOf('&');
+        int mask = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+        mask = mask & 0x0F;
+        eqloc = urlString.indexOf('=',amploc);
+        amploc = urlString.indexOf('&',eqloc);
+        int note = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
+        eqloc = urlString.indexOf('=',amploc);
+        int velo = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+        mask = mask & 0x0F;
+        note = note & 0x7F;
+        velo = velo & 0xFF;
+        //Serial.println(mask);
+        //Serial.println(note);
+        //Serial.println(velo);
+        switchToMaster();
+        sendMidiNoteOff(mask,note,velo);
+        switchToSlave();
+    }
+    else if (urlString.indexOf("/midiclockstart") == 0) {
+        cb(cbArg, 0, 200, "application/json", nullptr);
+        switchToMaster();
+        sendMidiClockStart();
+        switchToSlave();
+    }
+    else if (urlString.indexOf("/midiclockstop") == 0) {
+        cb(cbArg, 0, 200, "application/json", nullptr);
+        switchToMaster();
+        sendMidiClockStop();
+        switchToSlave();
+    }
+    else if (urlString.indexOf("/midiclock") == 0) {
+        cb(cbArg, 0, 200, "application/json", nullptr);
+        switchToMaster();
+        sendMidiClock();
+        switchToSlave();
+    }
+    else if (urlString.indexOf("/midifinetune?mask") == 0) {
+        cb(cbArg, 0, 200, "application/json", nullptr);
+        int len = urlString.length();
+        int eqloc = urlString.indexOf('=');
+        int amploc = urlString.indexOf('&');
+        int mask = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+        eqloc = urlString.indexOf('=',amploc);
+        int tune = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+        mask = mask & 0x0F;
+        tune = tune & 0x3F; //max value is 63 decimal.
+        //Serial.println(mask);
+        //Serial.println(tune);
+        switchToMaster();
+        sendMidiFineTune(mask,tune);
+        switchToSlave();
+    }
+    else if (urlString.indexOf("/midibend?mask") == 0) {
+        cb(cbArg, 0, 200, "application/json", nullptr);
+        int len = urlString.length();
+        int eqloc = urlString.indexOf('=');
+        int amploc = urlString.indexOf('&');
+        int mask = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+        eqloc = urlString.indexOf('=',amploc);
+        amploc = urlString.indexOf('&',eqloc);
+        int bend_lsb = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+        eqloc = urlString.indexOf('=',amploc);
+        int bend_msb = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
+        mask = mask & 0x0F;
+        bend_lsb = bend_lsb & 0x7F; //max value is 7F.
+        bend_msb = bend_msb & 0x7F; //max value is 7F.
+        //Serial.println(mask);
+        //Serial.println(bend_lsb);
+        //Serial.println(bend_msb);
+        switchToMaster();
+        sendMidiBend(mask,bend_lsb,bend_msb);
+        switchToSlave();
+    }
     else if (urlString.indexOf("/getpresets?addr") == 0) {
         cb(cbArg, 0, 200, "application/json", nullptr);
         int len = urlString.length();
@@ -410,8 +487,9 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
         unsigned long lastTime = millis();
         String tmp;
         while (!done){ 
-            tmp = "";      
-            if (ringBuffer.bytesQueued() > 0) {
+            tmp = "";     
+            int bytesQueued = ringBuffer.bytesQueued(); 
+            if (bytesQueued > 0) {
                 tmp = String(ringBuffer.read(),HEX);
             }
             if (tmp.length() == 1) tmp = "0" + tmp;
@@ -427,7 +505,7 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
             if ((now - lastTime) >= 2000) {
                 //Serial.printlnf("%lu", now);
                 lastTime = now;
-                if (bytes_read == bytes_read_last){
+                if ((bytes_read == bytes_read_last) && (bytesQueued == 0)){
                     done = true;
                 }
                 bytes_read_last = bytes_read; 
