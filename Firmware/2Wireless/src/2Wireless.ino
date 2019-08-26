@@ -51,12 +51,12 @@ int RingBuffer::bytesFree(void) {
 }
 
 uint8_t RingBuffer::read(void){
-    uint8_t result = 0xFF;
+    uint8_t result = 0x00;
     if (this->bytesQueued() > 0){
         result = this->buffer[this->tail];
         this->tail = (uint32_t)(this->tail+1) % BUFFER_SIZE;
     }
-    return result; //Note zero returned, so always call bytesQueued() first to check.
+    return result; //Note byte returned, so always call bytesQueued() first to check.
 }
  
 void RingBuffer::write(uint8_t byte){
@@ -73,14 +73,12 @@ void RingBuffer::flush() {
 RingBuffer ringBuffer = RingBuffer();
 
 volatile int bytes_read = 0; //i2c bytes received
-os_mutex_t myMutex;
 
 void receiveEvent(int howMany) {
     while (Wire.available()) {   
-        if (ringBuffer.bytesFree() > 0){
-            ringBuffer.write(Wire.read());
-            bytes_read++;
-        }
+        //Just assume room in buffer
+        ringBuffer.write(Wire.read());
+        bytes_read++;
     }
 }
 
