@@ -22,9 +22,9 @@ Send MIDI note OFF message.<br/>
 Example (All buses, note F3, max velocity) http://192.168.0.1/midinoteoff?mask=0xF&note=63&velo=255
 - ### http://192.168.0.1/midifinetune?mask=(0x0-0xF)&tune=(0x00-0x3F)
 Send MIDI fine tune message. <br/>
-Example (Bus B, lowest fine tune -49): http://192.168.0.1/midifinetune?mask=04&tune=0x00<br/>
-Example (Bus C, Ft=An): http://192.168.0.1/midifinetune?mask=02&tune=0x32<br/>
-Example (Bus D, highest fine tune +49): http://192.168.0.1/midifinetune?mask=01&tune=0x63<br/>
+Example (Bus B, lowest fine tune -49): http://192.168.0.1/midifinetune?mask=0x4&tune=0x00<br/>
+Example (Bus C, Ft=An): http://192.168.0.1/midifinetune?mask=0x2&tune=0x32<br/>
+Example (Bus D, highest fine tune +49): http://192.168.0.1/midifinetune?mask=0x1&tune=0x63<br/>
 - ### http://192.168.0.1/midibend?mask=(0x0-0xF)&bend_lsb=(0x0-0x7F)&bend_msb=0x0-0x7F)
 Send MIDI bend command.<br/>
 Example (Bus A, lowest bend): http://192.168.0.1/midibend?mask=0x8&bend_lsb=0x00&bend_msb=0x00<br/>
