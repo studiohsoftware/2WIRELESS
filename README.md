@@ -36,3 +36,10 @@ Midi clock start.
 Midi clock stop.
 - ### http://192.168.0.1/midiclock
 Midi clock. 24 per beat required?
+- ### http://192.168.0.1/readmemory?addr=(0-32767)
+Read one byte from on board non volatile memory at the specified address.<br/>
+Example (Address 100): http://192.168.0.1/readmemory?addr=100
+- ### http://192.168.0.1/writememory?addr=(0-32767)&value=(0x00-0xFF)
+Write one byte to on board non volatile memory at the specified address.<br/>
+Example (Address 100, value 0xF0): http://192.168.0.1/writememory?addr=100&value=0xF0
+

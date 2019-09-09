@@ -1,8 +1,9 @@
 /*
  * Project 2Wireless
- * Description:
- * Author:
- * Date:
+ * Description: Particle Photon code to host 200e preset bus using REST calls over wifi.
+ * Author: Doug Clauder
+ * Date: August 2019
+ * License: This code is public domain. Distributed as-is; no warranty is given.
  */
 
 #pragma SPARK_NO_PREPROCESSOR
@@ -12,12 +13,17 @@
 #include "Arduino.h"
 #include "softap_http.h"
 #include "Wire.h"
+#include "SPI.h"
 
 
 SYSTEM_THREAD(ENABLED);
 
 #define CARD_ADDRESS 0x00
 #define BUFFER_SIZE 2400
+#define FRAM_WREN 0x06 //FRAM WRITE ENABLE COMMAND
+#define FRAM_WRITE 0x02 //FRAM WRITE COMMAND
+#define FRAM_READ 0x03 //FRAM READ COMMAND
+
 
 
 class RingBuffer {
@@ -76,10 +82,41 @@ volatile int bytes_read = 0; //i2c bytes received
 
 void receiveEvent(int howMany) {
     while (Wire.available()) {   
-        //Just assume room in buffer
+        //Just assume room in buffer to avoid blocking.
         ringBuffer.write(Wire.read());
         bytes_read++;
     }
+}
+
+void framEnableWrite(){
+    digitalWrite(A2, LOW); //Set CS low to select chip
+    SPI.transfer(FRAM_WREN); // send write enable OPCODE
+    digitalWrite(A2, HIGH); //Set CS high to de-select
+}
+
+void framWrite(uint16_t addr, uint8_t value){
+    framEnableWrite();
+    uint8_t addr_msb = (0xFF00 & addr) >>8;
+    uint8_t addr_lsb = (0x00FF & addr);
+    digitalWrite(A2, LOW); //Set CS low to select chip
+    SPI.transfer(FRAM_WRITE); // send write enable OPCODE
+    SPI.transfer(addr_msb); // send address msb
+    SPI.transfer(addr_lsb); // send address lsb
+    SPI.transfer(value); // send value
+    digitalWrite(A2, HIGH); //Set CS high to de-select
+}
+
+uint8_t framRead(uint16_t addr){
+    uint8_t result = 0;
+    uint8_t addr_msb = (0xFF00 & addr) >>8;
+    uint8_t addr_lsb = (0x00FF & addr);
+    digitalWrite(A2, LOW); //Set CS low to select chip
+    SPI.transfer(FRAM_READ); // send write enable OPCODE
+    SPI.transfer(addr_msb); // send address msb
+    SPI.transfer(addr_lsb); // send address lsb
+    result = SPI.transfer(0); // read byte
+    digitalWrite(A2, HIGH); //Set CS high to de-select
+    return result;
 }
 
 void switchToMaster(){
@@ -509,25 +546,42 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
                 bytes_read_last = bytes_read; 
             }
         }
-
         //Finish the message.
         result->write("}\r\n");
         result->write("}\r\n");
-    } 
-    else if (!strcmp(url, "/favicon.ico")) {
+    } else if (urlString.indexOf("/readmemory?addr") == 0) {
+        cb(cbArg, 0, 200, "application/json", nullptr);
+        int len = urlString.length();
+        int eqloc = urlString.indexOf('=');
+        int addr = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+        uint8_t value;
+        value = framRead(addr);
+        String tmp = String(value,HEX);
+        result->write("{ \"data\": {\r\n"); 
+        result->write(tmp);
+        result->write("\r\n");
+        result->write("}\r\n");
+        result->write("}\r\n");
+    } else if (urlString.indexOf("/writememory?addr") == 0) {
+        cb(cbArg, 0, 200, "application/json", nullptr);
+        int len = urlString.length();
+        int eqloc = urlString.indexOf('=');
+        int amploc = urlString.indexOf('&');
+        int addr = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
+        eqloc = urlString.indexOf('=',amploc);
+        int value = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
+        framWrite(addr,value);
+    } else if (!strcmp(url, "/favicon.ico")) {
         cb(cbArg, 0, 200, "image/x-icon", nullptr);
         //return URL icon here, if desired.
-    } 
-    else if (!strcmp(url, "/generate_204")) {
+    } else if (!strcmp(url, "/generate_204")) {
         cb(cbArg, 0, 204, "text/plain", nullptr);
-    } 
-    else if (idx==-1) {
+    } else if (idx==-1) {
         //Redirect not found to index.html
         //Header h("Location: /index.html\r\n");
         //cb(cbArg, 0, 301, "text/plain", &h);
         cb(cbArg, 0, 301, "text/plain", nullptr);
-    }
-    else {
+    } else {
         cb(cbArg, 0, 200, myPages[idx].mime_type, nullptr);
         result->write(myPages[idx].data);        
     }
@@ -541,6 +595,11 @@ STARTUP(softap_set_application_page_handler(myPage, nullptr));
 void setup() {
     WiFi.listen();
     switchToSlave(); //Run in slave mode so that other modules can be master 
+    pinMode(A2, OUTPUT); //SPI CS
+    SPI.begin(); //Defaults to A2 as CS 
+    SPI.setClockSpeed(10, MHZ);
+    SPI.setBitOrder(MSBFIRST); // Data is read and written MSB first.
+    SPI.setDataMode(SPI_MODE0);
 }
 
 void loop() {
