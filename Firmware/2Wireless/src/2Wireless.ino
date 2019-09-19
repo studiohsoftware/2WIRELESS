@@ -17,6 +17,7 @@
 
 
 SYSTEM_THREAD(ENABLED);
+SYSTEM_MODE(MANUAL); //Found in softap.cpp example. 
 
 #define CARD_ADDRESS 0x00
 #define BUFFER_SIZE 2400
@@ -320,20 +321,17 @@ struct Page
 };
 
 
-const char index_html[] = "<html><div align=\"center\"><form action=\"color\" method=\"get\"><input id=\"background-color\" name=\"color\" type=\"color\"/><input type=\"submit\" value=\"Go!\"/></form></div></html>";
+static const char index_html[] = "<html><div align=\"center\"><form action=\"color\" method=\"get\"><input id=\"background-color\" name=\"color\" type=\"color\"/><input type=\"submit\" value=\"Go!\"/></form></div></html>";
 
 Page myPages[] = {
      { "/index.html", "text/html", index_html },
      { nullptr }
 };
 
-void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Writer* result, void* reserved)
+static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Writer* result, void* reserved)
 {
     String urlString = String(url);
-    //Serial.printlnf("handling page %s", url);
-    char* data = body->fetch_as_string();
-    //Serial.println(String(data));
-    free(data);
+    Serial.printlnf("handling page %s", url);
 
     if (strcmp(url,"/index")==0) {
         //Serial.println("sending redirect");
@@ -371,19 +369,19 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
     }
 
     if (!strcmp(url, "/remoteenable")) {
-        cb(cbArg, 0, 200, "application/json", nullptr);
+        cb(cbArg, 0, 200, "text/plain", nullptr);
         switchToMaster();
         sendRemoteEnable();
         switchToSlave();
     } 
     else if (!strcmp(url, "/remotedisable")) {
-        cb(cbArg, 0, 200, "application/json", nullptr);
+        cb(cbArg, 0, 200, "text/plain", nullptr);
         switchToMaster();
         sendRemoteDisable();
         switchToSlave();
     }
     else if (urlString.indexOf("/savepreset?preset") == 0) {
-        cb(cbArg, 0, 200, "application/json", nullptr);
+        cb(cbArg, 0, 200, "text/plain", nullptr);
         int len = urlString.length();
         int eqloc = urlString.indexOf('=');
         int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
@@ -394,7 +392,7 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
         switchToSlave();
     }
     else if (urlString.indexOf("/recallpreset?preset") == 0) {
-        cb(cbArg, 0, 200, "application/json", nullptr);
+        cb(cbArg, 0, 200, "text/plain", nullptr);
         int len = urlString.length();
         int eqloc = urlString.indexOf('=');
         int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
@@ -405,7 +403,7 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
         switchToSlave();
     }
     else if (urlString.indexOf("/midinoteon?mask") == 0) {
-        cb(cbArg, 0, 200, "application/json", nullptr);
+        cb(cbArg, 0, 200, "text/plain", nullptr);
         int len = urlString.length();
         int eqloc = urlString.indexOf('=');
         int amploc = urlString.indexOf('&');
@@ -427,7 +425,7 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
         switchToSlave();
     }
     else if (urlString.indexOf("/midinoteoff?mask") == 0) {
-        cb(cbArg, 0, 200, "application/json", nullptr);
+        cb(cbArg, 0, 200, "text/plain", nullptr);
         int len = urlString.length();
         int eqloc = urlString.indexOf('=');
         int amploc = urlString.indexOf('&');
@@ -449,25 +447,25 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
         switchToSlave();
     }
     else if (urlString.indexOf("/midiclockstart") == 0) {
-        cb(cbArg, 0, 200, "application/json", nullptr);
+        cb(cbArg, 0, 200, "text/plain", nullptr);
         switchToMaster();
         sendMidiClockStart();
         switchToSlave();
     }
     else if (urlString.indexOf("/midiclockstop") == 0) {
-        cb(cbArg, 0, 200, "application/json", nullptr);
+        cb(cbArg, 0, 200, "text/plain", nullptr);
         switchToMaster();
         sendMidiClockStop();
         switchToSlave();
     }
     else if (urlString.indexOf("/midiclock") == 0) {
-        cb(cbArg, 0, 200, "application/json", nullptr);
+        cb(cbArg, 0, 200, "text/plain", nullptr);
         switchToMaster();
         sendMidiClock();
         switchToSlave();
     }
     else if (urlString.indexOf("/midifinetune?mask") == 0) {
-        cb(cbArg, 0, 200, "application/json", nullptr);
+        cb(cbArg, 0, 200, "text/plain", nullptr);
         int len = urlString.length();
         int eqloc = urlString.indexOf('=');
         int amploc = urlString.indexOf('&');
@@ -483,7 +481,7 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
         switchToSlave();
     }
     else if (urlString.indexOf("/midibend?mask") == 0) {
-        cb(cbArg, 0, 200, "application/json", nullptr);
+        cb(cbArg, 0, 200, "text/plain", nullptr);
         int len = urlString.length();
         int eqloc = urlString.indexOf('=');
         int amploc = urlString.indexOf('&');
@@ -563,7 +561,7 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
         result->write("}\r\n");
         result->write("}\r\n");
     } else if (urlString.indexOf("/writememory?addr") == 0) {
-        cb(cbArg, 0, 200, "application/json", nullptr);
+        cb(cbArg, 0, 200, "text/plain", nullptr);
         int len = urlString.length();
         int eqloc = urlString.indexOf('=');
         int amploc = urlString.indexOf('&');
@@ -571,6 +569,20 @@ void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* body, Wr
         eqloc = urlString.indexOf('=',amploc);
         int value = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
         framWrite(addr,value);
+    } else if (urlString.indexOf("/writefirmware") == 0) {
+        cb(cbArg, 0, 200, "text/plain", nullptr);
+        //char* postData = body->fetch_as_string();
+        //Serial.printlnf("received data %s", postData);
+        //free(postData);
+
+        static uint8_t s_buffer[1024] = {0};
+        int bread = 0;
+        do {
+            bread = body->read(s_buffer, sizeof(s_buffer));
+            if (bread > 0) {
+                result->write(s_buffer, bread);
+            }
+        } while(bread > 0);
     } else if (!strcmp(url, "/favicon.ico")) {
         cb(cbArg, 0, 200, "image/x-icon", nullptr);
         //return URL icon here, if desired.
@@ -600,10 +612,11 @@ void setup() {
     SPI.setClockSpeed(10, MHZ);
     SPI.setBitOrder(MSBFIRST); // Data is read and written MSB first.
     SPI.setDataMode(SPI_MODE0);
+    waitUntil(WiFi.listening); //found in softap.cpp example
 }
 
 void loop() {
-
+    Particle.process(); //found in softap.cpp example
 }
 
 
