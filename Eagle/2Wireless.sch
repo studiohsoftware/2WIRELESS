@@ -6,7 +6,7 @@
 <setting alwaysvectorfont="no"/>
 <setting verticaltext="up"/>
 </settings>
-<grid distance="0.1" unitdist="inch" unit="inch" style="lines" multiple="1" display="yes" altdistance="0.01" altunitdist="inch" altunit="inch"/>
+<grid distance="0.1" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
 <layers>
 <layer number="1" name="Top" color="4" fill="1" visible="no" active="no"/>
 <layer number="2" name="Route2" color="11" fill="1" visible="no" active="no"/>
@@ -1939,7 +1939,7 @@ type 0411, grid 15 mm</description>
 &lt;/ul&gt;
 &lt;/p&gt;
 
-Source: &lt; a href=https://www.fujitsu.com/global/documents/products/devices/semiconductor/fram/lineup/MB85RS256TY-DS501-00049-2v0-E.pdf&gt;Data Sheet&lt;/a&gt;</description>
+Source: &lt; a href=https://www.fujitsu.com/uk/Images/MB85RS2MTA.pdf&gt;Data Sheet&lt;/a&gt;</description>
 <gates>
 <gate name="G$1" symbol="FRAMSPI" x="0" y="0"/>
 </gates>
@@ -1958,9 +1958,9 @@ Source: &lt; a href=https://www.fujitsu.com/global/documents/products/devices/se
 <technologies>
 <technology name="">
 <attribute name="MF" value="FUJITSU" constant="no"/>
-<attribute name="MPN" value="MB85RS256TYPNF-G-BCERE1" constant="no"/>
-<attribute name="VALUE" value="MB85RS256TYPNF-G-BCERE1" constant="no"/>
-<attribute name="Z_DIGIKEY" value="865-1293-1-ND" constant="no"/>
+<attribute name="MPN" value="MB85RS2MTAPNF-G-BDERE1" constant="no"/>
+<attribute name="VALUE" value="MB85RS2MTAPNF-G-BDERE1" constant="no"/>
+<attribute name="Z_DIGIKEY" value="865-1286-1-ND" constant="no"/>
 <attribute name="Z_MOUSER" value="" constant="no"/>
 <attribute name="Z_SMT" value="Y" constant="no"/>
 </technology>
@@ -2528,7 +2528,7 @@ RECOMMENDED ON ALL LAYERS</text>
 <part name="D1" library="studio_h" deviceset="D" device="MRA4003" value="DMRA4003"/>
 <part name="DGND21" library="studio_h" deviceset="DGND" device=""/>
 <part name="IC2" library="studio_h" deviceset="VREG" device="LD1117"/>
-<part name="IC3" library="studio_h" deviceset="FRAMSPI" device="" value="MB85RS256TYPNF-G-BCERE1"/>
+<part name="IC3" library="studio_h" deviceset="FRAMSPI" device="" value="MB85RS2MTAPNF-G-BDERE1"/>
 <part name="DGND24" library="studio_h" deviceset="DGND" device=""/>
 <part name="C7" library="studio_h" deviceset="C" device="B" value="100n"/>
 <part name="DGND1" library="studio_h" deviceset="DGND" device=""/>
