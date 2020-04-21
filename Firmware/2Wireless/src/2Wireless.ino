@@ -79,13 +79,11 @@ void RingBuffer::flush() {
 
 RingBuffer ringBuffer = RingBuffer();
 
-volatile int bytes_read = 0; //i2c bytes received
 
 void receiveEvent(int howMany) {
-    while (Wire.available()) {   
+    while (Wire.available() > 0) {   
         //Just assume room in buffer to avoid blocking.
         ringBuffer.write(Wire.read());
-        bytes_read++;
     }
 }
 
@@ -95,26 +93,32 @@ void framEnableWrite(){
     digitalWrite(A2, HIGH); //Set CS high to de-select
 }
 
-void framWrite(uint16_t addr, uint8_t value){
+void framWrite(int addr, uint8_t value){
     framEnableWrite();
-    uint8_t addr_msb = (0xFF00 & addr) >>8;
-    uint8_t addr_lsb = (0x00FF & addr);
+    //Address on the MB85RS2MTA is 18 bits total, requiring 3 bytes. 
+    uint8_t addr_byte_upper = (0x3F0000 & addr) >>16;
+    uint8_t addr_byte_middle = (0x00FF00 & addr) >>8;
+    uint8_t addr_byte_lower = (0x0000FF & addr);
     digitalWrite(A2, LOW); //Set CS low to select chip
     SPI.transfer(FRAM_WRITE); // send write enable OPCODE
-    SPI.transfer(addr_msb); // send address msb
-    SPI.transfer(addr_lsb); // send address lsb
+    SPI.transfer(addr_byte_upper); // send address upper byte
+    SPI.transfer(addr_byte_middle); // send address middle byte
+    SPI.transfer(addr_byte_lower); // send address lower byte
     SPI.transfer(value); // send value
     digitalWrite(A2, HIGH); //Set CS high to de-select
 }
 
-uint8_t framRead(uint16_t addr){
+uint8_t framRead(int addr){
     uint8_t result = 0;
-    uint8_t addr_msb = (0xFF00 & addr) >>8;
-    uint8_t addr_lsb = (0x00FF & addr);
+    //Address on the MB85RS2MTA is 18 bits total, requiring 3 bytes. 
+    uint8_t addr_byte_upper = (0x3F0000 & addr) >>16;
+    uint8_t addr_byte_middle = (0x00FF00 & addr) >>8;
+    uint8_t addr_byte_lower = (0x0000FF & addr);
     digitalWrite(A2, LOW); //Set CS low to select chip
     SPI.transfer(FRAM_READ); // send write enable OPCODE
-    SPI.transfer(addr_msb); // send address msb
-    SPI.transfer(addr_lsb); // send address lsb
+    SPI.transfer(addr_byte_upper); // send address upper byte
+    SPI.transfer(addr_byte_middle); // send address middle byte
+    SPI.transfer(addr_byte_lower); // send address lower byte
     result = SPI.transfer(0); // read byte
     digitalWrite(A2, HIGH); //Set CS high to de-select
     return result;
@@ -503,18 +507,25 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
     }
     else if (urlString.indexOf("/getpresets?addr") == 0) {
         cb(cbArg, 0, 200, "application/json", nullptr);
+        //Parse module address and optional length parameter (number of bytes in each line of the result data).
         int len = urlString.length();
-        int address = (int)strtol(urlString.substring(len - 2, len).c_str(), nullptr, 16);
-        //Serial.println(address,HEX);
+        int amploc = urlString.indexOf('&');
+        if (amploc==-1) amploc=len;
+        int address = (int)strtol(urlString.substring(amploc - 2, amploc).c_str(), nullptr, 16);
+        int eqloc = urlString.indexOf('=',amploc);
+        int line_length = 10; //Default to the 292e case.
+        if (eqloc > -1) {
+            line_length = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+        }
+         //Serial.println(address,HEX);
         //Begin the message
-        result->write("{ \"data\": {\r\n"); 
-        bytes_read = 0;
+        result->write("{\r\n"); 
+        result->write("\"address\": { 0x" + String(address,HEX) + " }\r\n"); 
+        result->write("\"data\": {\r\n"); 
         ringBuffer.flush();
         switchToMaster(); //Send preset backup request to module
         sendBackupPresets(address); 
         switchToSlave(); //Switch to slave to receive the response.
-         //Wait for all of the data to come in.
-        int bytes_read_last = 0;
         bool done = false;
         int bytes_written = 0;
         unsigned long lastTime = millis();
@@ -529,19 +540,16 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
             if (tmp.length() > 0) {
                 result->write(tmp);
                 bytes_written++;
-                if (((bytes_written % 8) == 0) && (bytes_written != 0)){
+                if (((bytes_written % line_length) == 0) && (bytes_written != 0)){
                     result->write("\r\n");
                 }
+                lastTime = millis();
             }
             //Check to see if bytes are still arriving
             unsigned long now = millis();
             if ((now - lastTime) >= 2000) {
                 //Serial.printlnf("%lu", now);
-                lastTime = now;
-                if ((bytes_read == bytes_read_last) && (bytesQueued == 0)){
-                    done = true;
-                }
-                bytes_read_last = bytes_read; 
+                done = true;
             }
         }
         //Finish the message.
@@ -618,6 +626,3 @@ void setup() {
 void loop() {
     Particle.process(); //found in softap.cpp example
 }
-
-
-
