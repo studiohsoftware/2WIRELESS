@@ -1,10 +1,34 @@
 /*
+ * MIT License
+ *
+ * Copyright (c) 2019 Doug Clauder
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+/*
  * Project 2Wireless
  * Description: Particle Photon code to host 200e preset bus using REST calls over wifi.
  * Author: Doug Clauder
  * Date: August 2019
- * License: This code is public domain. Distributed as-is; no warranty is given.
  */
+
+
 
 #pragma SPARK_NO_PREPROCESSOR
 
@@ -25,6 +49,19 @@ SYSTEM_MODE(MANUAL); //Found in softap.cpp example.
 #define FRAM_WRITE 0x02 //FRAM WRITE COMMAND
 #define FRAM_READ 0x03 //FRAM READ COMMAND
 
+class JsonToken {
+    public:
+        JsonToken();
+        int count;
+        int status;
+        String data;
+};
+
+JsonToken::JsonToken() {
+    this->count = 0;
+    this->status = 0;
+    this->data = "";
+}
 
 
 class RingBuffer {
@@ -78,13 +115,27 @@ void RingBuffer::flush() {
 }
 
 RingBuffer ringBuffer = RingBuffer();
+volatile uint8_t read_addr_msb; //Used to save off MSB of 16 bit address during I2C READ from master.
+volatile uint8_t read_addr_lsb; //Used to save off LSB of 16 bit address during I2C READ from master.
+volatile int read_counter; //Used to auto increment read addresses during I2C READ from master.
+volatile bool i2c_request = false; //Used to fetch I2C read requests from FRAM within main loop rather than requestEvent.
 
 
 void receiveEvent(int howMany) {
+    uint8_t current_byte = 0x00;
+    uint8_t last_byte = 0x00;
     while (Wire.available() > 0) {   
+        last_byte = current_byte;
+        current_byte = Wire.read();
         //Just assume room in buffer to avoid blocking.
-        ringBuffer.write(Wire.read());
+        ringBuffer.write(current_byte); //Save into ring buffer to support I2C WRITE from master.
+        read_addr_msb = last_byte; //Save off possible address data to support I2C READ from master.
+        read_addr_lsb = current_byte; //Save off possible address data to support I2C READ from master.
+        read_counter = 0; //Initialize counter for subsequent I2C READs from master. 
     }
+}
+void requestEvent() {
+    i2c_request = true;
 }
 
 void framEnableWrite(){
@@ -133,6 +184,7 @@ void switchToSlave(){
     Wire.end();
     Wire.begin(0x50 | CARD_ADDRESS);
     Wire.onReceive(receiveEvent);
+    Wire.onRequest(requestEvent);
 }
 
 void sendRemoteEnable() {
@@ -314,6 +366,42 @@ void sendMidiBend(byte mask, byte bend_lsb, byte bend_msb){
     Wire.write(0x00);
     Wire.endTransmission();
 }
+
+String getFormattedError(String errorString) {
+    String result = "{\r\n";
+    result = result + "\"error\" : {\r\n";
+    result = result + errorString;
+    result = result + "\r\n";
+    result = result + "}\r\n";
+    result = result + "}\r\n";
+    return result;
+};
+
+void getJsonToken(JsonToken* token, Reader* body, char begin_char, char end_char) {
+    static uint8_t s_buffer[1] = {0};
+    int bread = 0;
+    bread = body->read(s_buffer, sizeof(s_buffer));
+    char s = (char)s_buffer[0];
+    while ((token->status == 0) && (bread > 0)) {
+        if (s == begin_char){
+            token->status = 1;
+            token->data = "";
+        }
+        bread = body->read(s_buffer, sizeof(s_buffer));
+        s = (char)s_buffer[0];
+    } 
+
+    while ((token->status == 1) && (bread > 0) && ((token->data).length() < 256)) {
+        if (s == end_char){
+            token->status = 2;
+        } else {
+            token->data = token->data + s;
+            bread = body->read(s_buffer, sizeof(s_buffer));
+            s = (char)s_buffer[0];
+        }
+    }
+    token->status = 0; //ready for next time
+};
 
 int r, g, b = 0;
 
@@ -520,7 +608,7 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
          //Serial.println(address,HEX);
         //Begin the message
         result->write("{\r\n"); 
-        result->write("\"address\": { 0x" + String(address,HEX) + " }\r\n"); 
+        result->write("\"module_address\": { 0x" + String(address,HEX) + " }\r\n"); 
         result->write("\"data\": {\r\n"); 
         ringBuffer.flush();
         switchToMaster(); //Send preset backup request to module
@@ -555,6 +643,48 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
         //Finish the message.
         result->write("}\r\n");
         result->write("}\r\n");
+    } else if (urlString.indexOf("/setpresets") == 0) {
+        cb(cbArg, 0, 200, "text/plain", nullptr);
+        uint8_t module_address = 0x00;
+        JsonToken* token = new JsonToken();
+        getJsonToken(token, body,'\"','\"');
+        if (token->data == "module_address") {
+            getJsonToken(token, body,'{','}');
+            int len = (token->data).length();
+            if (len >= 2){
+                module_address = (int)strtol((token->data).substring(len - 2, len).c_str(), nullptr, 16);
+                result->write("module_address");
+                result->write("\r\n");
+                result->write("0x" + String(module_address,HEX));
+                result->write("\r\n");
+            }
+        }
+        getJsonToken(token, body,'\"','\"');
+        if (token->data == "presets") {
+            getJsonToken(token, body,'\"','\"');
+            String name = token->data;
+            while (name == "memory_address") {
+                result->write(name);
+                result->write("\r\n");
+                //get the memory address
+                getJsonToken(token, body,'{','}');
+                result->write(token->data);
+                result->write("\r\n");
+                getJsonToken(token, body,'\"','\"');
+                result->write(token->data);
+                result->write("\r\n");
+                //get the data
+                getJsonToken(token, body,'{','}');
+                result->write(token->data);
+                result->write("\r\n");
+                getJsonToken(token, body,'\"','\"');
+                name = token->data;
+            }
+        }
+
+
+        delete token;
+
     } else if (urlString.indexOf("/readmemory?addr") == 0) {
         cb(cbArg, 0, 200, "application/json", nullptr);
         int len = urlString.length();
@@ -625,4 +755,13 @@ void setup() {
 
 void loop() {
     Particle.process(); //found in softap.cpp example
+    if (i2c_request){
+        uint16_t mem_addr; //FRAM address to read. Restricted to 16bit memory access for I2C. 
+        mem_addr = (((read_addr_msb<<8) | read_addr_lsb) + read_counter) & 0xFFFF; 
+        Wire.write(framRead(mem_addr)); //Read the requested byte from FRAM and write to I2C.
+        read_counter++; //Auto increment mem_addr to support repeated reads.
+        i2c_request = false;
+    }
 }
+
+

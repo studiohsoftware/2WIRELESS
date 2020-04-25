@@ -1,0 +1,42 @@
+<html>
+	<body>
+		<button onclick="input.click()">Click me</button>
+		<p id="demo">Browse for presets JSON file.</p>
+	</body>
+	<script>
+		var url = "http://192.168.0.1/setpresets";
+		var method = "POST";
+		var shouldBeAsync = true;
+		var request = new XMLHttpRequest();
+		request.onload = function () {
+			var status = request.status; // HTTP response status, e.g., 200 for "200 OK"
+			var data = request.responseText; // Returned data, e.g., an HTML document.
+			document.getElementById("demo").innerHTML = data;  
+
+		}
+	
+	
+		var input = document.createElement('input');
+		input.type = 'file';
+		input.accept = ".json";
+		input.click();
+		
+		
+		input.onchange = e => { 
+			var file = e.target.files[0]; 		
+			var reader = new FileReader();
+			reader.readAsText(file,'UTF-8');
+			reader.onload = readerEvent => {
+				var content = readerEvent.target.result; 
+				document.getElementById("demo").innerHTML = "sending";
+				request.open(method, url, shouldBeAsync);
+				request.setRequestHeader("Content-Length", content.length);
+				request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+				//request.setRequestHeader("Content-Type", "text/plain");
+				//request.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+				request.send(content);
+				//request.send(null);
+			}
+		}
+	</script>
+</html>
