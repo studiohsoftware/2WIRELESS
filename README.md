@@ -16,7 +16,7 @@ Retrieve all 30 presets from the specified module.<br/>
 Example (259A): http://192.168.0.1/getpresets?addr=0x28
 - ### http://192.168.0.1/setpresets
 Write all 30 presets to the specified module.<br/>
-Example (259A): http://192.168.0.1/setpresets <br/>
+Example: http://192.168.0.1/setpresets <br/> </br>
 Note this is an HTTP POST with a JSON formatted body. <br/> 
 Example HTML here https://github.com/studiohsoftware/2WIRELESS/blob/master/Firmware/SetPresets.html <br/>
 Example JSON (for 292e) here https://github.com/studiohsoftware/2WIRELESS/blob/master/Firmware/presetData.json <br/>
