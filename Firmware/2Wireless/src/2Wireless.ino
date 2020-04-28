@@ -115,28 +115,7 @@ void RingBuffer::flush() {
 }
 
 RingBuffer ringBuffer = RingBuffer();
-volatile uint8_t read_addr_msb; //Used to save off MSB of 16 bit address during I2C READ from master.
-volatile uint8_t read_addr_lsb; //Used to save off LSB of 16 bit address during I2C READ from master.
 volatile int read_counter; //Used to auto increment read addresses during I2C READ from master.
-volatile bool i2c_request = false; //Used to fetch I2C read requests from FRAM within main loop rather than requestEvent.
-
-
-void receiveEvent(int howMany) {
-    uint8_t current_byte = 0x00;
-    uint8_t last_byte = 0x00;
-    while (Wire.available() > 0) {   
-        last_byte = current_byte;
-        current_byte = Wire.read();
-        //Just assume room in buffer to avoid blocking.
-        ringBuffer.write(current_byte); //Save into ring buffer to support I2C WRITE from master.
-        read_addr_msb = last_byte; //Save off possible address data to support I2C READ from master.
-        read_addr_lsb = current_byte; //Save off possible address data to support I2C READ from master.
-        read_counter = 0; //Initialize counter for subsequent I2C READs from master. 
-    }
-}
-void requestEvent() {
-    i2c_request = true;
-}
 
 void framEnableWrite(){
     digitalWrite(A2, LOW); //Set CS low to select chip
@@ -159,6 +138,26 @@ void framWrite(int addr, uint8_t value){
     digitalWrite(A2, HIGH); //Set CS high to de-select
 }
 
+void framWriteHexString(int addr, String value){
+    framEnableWrite();
+    //Address on the MB85RS2MTA is 18 bits total, requiring 3 bytes. 
+    uint8_t addr_byte_upper = (0x3F0000 & addr) >>16;
+    uint8_t addr_byte_middle = (0x00FF00 & addr) >>8;
+    uint8_t addr_byte_lower = (0x0000FF & addr);
+    digitalWrite(A2, LOW); //Set CS low to select chip
+    SPI.transfer(FRAM_WRITE); // send write enable OPCODE
+    SPI.transfer(addr_byte_upper); // send address upper byte
+    SPI.transfer(addr_byte_middle); // send address middle byte
+    SPI.transfer(addr_byte_lower); // send address lower byte
+    String remainder = value;
+    while (remainder.length() >= 2){
+        uint8_t data = (int)strtol(remainder.substring(0,2).c_str(), nullptr, 16); 
+        SPI.transfer(data); // send value
+        remainder = remainder.substring(2,remainder.length());
+    }
+    digitalWrite(A2, HIGH); //Set CS high to de-select
+}
+
 uint8_t framRead(int addr){
     uint8_t result = 0;
     //Address on the MB85RS2MTA is 18 bits total, requiring 3 bytes. 
@@ -173,6 +172,25 @@ uint8_t framRead(int addr){
     result = SPI.transfer(0); // read byte
     digitalWrite(A2, HIGH); //Set CS high to de-select
     return result;
+}
+
+void receiveEvent(int howMany) {
+    while (Wire.available() > 0) {   
+        //Just assume room in buffer to avoid blocking.
+        ringBuffer.write(Wire.read()); //Save into ring buffer to support I2C WRITE from master.
+    }
+}
+void requestEvent() {
+    //Module triggers this event once per memory location and then expects to find all data here
+    //using repeated READ commands. Although 128 bytes are written into the buffer unconditionally,
+    //the module only takes what it needs. Note that 128 is the page boundary on the firmware card,
+    //so all modules constrainin their read activity to this amount. It should be safe to assume 
+    //that 128 is the largest buffer necessary.
+    int addr = 128 * read_counter;
+    for (int i=0; i<128; i++){
+        Wire.write(framRead(addr + i));
+    }
+    read_counter++;
 }
 
 void switchToMaster(){
@@ -244,6 +262,21 @@ void sendBackupPresets(byte address) {
     Wire.write(0x00);
     Wire.write(0x22);
     Wire.write(0x04);
+    Wire.write(address); //Module address
+    Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
+    Wire.write(0x00); //Card memory address LSB
+    Wire.write(0x00); //Card memory address MSB
+    Wire.endTransmission();
+}
+
+void sendRestorePresets(byte address) {
+    //Request specified module to restore presets.
+    //Address 0x44=291e.
+    Wire.beginTransmission(0);
+    Wire.write(0x07);
+    Wire.write(0x00);
+    Wire.write(0x22);
+    Wire.write(0x05);
     Wire.write(address); //Module address
     Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
     Wire.write(0x00); //Card memory address LSB
@@ -444,8 +477,6 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
         } else {
             //System.set(SYSTEM_CONFIG_SOFTAP_DISABLE_BROADCAST,"0");
         }
-        
-
     }
 
     int8_t idx = 0;
@@ -613,7 +644,7 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
         ringBuffer.flush();
         switchToMaster(); //Send preset backup request to module
         sendBackupPresets(address); 
-        switchToSlave(); //Switch to slave to receive the response.
+        switchToSlave();
         bool done = false;
         int bytes_written = 0;
         unsigned long lastTime = millis();
@@ -653,38 +684,48 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
             int len = (token->data).length();
             if (len >= 2){
                 module_address = (int)strtol((token->data).substring(len - 2, len).c_str(), nullptr, 16);
-                result->write("module_address");
-                result->write("\r\n");
-                result->write("0x" + String(module_address,HEX));
-                result->write("\r\n");
+                //result->write("module_address");
+                //result->write("\r\n");
+                //result->write("0x" + String(module_address,HEX));
+                //result->write("\r\n");
             }
         }
         getJsonToken(token, body,'\"','\"');
         if (token->data == "presets") {
+            int fram_address = 0; //Actual memory addresses in data cannot be seen by Wire.OnReceive. Just increment in 128 byte amounts.
             getJsonToken(token, body,'\"','\"');
             String name = token->data;
             while (name == "memory_address") {
-                result->write(name);
-                result->write("\r\n");
+                //String address_string = "";
+                String data_string = "";
                 //get the memory address
-                getJsonToken(token, body,'{','}');
-                result->write(token->data);
-                result->write("\r\n");
+                //getJsonToken(token, body,'{','}');
+                //address_string = token->data;
                 getJsonToken(token, body,'\"','\"');
-                result->write(token->data);
-                result->write("\r\n");
-                //get the data
-                getJsonToken(token, body,'{','}');
-                result->write(token->data);
-                result->write("\r\n");
+                name = token->data;
+                if (name == "data") {
+                    //get the data
+                    getJsonToken(token, body,'{','}');
+                    data_string = token->data;
+                }
+                if (data_string.length() > 0) {
+                    //uint16_t memory_address = (int)strtol(address_string.c_str(), nullptr, 16); 
+                    framWriteHexString(fram_address,data_string);
+                    //result->write("0x" + String(fram_address,HEX));
+                    //result->write("\r\n");
+                    fram_address = fram_address + 128; //Allocate 128 bytes for each data_string.
+                }
                 getJsonToken(token, body,'\"','\"');
                 name = token->data;
             }
+            if (module_address != 0x00) {
+                read_counter = 0; //Initialize counter for subsequent I2C READs from master. 
+                switchToMaster(); //Send preset restore request to module
+                sendRestorePresets(module_address); 
+                switchToSlave(); //Switch to slave to receive the read requests.
+            }
         }
-
-
         delete token;
-
     } else if (urlString.indexOf("/readmemory?addr") == 0) {
         cb(cbArg, 0, 200, "application/json", nullptr);
         int len = urlString.length();
@@ -721,6 +762,12 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
                 result->write(s_buffer, bread);
             }
         } while(bread > 0);
+    } else if (urlString.indexOf("/debug") == 0) {
+        cb(cbArg, 0, 200, "text/plain", nullptr);
+        while (ringBuffer.bytesQueued())
+        {
+            result->write(String(ringBuffer.read(),HEX) + "\r\n");
+        }
     } else if (!strcmp(url, "/favicon.ico")) {
         cb(cbArg, 0, 200, "image/x-icon", nullptr);
         //return URL icon here, if desired.
@@ -736,8 +783,6 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
         result->write(myPages[idx].data);        
     }
 }
-
-//unsigned long t = 0;
 
 
 STARTUP(softap_set_application_page_handler(myPage, nullptr));
@@ -755,13 +800,6 @@ void setup() {
 
 void loop() {
     Particle.process(); //found in softap.cpp example
-    if (i2c_request){
-        uint16_t mem_addr; //FRAM address to read. Restricted to 16bit memory access for I2C. 
-        mem_addr = (((read_addr_msb<<8) | read_addr_lsb) + read_counter) & 0xFFFF; 
-        Wire.write(framRead(mem_addr)); //Read the requested byte from FRAM and write to I2C.
-        read_counter++; //Auto increment mem_addr to support repeated reads.
-        i2c_request = false;
-    }
 }
 
 

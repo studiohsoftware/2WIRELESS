@@ -3,6 +3,66 @@
 	"presets": [
 		{
 			"memory_address":{0x0000}
+			"data":{01020102ffffffff}
+		},
+		{
+			"memory_address":{0x0008}
+			"data":{01010101ffffffff}
+		},
+		{
+			"memory_address":{0x0010}
+			"data":{01010101ffffffff}
+		},
+		{
+			"memory_address":{0x0018}
+			"data":{01010101ffffffff}
+		},
+		{
+			"memory_address":{0x0020}
+			"data":{01010101ffffffff}
+		},
+		{
+			"memory_address":{0x0028}
+			"data":{01010101ffffffff}
+		},
+		{
+			"memory_address":{0x0030}
+			"data":{01010101ffffffff}
+		},
+		{
+			"memory_address":{0x0038}
+			"data":{01010101ffffffff}
+		},
+		{
+			"memory_address":{0x0040}
+			"data":{01010101ffffffff}
+		},
+		{
+			"memory_address":{0x0048}
+			"data":{01010101ffffffff}
+		},		
+		{
+			"memory_address":{0x0050}
+			"data":{01010101ffffffff}
+		},
+		{
+			"memory_address":{0x0058}
+			"data":{01010101ffffffff}
+		},
+		{
+			"memory_address":{0x0060}
+			"data":{01010101ffffffff}
+		},
+		{
+			"memory_address":{0x0068}
+			"data":{01010101ffffffff}
+		},
+		{
+			"memory_address":{0x0070}
+			"data":{01010101ffffffff}
+		},		
+		{
+			"memory_address":{0x0078}
 			"data":{01010101ffffffff}
 		},
 		{
@@ -10,115 +70,55 @@
 			"data":{01010101ffffffff}
 		},
 		{
-			"memory_address":{0x0100}
+			"memory_address":{0x0088}
 			"data":{01010101ffffffff}
 		},
 		{
-			"memory_address":{0x0180}
+			"memory_address":{0x0090}
 			"data":{01010101ffffffff}
 		},
 		{
-			"memory_address":{0x0200}
-			"data":{01010101ffffffff}
-		},
-		{
-			"memory_address":{0x0280}
-			"data":{01010101ffffffff}
-		},
-		{
-			"memory_address":{0x0300}
-			"data":{01010101ffffffff}
-		},
-		{
-			"memory_address":{0x0380}
-			"data":{01010101ffffffff}
-		},
-		{
-			"memory_address":{0x0400}
-			"data":{01010101ffffffff}
-		},
-		{
-			"memory_address":{0x0480}
+			"memory_address":{0x0098}
 			"data":{01010101ffffffff}
 		},		
 		{
-			"memory_address":{0x0500}
+			"memory_address":{0x00a0}
 			"data":{01010101ffffffff}
 		},
 		{
-			"memory_address":{0x0580}
+			"memory_address":{0x00a8}
 			"data":{01010101ffffffff}
 		},
 		{
-			"memory_address":{0x0600}
+			"memory_address":{0x00b0}
 			"data":{01010101ffffffff}
 		},
 		{
-			"memory_address":{0x0680}
+			"memory_address":{0x00b8}
 			"data":{01010101ffffffff}
 		},
 		{
-			"memory_address":{0x0700}
+			"memory_address":{0x00c0}
 			"data":{01010101ffffffff}
 		},		
 		{
-			"memory_address":{0x0780}
+			"memory_address":{0x00c8}
 			"data":{01010101ffffffff}
 		},
 		{
-			"memory_address":{0x0800}
+			"memory_address":{0x00d0}
 			"data":{01010101ffffffff}
 		},
 		{
-			"memory_address":{0x0880}
+			"memory_address":{0x00d8}
 			"data":{01010101ffffffff}
 		},
 		{
-			"memory_address":{0x0900}
+			"memory_address":{0x00e0}
 			"data":{01010101ffffffff}
 		},
 		{
-			"memory_address":{0x0980}
-			"data":{01010101ffffffff}
-		},		
-		{
-			"memory_address":{0x0a00}
-			"data":{01010101ffffffff}
-		},
-		{
-			"memory_address":{0x0a80}
-			"data":{01010101ffffffff}
-		},
-		{
-			"memory_address":{0x0b00}
-			"data":{01010101ffffffff}
-		},
-		{
-			"memory_address":{0x0b80}
-			"data":{01010101ffffffff}
-		},
-		{
-			"memory_address":{0x0c00}
-			"data":{01010101ffffffff}
-		},		
-		{
-			"memory_address":{0x0c80}
-			"data":{01010101ffffffff}
-		},
-		{
-			"memory_address":{0x0d00}
-			"data":{01010101ffffffff}
-		},
-		{
-			"memory_address":{0x0d80}
-			"data":{01010101ffffffff}
-		},
-		{
-			"memory_address":{0x0e00}
-			"data":{01010101ffffffff}
-		},
-		{
-			"memory_address":{0x0e80}
+			"memory_address":{0x00e8}
 			"data":{01010101ffffffff}
 		}
 	]

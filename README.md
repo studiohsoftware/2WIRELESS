@@ -14,6 +14,12 @@ Example: http://192.168.0.1/recallpreset?preset=29
 - ### http://192.168.0.1/getpresets?addr=(module addr in hex)
 Retrieve all 30 presets from the specified module.<br/>
 Example (259A): http://192.168.0.1/getpresets?addr=0x28
+- ### http://192.168.0.1/setpresets
+Write all 30 presets to the specified module.<br/>
+Example (259A): http://192.168.0.1/setpresets <br/>
+Note this is an HTTP POST with a JSON formatted body. <br/> 
+Example HTML here https://github.com/studiohsoftware/2WIRELESS/blob/master/Firmware/SetPresets.html <br/>
+Example JSON (for 292e) here https://github.com/studiohsoftware/2WIRELESS/blob/master/Firmware/presetData.json <br/>
 - ### http://192.168.0.1/midinoteon?mask=(0x0-0xF)&note=(0-127)&velo=(0-255)
 Send MIDI note ON message.<br/> 
 Example (bus A, note G1, half velocity): http://192.168.0.1/midinoteon?mask=0x8&note=31&velo=127
