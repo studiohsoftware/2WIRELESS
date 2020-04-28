@@ -1,0 +1,115 @@
+<html>
+	<body>
+		<p id="demo">Fetch presets from module.</p>
+		<button id="button">Fetch Presets</button>
+		<select id="module">
+			<option value="Select">Select....</option>
+			<option value="0x60">206e</option>
+			<option value="0x63">207e</option>
+			<option value="0x20">210e</option>
+			<option value="0x70">218e</option>
+			<option value="0x40">222e A</option>
+			<option value="0x5A">223e M</option>
+			<option value="0x5B">223e A</option>
+			<option value="0x21">225e</option>
+			<option value="0x22">225s</option>
+			<option value="0x23">227e</option>
+			<option value="0x66">230e A</option>
+			<option value="0x67">230e B</option>
+			<option value="0x68">230e C</option>
+			<option value="0x69">230e D</option>
+			<option value="0x24">249e A</option>
+			<option value="0x25">249e B</option>
+			<option value="0x41">250e A</option>
+			<option value="0x42">250e B</option>
+			<option value="0x5C">251e A</option>
+			<option value="0x5F">252e A</option>
+			<option value="0x34">256e A1</option>
+			<option value="0x35">256e A2</option>
+			<option value="0x36">256e B1</option>
+			<option value="0x37">256e B2</option>
+			<option value="0x10">257e A</option>
+			<option value="0x11">257e B</option>
+			<option value="0x28">259e A</option>
+			<option value="0x29">259e B</option>
+			<option value="0x2A">259e C</option>
+			<option value="0x2B">259e D</option>
+			<option value="0x30">260e A</option>
+			<option value="0x31">260e B</option>
+			<option value="0x2C">261e A</option>
+			<option value="0x2D">261e B</option>
+			<option value="0x2E">261e C</option>
+			<option value="0x2F">261e D</option>
+			<option value="0x32">266e A</option>
+			<option value="0x33">266e B</option>
+			<option value="0x12">267e A</option>
+			<option value="0x13">267e B</option>
+			<option value="0x5E">272e</option>
+			<option value="0x38">281e A1</option>
+			<option value="0x39">281e A2</option>
+			<option value="0x3A">281e B1</option>
+			<option value="0x3B">281e B2</option>
+			<option value="0x3C">281e C1</option>
+			<option value="0x3D">281e C2</option>
+			<option value="0x3E">281e D1</option>
+			<option value="0x3F">281e D2</option>
+			<option value="0x4C">285e A1</option>
+			<option value="0x4D">285e B1</option>
+			<option value="0x4E">285e A2</option>
+			<option value="0x4F">285e B2</option>
+			<option value="0x44">291e A</option>
+			<option value="0x45">291e B</option>
+			<option value="0x48">292e A</option>
+			<option value="0x49">292e B</option>
+			<option value="0x4A">292e C</option>
+			<option value="0x4B">292e D</option>
+			<option value="0x64">296e A</option>
+			<option value="0x65">296e B</option>
+			<option value="0x20">Studio H 210e</option>
+			<option value="0x34">Studio H 254e A1 </option>
+			<option value="0x35">Studio H 254e A2</option>
+			<option value="0x36">Studio H 254e B1</option>
+			<option value="0x37">Studio H 254e B2</option>
+			<option value="0x10">Studio H 255e A</option>
+			<option value="0x11">Studio H 255e B</option>
+			<option value="0x28">Studio H DPO (259e) A</option>
+			<option value="0x29">Studio H DPO (259e) B</option>
+			<option value="0x2A">Studio H DPO (259e) C</option>
+			<option value="0x2B">Studio H DPO (259e) D</option>
+			<option value="0x2C">Studio H DPO (261e) A</option>
+			<option value="0x2D">Studio H DPO (261e) B</option>
+			<option value="0x2E">Studio H DPO (261e) C</option>
+			<option value="0x2F">Studio H DPO (261e) D</option>
+			<option value="0x72">226h</option>
+		</select>
+		<p id="result"></p>
+	</body>
+	<script>
+		var module_address;
+		var module_name;
+		var url = "http://192.168.0.1/getpresets?addr=";
+		var method = "GET";
+		var shouldBeAsync = true;
+		var request = new XMLHttpRequest();
+		request.onload = function () {
+			var status = request.status; // HTTP response status, e.g., 200 for "200 OK"
+			var data = request.responseText; // Returned data, e.g., an HTML document.
+			//document.getElementById("result").innerHTML = data;
+			var rawJsonMessage = JSON.parse(data);
+			document.getElementById("result").innerHTML = rawJsonMessage.data;
+			document.getElementById("demo").innerHTML = "Done.";  			
+		}
+	
+		document.getElementById("button").onclick = function () {
+			module_address = module.value;
+			module_name = module.text;
+			if (module_address != "Select") {
+				url = url + module_address;
+				request.open(method, url, shouldBeAsync);
+				request.send(null);
+				document.getElementById("demo").innerHTML = "Sending request for presets at address " + module_address + "...";
+			}	
+		}; 
+		
+	</script>
+</html>

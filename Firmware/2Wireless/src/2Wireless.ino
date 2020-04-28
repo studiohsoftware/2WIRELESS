@@ -410,15 +410,17 @@ String getFormattedError(String errorString) {
     return result;
 };
 
-void getJsonToken(JsonToken* token, Reader* body, char begin_char, char end_char) {
+void getJsonToken(JsonToken* token, Reader* body) {
+    char begin_char = '\"'; 
+    char end_char = '\"';
     static uint8_t s_buffer[1] = {0};
     int bread = 0;
+    token->data = "";
     bread = body->read(s_buffer, sizeof(s_buffer));
     char s = (char)s_buffer[0];
     while ((token->status == 0) && (bread > 0)) {
         if (s == begin_char){
             token->status = 1;
-            token->data = "";
         }
         bread = body->read(s_buffer, sizeof(s_buffer));
         s = (char)s_buffer[0];
@@ -632,15 +634,15 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
         if (amploc==-1) amploc=len;
         int address = (int)strtol(urlString.substring(amploc - 2, amploc).c_str(), nullptr, 16);
         int eqloc = urlString.indexOf('=',amploc);
-        int line_length = 10; //Default to the 292e case.
+        int line_length = 0; 
         if (eqloc > -1) {
             line_length = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
         }
          //Serial.println(address,HEX);
         //Begin the message
         result->write("{\r\n"); 
-        result->write("\"module_address\": { 0x" + String(address,HEX) + " }\r\n"); 
-        result->write("\"data\": {\r\n"); 
+        result->write("\"module_address\": \"0x" + String(address,HEX) + "\",\r\n"); 
+        result->write("\"data\": \""); 
         ringBuffer.flush();
         switchToMaster(); //Send preset backup request to module
         sendBackupPresets(address); 
@@ -659,7 +661,7 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
             if (tmp.length() > 0) {
                 result->write(tmp);
                 bytes_written++;
-                if (((bytes_written % line_length) == 0) && (bytes_written != 0)){
+                if ((line_length != 0) && ((bytes_written % line_length) == 0) && (bytes_written != 0)){
                     result->write("\r\n");
                 }
                 lastTime = millis();
@@ -672,58 +674,48 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
             }
         }
         //Finish the message.
-        result->write("}\r\n");
+        result->write("\"\r\n");
         result->write("}\r\n");
     } else if (urlString.indexOf("/setpresets") == 0) {
         cb(cbArg, 0, 200, "text/plain", nullptr);
         uint8_t module_address = 0x00;
+        int fram_address = 0;
         JsonToken* token = new JsonToken();
-        getJsonToken(token, body,'\"','\"');
-        if (token->data == "module_address") {
-            getJsonToken(token, body,'{','}');
-            int len = (token->data).length();
-            if (len >= 2){
-                module_address = (int)strtol((token->data).substring(len - 2, len).c_str(), nullptr, 16);
-                //result->write("module_address");
-                //result->write("\r\n");
-                //result->write("0x" + String(module_address,HEX));
-                //result->write("\r\n");
-            }
-        }
-        getJsonToken(token, body,'\"','\"');
-        if (token->data == "presets") {
-            int fram_address = 0; //Actual memory addresses in data cannot be seen by Wire.OnReceive. Just increment in 128 byte amounts.
-            getJsonToken(token, body,'\"','\"');
-            String name = token->data;
-            while (name == "memory_address") {
-                //String address_string = "";
-                String data_string = "";
-                //get the memory address
-                //getJsonToken(token, body,'{','}');
-                //address_string = token->data;
-                getJsonToken(token, body,'\"','\"');
-                name = token->data;
-                if (name == "data") {
-                    //get the data
-                    getJsonToken(token, body,'{','}');
-                    data_string = token->data;
+        //result->write("token: \"");
+        getJsonToken(token, body);
+        while (token->data != "") {
+            if (token->data ==  "module_address") 
+            {
+                getJsonToken(token, body);
+                int len = (token->data).length();
+                if (len >= 2){
+                    module_address = (int)strtol((token->data).substring(len - 2, len).c_str(), nullptr, 16);
+                    //result->write("module_address");
+                    //result->write("\r\n");
+                    //result->write("0x" + String(module_address,HEX));
+                    //result->write("\r\n");
                 }
+            } else if (token->data ==  "preset_data") {
+                //get the data
+                String data_string = "";
+                getJsonToken(token, body);
+                data_string = token->data;
+                //result->write(data_string);
+                //result->write("\r\n");
                 if (data_string.length() > 0) {
-                    //uint16_t memory_address = (int)strtol(address_string.c_str(), nullptr, 16); 
                     framWriteHexString(fram_address,data_string);
                     //result->write("0x" + String(fram_address,HEX));
                     //result->write("\r\n");
                     fram_address = fram_address + 128; //Allocate 128 bytes for each data_string.
                 }
-                getJsonToken(token, body,'\"','\"');
-                name = token->data;
             }
-            if (module_address != 0x00) {
-                read_counter = 0; //Initialize counter for subsequent I2C READs from master. 
-                switchToMaster(); //Send preset restore request to module
-                sendRestorePresets(module_address); 
-                switchToSlave(); //Switch to slave to receive the read requests.
-            }
+            getJsonToken(token, body);
+        }
+        if (module_address != 0x00) {
+            read_counter = 0; //Initialize counter for subsequent I2C READs from master. 
+            switchToMaster(); //Send preset restore request to module
+            sendRestorePresets(module_address); 
+            switchToSlave(); //Switch to slave to receive the read requests.
         }
         delete token;
     } else if (urlString.indexOf("/readmemory?addr") == 0) {
@@ -734,10 +726,7 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
         uint8_t value;
         value = framRead(addr);
         String tmp = String(value,HEX);
-        result->write("{ \"data\": {\r\n"); 
-        result->write(tmp);
-        result->write("\r\n");
-        result->write("}\r\n");
+        result->write("{ \"data\": \"" + tmp + "\"\r\n"); 
         result->write("}\r\n");
     } else if (urlString.indexOf("/writememory?addr") == 0) {
         cb(cbArg, 0, 200, "text/plain", nullptr);
