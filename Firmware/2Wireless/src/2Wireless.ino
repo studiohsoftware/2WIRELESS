@@ -184,7 +184,7 @@ void requestEvent() {
     //Module triggers this event once per memory location and then expects to find all data here
     //using repeated READ commands. Although 128 bytes are written into the buffer unconditionally,
     //the module only takes what it needs. Note that 128 is the page boundary on the firmware card,
-    //so all modules constrainin their read activity to this amount. It should be safe to assume 
+    //so all modules constraining their read activity to this amount. It should be safe to assume 
     //that 128 is the largest buffer necessary.
     int addr = 128 * read_counter;
     for (int i=0; i<128; i++){
@@ -668,7 +668,7 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
             }
             //Check to see if bytes are still arriving
             unsigned long now = millis();
-            if ((now - lastTime) >= 2000) {
+            if ((now - lastTime) >= 1000) {
                 //Serial.printlnf("%lu", now);
                 done = true;
             }
@@ -681,7 +681,6 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
         uint8_t module_address = 0x00;
         int fram_address = 0;
         JsonToken* token = new JsonToken();
-        //result->write("token: \"");
         getJsonToken(token, body);
         while (token->data != "") {
             if (token->data ==  "module_address") 
@@ -690,28 +689,22 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
                 int len = (token->data).length();
                 if (len >= 2){
                     module_address = (int)strtol((token->data).substring(len - 2, len).c_str(), nullptr, 16);
-                    //result->write("module_address");
-                    //result->write("\r\n");
-                    //result->write("0x" + String(module_address,HEX));
-                    //result->write("\r\n");
                 }
             } else if (token->data ==  "preset_data") {
                 //get the data
                 String data_string = "";
                 getJsonToken(token, body);
                 data_string = token->data;
-                //result->write(data_string);
-                //result->write("\r\n");
                 if (data_string.length() > 0) {
                     framWriteHexString(fram_address,data_string);
-                    //result->write("0x" + String(fram_address,HEX));
-                    //result->write("\r\n");
                     fram_address = fram_address + 128; //Allocate 128 bytes for each data_string.
                 }
             }
             getJsonToken(token, body);
         }
         if (module_address != 0x00) {
+            //result->write("read_counter="); 
+            //result->write(String(read_counter)); 
             read_counter = 0; //Initialize counter for subsequent I2C READs from master. 
             switchToMaster(); //Send preset restore request to module
             sendRestorePresets(module_address); 

@@ -99,29 +99,66 @@
 			document.getElementById("result").innerHTML = rawJsonMessage.data;
 			document.getElementById("demo").innerHTML = "Done.";
 			
+			var refinedJson;
 			var presetData = [];
+			var dataskip = [];
+			var i;
 			
-			
-			if (module_name.indexOf("292e") == 0) {
+			if (module_name.indexOf("251e") == 0) {
+				//251e generally has 60 characters with some exceptions.
+				for (i = 0; i < 1013; i++) {
+					dataskip[i] = 60;
+				}
+				dataskip[33]=16;
+				dataskip[67]=32;
+				dataskip[101]=48;
+				dataskip[168]=48;
+				dataskip[202]=32;
+				dataskip[236]=16;
+				dataskip[303]=16;
+				dataskip[337]=32;
+				dataskip[371]=48;
+				dataskip[438]=48;
+				dataskip[472]=32;
+				dataskip[506]=16;
+				dataskip[573]=16;
+				dataskip[607]=32;
+				dataskip[641]=48;
+				dataskip[708]=48;
+				dataskip[742]=32;
+				dataskip[776]=16;
+				dataskip[843]=16;
+				dataskip[877]=32;
+				dataskip[911]=48;
+				dataskip[978]=48;
+				dataskip[1012]=32;
+			}
+
+			else if (module_name.indexOf("292e") == 0) {
 				//292e is easy. First four characters are address, then 16 characters of data, 
 				//then four more characters of address, another 16 and so on until the end.
-				var rawdata = rawJsonMessage.data;				
-				while (rawdata.length > 0) {
-					var memory_address = rawdata.substring(0,4);
-					rawdata = rawdata.substring(4);
-					var preset_data = rawdata.substring(0,16);
-					 rawdata = rawdata.substring(16);
-					var presetDataElement = {
-						memory_address : memory_address,
-						preset_data : preset_data
-					}	
-					presetData.push(presetDataElement);
+				for (i = 0; i < 30; i++) {
+					dataskip[i] = 16;
 				}
 			}
+			var rawdata = rawJsonMessage.data;	
+			for (i = 0; i < dataskip.length; i++) {
+				var memory_address = rawdata.substring(0,4);
+				rawdata = rawdata.substring(4);
+				var preset_data = rawdata.substring(0,dataskip[i]);
+				rawdata = rawdata.substring(dataskip[i]);
+				var presetDataElement = {
+					memory_address : memory_address,
+					preset_data : preset_data
+				}	
+				presetData.push(presetDataElement);
+			}
+
 
 			if (presetData.length > 0) {
 				var refinedJson = {
 					module_address: module_address,
+					module_name: module_name,
 					presets : presetData
 				}
 				document.getElementById("result").innerHTML = JSON.stringify(refinedJson);
