@@ -97,18 +97,48 @@
 			//document.getElementById("result").innerHTML = data;
 			var rawJsonMessage = JSON.parse(data);
 			document.getElementById("result").innerHTML = rawJsonMessage.data;
-			document.getElementById("demo").innerHTML = "Done.";  			
+			document.getElementById("demo").innerHTML = "Done.";
+			
+			var presetData = [];
+			
+			
+			if (module_name.indexOf("292e") == 0) {
+				//292e is easy. First four characters are address, then 16 characters of data, 
+				//then four more characters of address, another 16 and so on until the end.
+				var rawdata = rawJsonMessage.data;				
+				while (rawdata.length > 0) {
+					var memory_address = rawdata.substring(0,4);
+					rawdata = rawdata.substring(4);
+					var preset_data = rawdata.substring(0,16);
+					 rawdata = rawdata.substring(16);
+					var presetDataElement = {
+						memory_address : memory_address,
+						preset_data : preset_data
+					}	
+					presetData.push(presetDataElement);
+				}
+			}
+
+			if (presetData.length > 0) {
+				var refinedJson = {
+					module_address: module_address,
+					presets : presetData
+				}
+				document.getElementById("result").innerHTML = JSON.stringify(refinedJson);
+				
+			}	
+			
 		}
 	
 		document.getElementById("button").onclick = function () {
 			module_address = module.value;
-			module_name = module.text;
+			module_name = module.options[module.selectedIndex].text;
 			if (module_address != "Select") {
 				url = url + module_address;
 				request.open(method, url, shouldBeAsync);
 				request.send(null);
-				document.getElementById("demo").innerHTML = "Sending request for presets at address " + module_address + "...";
-			}	
+				document.getElementById("demo").innerHTML = "Sending request for presets at address " + module_address + "...";			
+			}
 		}; 
 		
 	</script>
