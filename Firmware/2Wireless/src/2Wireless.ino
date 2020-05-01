@@ -116,6 +116,57 @@ void RingBuffer::flush() {
 
 RingBuffer ringBuffer = RingBuffer();
 volatile int read_counter; //Used to auto increment read addresses during I2C READ from master.
+volatile int write_counter;
+byte buf[256] = {
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07
+};
+
+//Attempt to increase buffer from 32 to 128 to solve problems with requestEvent.
+/*
+constexpr size_t I2C_BUFFER_SIZE = 128;
+HAL_I2C_Config acquireWireBuffer() {
+    HAL_I2C_Config config = {
+        .size = sizeof(HAL_I2C_Config),
+        .version = HAL_I2C_CONFIG_VERSION_1,
+        .rx_buffer = new (std::nothrow) uint8_t[I2C_BUFFER_SIZE],
+        .rx_buffer_size = I2C_BUFFER_SIZE,
+        .tx_buffer = new (std::nothrow) uint8_t[I2C_BUFFER_SIZE],
+        .tx_buffer_size = I2C_BUFFER_SIZE
+    };
+    return config;
+}
+*/
 
 void framEnableWrite(){
     digitalWrite(A2, LOW); //Set CS low to select chip
@@ -179,6 +230,7 @@ void receiveEvent(int howMany) {
         //Just assume room in buffer to avoid blocking.
         ringBuffer.write(Wire.read()); //Save into ring buffer to support I2C WRITE from master.
     }
+    write_counter++;
 }
 void requestEvent() {
     //Module triggers this event once per memory location and then expects to find all data here
@@ -186,10 +238,26 @@ void requestEvent() {
     //the module only takes what it needs. Note that 128 is the page boundary on the firmware card,
     //so all modules constraining their read activity to this amount. It should be safe to assume 
     //that 128 is the largest buffer necessary.
+    /*
+    ringBuffer.flush();
+    Wire.flush();
     int addr = 128 * read_counter;
     for (int i=0; i<128; i++){
-        Wire.write(framRead(addr + i));
+        ringBuffer.write(framRead(addr + i));
     }
+    while (ringBuffer.bytesQueued() > 0) {
+        uint8_t value = ringBuffer.read();
+        Wire.write(value);
+    }
+    read_counter++;
+    */
+    Wire.flush();
+    Wire.write(0);
+    Wire.write(0);
+    Wire.write(0);
+    Wire.write(0);
+    Wire.write(0);
+
     read_counter++;
 }
 
@@ -680,18 +748,48 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
         cb(cbArg, 0, 200, "text/plain", nullptr);
         uint8_t module_address = 0x00;
         int fram_address = 0;
+        String fram_write_only = "";
         JsonToken* token = new JsonToken();
         getJsonToken(token, body);
         while (token->data != "") {
             if (token->data ==  "module_address") 
             {
+                //REQUIRED: The module address is needed in the restore presets command
+                //to the module. Ignored and unnecessary if fram_write_only = "true".
                 getJsonToken(token, body);
                 int len = (token->data).length();
                 if (len >= 2){
-                    module_address = (int)strtol((token->data).substring(len - 2, len).c_str(), nullptr, 16);
+                    module_address = (int)strtol((token->data).c_str(), nullptr, 16);
                 }
+            } else if (token->data ==  "fram_offset") 
+            {
+                //Optional parameter to use nonzero (default) fram starting address.
+                //This can be used to file multiple POSTs to fram without overwriting. 
+                //Use zero for the first POST of the batch. Multiple of 0x80 (128) for 
+                //subsequent POSTs in the batch. 
+                getJsonToken(token, body);
+                int len = (token->data).length();
+                if (len >= 2){
+                    int fram_offset = (int)strtol((token->data).c_str(), nullptr, 16);
+                    fram_address = fram_address + fram_offset;
+                }
+            } else if (token->data ==  "fram_write_only") 
+            {
+                //Optional parameter to suppress module update. Write to fram only. 
+                //This can be used to send multiple POSTs to fram before updating 
+                //the module. Maximum POST size is about 20k, and this is about 1/5
+                //of the 251e data. So we need to be able to lay down the data to 
+                //fram with multiple POSTs before telling the module to restore.
+                //Last POST of the batch should either omit this parameter or include 
+                //it with value of "false".
+                getJsonToken(token, body);
+                fram_write_only = token->data;
             } else if (token->data ==  "preset_data") {
-                //get the data
+                //This parameter carries the data that will be written to fram and then later read
+                //by the module. Some modules have one per preset (292e has 30), others (eg. 251e) 
+                //have many per preset. 128 bytes are allocated for each write, so this string must 
+                //be 256 chars or less. 128 should be plenty because original firmware cards also have 
+                //this limit.
                 String data_string = "";
                 getJsonToken(token, body);
                 data_string = token->data;
@@ -701,11 +799,9 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
                 }
             }
             getJsonToken(token, body);
-        }
-        if (module_address != 0x00) {
-            //result->write("read_counter="); 
-            //result->write(String(read_counter)); 
-            read_counter = 0; //Initialize counter for subsequent I2C READs from master. 
+        } 
+        if ((module_address != 0x00) && (fram_write_only != "true")) {
+            read_counter = 0; //Initialize counter for subsequent I2C READs from master.
             switchToMaster(); //Send preset restore request to module
             sendRestorePresets(module_address); 
             switchToSlave(); //Switch to slave to receive the read requests.
@@ -721,6 +817,7 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
         String tmp = String(value,HEX);
         result->write("{ \"data\": \"" + tmp + "\"\r\n"); 
         result->write("}\r\n");
+        result->write(String(write_counter)); //debug
     } else if (urlString.indexOf("/writememory?addr") == 0) {
         cb(cbArg, 0, 200, "text/plain", nullptr);
         int len = urlString.length();

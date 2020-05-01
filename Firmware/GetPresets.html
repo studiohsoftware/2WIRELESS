@@ -133,6 +133,41 @@
 				dataskip[978]=48;
 				dataskip[1012]=32;
 			}
+			
+			else if (module_name.indexOf("291e") == 0) {
+				//291e generally has 60 characters with some exceptions.
+				for (i = 0; i < 140; i++) {
+					dataskip[i] = 60;
+				}
+				dataskip[4]=42;
+				dataskip[8]=44;
+				dataskip[13]=2;
+				dataskip[18]=40;
+				dataskip[22]=46;
+				dataskip[27]=4;
+				dataskip[32]=38;
+				dataskip[36]=48;
+				dataskip[41]=6;
+				dataskip[46]=36;
+				dataskip[50]=50;
+				dataskip[55]=8;
+				dataskip[60]=34;
+				dataskip[64]=52;
+				dataskip[69]=10;
+				dataskip[74]=32;
+				dataskip[78]=54;
+				dataskip[83]=12;
+				dataskip[88]=30;
+				dataskip[92]=56;
+				dataskip[97]=14;
+				dataskip[102]=28;
+				dataskip[106]=58;
+				dataskip[111]=16;
+				dataskip[116]=26;
+				dataskip[125]=18;
+				dataskip[130]=24;
+				dataskip[139]=20;
+			}
 
 			else if (module_name.indexOf("292e") == 0) {
 				//292e is easy. First four characters are address, then 16 characters of data, 
