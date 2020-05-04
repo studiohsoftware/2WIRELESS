@@ -114,44 +114,9 @@ void RingBuffer::flush() {
     this->tail = this->head;
 }
 
-RingBuffer ringBuffer = RingBuffer();
+RingBuffer ringBuffer = RingBuffer(); //Used to buffer data between HTTP and I2C.
 volatile int read_counter; //Used to auto increment read addresses during I2C READ from master.
 volatile int fram_address=0; //This is global only because it must span OnRequest calls during I2C READ from master. 
-byte buf[256] = { //test data for debugging.
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-};
-
 
 void framEnableWrite(){
     digitalWrite(A2, LOW); //Set CS low to select chip
@@ -217,30 +182,13 @@ void receiveEvent(int howMany) {
     }
 }
 void requestEvent() {
-    //Module triggers this event once per memory location and then expects to find all data here
-    //using repeated READ commands. Although 128 bytes are written into the buffer unconditionally,
-    //the module only takes what it needs. Note that 128 is the page boundary on the firmware card,
-    //so all modules constraining their read activity to this amount. It should be safe to assume 
-    //that 128 is the largest buffer necessary.
-    /*
-    ringBuffer.flush();
-    Wire.flush();
-    int addr = 128 * read_counter;
-    for (int i=0; i<128; i++){
-        ringBuffer.write(framRead(addr + i));
-    }
-    while (ringBuffer.bytesQueued() > 0) {
-        uint8_t value = ringBuffer.read();
-        Wire.write(value);
-    }
-    read_counter++;
-    */
-    //Wire.flush();
-    //I2C_StretchClockCmd(I2C1, ENABLE);
-    //HAL_I2C_Flush_Data(HAL_I2C_INTERFACE1, NULL);
-    //HAL_I2C_Write_Data(HAL_I2C_INTERFACE1, 0x00, NULL);
-    //int32_t test = HAL_I2C_Available_Data(HAL_I2C_INTERFACE1, null)
-    //Wire.write(buf,255);
+    //Photon core (i2c_hal.c) modified so that this handler is called on every byte requested.
+    //Module reads presets here during preset restore. The module first sends an EEPROM memory
+    //address, then issues a (maybe large) number of byte read requests. 
+    //The number of bytes requested varies by module. 292e requests 8 bytes per preset, and 291e
+    //requests 253 bytes per preset. 251e is over 2k. When the module is done reading, it issues
+    //a STOP and this handler will not be called until the next time a restore is requested.
+    
     if (Wire.available() > 0){
         //This is the first read following address write from the module.
         //The master wrote the two byte memory address, and we now retrieve it
@@ -254,10 +202,10 @@ void requestEvent() {
         fram_address = fram_address | framLSB;
     } 
     
-    if (read_counter < 256) { //Does a limit need to be here? 251e needs over 2k per preset.
+    if (read_counter < 65535) { //Max 16 bit address possible, although FRAM supports 18 bits. Will this ever happen?
         I2C_SendData (I2C1, framRead(fram_address + read_counter));
     } else {
-        I2C_StretchClockCmd(I2C1, DISABLE);
+        I2C_StretchClockCmd(I2C1, DISABLE); //Say goodbye by releasing SCL. Restored on next START received.
     }
     read_counter++;
 }
@@ -780,7 +728,7 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
                 fram_address = (int)strtol((token->data).c_str(), nullptr, 16);
             } else if (token->data ==  "data") {
                 //This parameter carries the data that will be written to fram and then later read
-                //by the module. Some modules have one per preset (292e has 30), others (eg. 251e) 
+                //by the module. Some modules have one per preset, others (eg. 251e) 
                 //have many per preset. 
                 String data_string = "";
                 getJsonToken(token, body);
