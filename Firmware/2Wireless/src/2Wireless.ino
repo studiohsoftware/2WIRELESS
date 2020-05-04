@@ -116,8 +116,8 @@ void RingBuffer::flush() {
 
 RingBuffer ringBuffer = RingBuffer();
 volatile int read_counter; //Used to auto increment read addresses during I2C READ from master.
-volatile int write_counter;
-byte buf[256] = {
+volatile int fram_address=0; //This is global only because it must span OnRequest calls during I2C READ from master. 
+byte buf[256] = { //test data for debugging.
     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
@@ -152,21 +152,6 @@ byte buf[256] = {
     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 };
 
-//Attempt to increase buffer from 32 to 128 to solve problems with requestEvent.
-/*
-constexpr size_t I2C_BUFFER_SIZE = 128;
-HAL_I2C_Config acquireWireBuffer() {
-    HAL_I2C_Config config = {
-        .size = sizeof(HAL_I2C_Config),
-        .version = HAL_I2C_CONFIG_VERSION_1,
-        .rx_buffer = new (std::nothrow) uint8_t[I2C_BUFFER_SIZE],
-        .rx_buffer_size = I2C_BUFFER_SIZE,
-        .tx_buffer = new (std::nothrow) uint8_t[I2C_BUFFER_SIZE],
-        .tx_buffer_size = I2C_BUFFER_SIZE
-    };
-    return config;
-}
-*/
 
 void framEnableWrite(){
     digitalWrite(A2, LOW); //Set CS low to select chip
@@ -230,7 +215,6 @@ void receiveEvent(int howMany) {
         //Just assume room in buffer to avoid blocking.
         ringBuffer.write(Wire.read()); //Save into ring buffer to support I2C WRITE from master.
     }
-    write_counter++;
 }
 void requestEvent() {
     //Module triggers this event once per memory location and then expects to find all data here
@@ -257,15 +241,21 @@ void requestEvent() {
     //HAL_I2C_Write_Data(HAL_I2C_INTERFACE1, 0x00, NULL);
     //int32_t test = HAL_I2C_Available_Data(HAL_I2C_INTERFACE1, null)
     //Wire.write(buf,255);
-    uint8_t value = Wire.available() & 0xFF;
-    if (value > 0){
+    if (Wire.available() > 0){
+        //This is the first read following address write from the module.
+        //The master wrote the two byte memory address, and we now retrieve it
+        //from the rxBuffer. MSB is sent first, LSB second.
+        //Typically this happens once at the beginning of each preset.
         read_counter = 0;
-        value = Wire.read(); //MSB
-        value = Wire.read(); //LSB
+        uint8_t framMSB = Wire.read(); //MSB
+        uint8_t framLSB = Wire.read(); //LSB
+        fram_address = 0;
+        fram_address = (framMSB) << 8;
+        fram_address = fram_address | framLSB;
     } 
     
-    if (read_counter < 256) {
-        I2C_SendData (I2C1, framRead(read_counter));
+    if (read_counter < 256) { //Does a limit need to be here? 251e needs over 2k per preset.
+        I2C_SendData (I2C1, framRead(fram_address + read_counter));
     } else {
         I2C_StretchClockCmd(I2C1, DISABLE);
     }
@@ -758,7 +748,7 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
     } else if (urlString.indexOf("/setpresets") == 0) {
         cb(cbArg, 0, 200, "text/plain", nullptr);
         uint8_t module_address = 0x00;
-        int fram_address = 0;
+        fram_address = 0;
         String fram_write_only = "";
         JsonToken* token = new JsonToken();
         getJsonToken(token, body);
@@ -772,18 +762,6 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
                 if (len >= 2){
                     module_address = (int)strtol((token->data).c_str(), nullptr, 16);
                 }
-            } else if (token->data ==  "fram_offset") 
-            {
-                //Optional parameter to use nonzero (default) fram starting address.
-                //This can be used to file multiple POSTs to fram without overwriting. 
-                //Use zero for the first POST of the batch. Multiple of 0x80 (128) for 
-                //subsequent POSTs in the batch. 
-                getJsonToken(token, body);
-                int len = (token->data).length();
-                if (len >= 2){
-                    int fram_offset = (int)strtol((token->data).c_str(), nullptr, 16);
-                    fram_address = fram_address + fram_offset;
-                }
             } else if (token->data ==  "fram_write_only") 
             {
                 //Optional parameter to suppress module update. Write to fram only. 
@@ -795,18 +773,20 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
                 //it with value of "false".
                 getJsonToken(token, body);
                 fram_write_only = token->data;
-            } else if (token->data ==  "preset_data") {
+            } else if (token->data ==  "addr") 
+            {
+                //This parameter carries the memory address for the preset data.
+                getJsonToken(token, body);
+                fram_address = (int)strtol((token->data).c_str(), nullptr, 16);
+            } else if (token->data ==  "data") {
                 //This parameter carries the data that will be written to fram and then later read
                 //by the module. Some modules have one per preset (292e has 30), others (eg. 251e) 
-                //have many per preset. 128 bytes are allocated for each write, so this string must 
-                //be 256 chars or less. 128 should be plenty because original firmware cards also have 
-                //this limit.
+                //have many per preset. 
                 String data_string = "";
                 getJsonToken(token, body);
                 data_string = token->data;
                 if (data_string.length() > 0) {
                     framWriteHexString(fram_address,data_string);
-                    fram_address = fram_address + 128; //Allocate 128 bytes for each data_string.
                 }
             }
             getJsonToken(token, body);
@@ -828,7 +808,6 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
         String tmp = String(value,HEX);
         result->write("{ \"data\": \"" + tmp + "\"\r\n"); 
         result->write("}\r\n");
-        result->write(String(write_counter)); //debug
     } else if (urlString.indexOf("/writememory?addr") == 0) {
         cb(cbArg, 0, 200, "text/plain", nullptr);
         int len = urlString.length();

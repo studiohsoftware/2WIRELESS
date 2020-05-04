@@ -2,124 +2,124 @@
 	"module_address": "0x48",
 	"presets": [
 		{
-			"memory_address": "0x0000",
-			"preset_data": "01020102ffffffff"
+			"addr": "0x0000",
+			"data": "01020102ffffffff"
 		},
 		{
-			"memory_address": "0x0008",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0008",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x0010",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0010",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x0018",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0018",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x0020",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0020",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x0028",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0028",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x0030",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0030",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x0038",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0038",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x0040",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0040",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x0048",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0048",
+			"data": "01010101ffffffff"
 		},		
 		{
-			"memory_address": "0x0050",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0050",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x0058",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0058",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x0060",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0060",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x0068",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0068",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x0070",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0070",
+			"data": "01010101ffffffff"
 		},		
 		{
-			"memory_address": "0x0078",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0078",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x0080",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0080",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x0088",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0088",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x0090",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0090",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x0098",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x0098",
+			"data": "01010101ffffffff"
 		},		
 		{
-			"memory_address": "0x00a0",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x00a0",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x00a8",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x00a8",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x00b0",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x00b0",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x00b8",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x00b8",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x00c0",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x00c0",
+			"data": "01010101ffffffff"
 		},		
 		{
-			"memory_address": "0x00c8",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x00c8",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x00d0",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x00d0",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x00d8",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x00d8",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x00e0",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x00e0",
+			"data": "01010101ffffffff"
 		},
 		{
-			"memory_address": "0x00e8",
-			"preset_data": "01010101ffffffff"
+			"addr": "0x00e8",
+			"data": "01010101ffffffff"
 		}
 	]
 }
