@@ -123,7 +123,7 @@ typedef struct STM32_I2C_Info {
 
     uint8_t transmitting;
 
-    void (*callback_onRequest)(bool); /* 2WIRELESS added bool */
+    void (*callback_onRequest)(void); 
     void (*callback_onReceive)(int);
 
     I2C_Mode mode;
@@ -819,7 +819,7 @@ void HAL_I2C_Set_Callback_On_Receive(HAL_I2C_Interface i2c, void (*function)(int
     HAL_I2C_Release(i2c, NULL);
 }
 
-void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(bool), void* reserved) /*2WIRELESS added bool */
+void HAL_I2C_Set_Callback_On_Request(HAL_I2C_Interface i2c, void (*function)(void), void* reserved) 
 {
     HAL_I2C_Acquire(i2c, NULL);
     i2cMap[i2c]->callback_onRequest = function;
@@ -1002,11 +1002,17 @@ static void HAL_I2C_EV_InterruptHandler(HAL_I2C_Interface i2c)
         i2cMap[i2c]->transmitting = 1;
         i2cMap[i2c]->txBufferIndex = 0;
         i2cMap[i2c]->txBufferLength = 0;
+		/* 2WIRELESS Not receiving STOP condition after master writes immediately prior to read setup. */
+		/* This leaves written values in rxBuffer, but no way to read them into the sketch because */
+		/* I2C_EVENT_SLAVE_BYTE_RECEIVED leaves rxBufferLength set to zero. */
+		/* So borrow code from above to set the rxBufferLength here so the data can be read */
+		i2cMap[i2c]->rxBufferLength = i2cMap[i2c]->rxBufferIndex;
+        i2cMap[i2c]->rxBufferIndex = 0;
 
         if(NULL != i2cMap[i2c]->callback_onRequest)
         {
             // alert user program
-            i2cMap[i2c]->callback_onRequest(true); /* 2WIRELESS Added bool */
+            i2cMap[i2c]->callback_onRequest(); 
         }
 
         i2cMap[i2c]->txBufferIndex = 0;
@@ -1020,7 +1026,7 @@ static void HAL_I2C_EV_InterruptHandler(HAL_I2C_Interface i2c)
 	    if(NULL != i2cMap[i2c]->callback_onRequest)
         {
             // alert user program
-            i2cMap[i2c]->callback_onRequest(false);
+            i2cMap[i2c]->callback_onRequest();
         }
 		break;
 	/* 2WIRELESS Override this in OnRequest handler within sketch.
@@ -1134,5 +1140,5 @@ int32_t HAL_I2C_Peek_Data_v1(void) { return HAL_I2C_Peek_Data(HAL_I2C_INTERFACE1
 void HAL_I2C_Flush_Data_v1(void) { HAL_I2C_Flush_Data(HAL_I2C_INTERFACE1, NULL); }
 bool HAL_I2C_Is_Enabled_v1(void) { return HAL_I2C_Is_Enabled(HAL_I2C_INTERFACE1, NULL); }
 void HAL_I2C_Set_Callback_On_Receive_v1(void (*function)(int)) { HAL_I2C_Set_Callback_On_Receive(HAL_I2C_INTERFACE1, function, NULL); }
-void HAL_I2C_Set_Callback_On_Request_v1(void (*function)(bool)) { HAL_I2C_Set_Callback_On_Request(HAL_I2C_INTERFACE1, function, NULL); } /* 2WIRELSS added bool */
+void HAL_I2C_Set_Callback_On_Request_v1(void (*function)(void)) { HAL_I2C_Set_Callback_On_Request(HAL_I2C_INTERFACE1, function, NULL); }
 

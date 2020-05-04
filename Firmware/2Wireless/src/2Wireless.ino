@@ -232,7 +232,7 @@ void receiveEvent(int howMany) {
     }
     write_counter++;
 }
-void requestEvent(bool isReadSetup) {
+void requestEvent() {
     //Module triggers this event once per memory location and then expects to find all data here
     //using repeated READ commands. Although 128 bytes are written into the buffer unconditionally,
     //the module only takes what it needs. Note that 128 is the page boundary on the firmware card,
@@ -257,13 +257,15 @@ void requestEvent(bool isReadSetup) {
     //HAL_I2C_Write_Data(HAL_I2C_INTERFACE1, 0x00, NULL);
     //int32_t test = HAL_I2C_Available_Data(HAL_I2C_INTERFACE1, null)
     //Wire.write(buf,255);
-    if (isReadSetup){
+    uint8_t value = Wire.available() & 0xFF;
+    if (value > 0){
         read_counter = 0;
-    }
+        value = Wire.read(); //MSB
+        value = Wire.read(); //LSB
+    } 
     
     if (read_counter < 256) {
-        uint8_t value = read_counter & 0xFF;
-        I2C_SendData (I2C1, value);
+        I2C_SendData (I2C1, framRead(read_counter));
     } else {
         I2C_StretchClockCmd(I2C1, DISABLE);
     }
@@ -282,9 +284,9 @@ void switchToSlave(){
     Wire.onRequest(requestEvent);
 }
 
-void sendRemoteEnable() {
+void sendRemoteEnable() { 
     //Remote Enable
-    Wire.beginTransmission(0);
+    Wire.beginTransmission(0); 
     Wire.write(0x04);
     Wire.write(0x00);
     Wire.write(0x22);
