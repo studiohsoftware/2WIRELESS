@@ -1,125 +1,127 @@
-{ 
-	"module_address": "0x48",
-	"presets": [
+{
+	"module_address":"0x48",
+	"module_name":"292e A",
+	"presets":
+	[
 		{
-			"addr": "0x0000",
-			"data": "01020102ffffffff"
+			"addr":"0000",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x0008",
-			"data": "01010101ffffffff"
+			"addr":"0008",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x0010",
-			"data": "01010101ffffffff"
+			"addr":"0010",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x0018",
-			"data": "01010101ffffffff"
+			"addr":"0018",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x0020",
-			"data": "01010101ffffffff"
+			"addr":"0020",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x0028",
-			"data": "01010101ffffffff"
+			"addr":"0028",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x0030",
-			"data": "01010101ffffffff"
+			"addr":"0030",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x0038",
-			"data": "01010101ffffffff"
+			"addr":"0038",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x0040",
-			"data": "01010101ffffffff"
+			"addr":"0040",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x0048",
-			"data": "01010101ffffffff"
-		},		
-		{
-			"addr": "0x0050",
-			"data": "01010101ffffffff"
+			"addr":"0048",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x0058",
-			"data": "01010101ffffffff"
+			"addr":"0050",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x0060",
-			"data": "01010101ffffffff"
+			"addr":"0058",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x0068",
-			"data": "01010101ffffffff"
+			"addr":"0060",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x0070",
-			"data": "01010101ffffffff"
-		},		
-		{
-			"addr": "0x0078",
-			"data": "01010101ffffffff"
+			"addr":"0068",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x0080",
-			"data": "01010101ffffffff"
+			"addr":"0070",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x0088",
-			"data": "01010101ffffffff"
+			"addr":"0078",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x0090",
-			"data": "01010101ffffffff"
+			"addr":"0080",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x0098",
-			"data": "01010101ffffffff"
-		},		
-		{
-			"addr": "0x00a0",
-			"data": "01010101ffffffff"
+			"addr":"0088",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x00a8",
-			"data": "01010101ffffffff"
+			"addr":"0090",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x00b0",
-			"data": "01010101ffffffff"
+			"addr":"0098",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x00b8",
-			"data": "01010101ffffffff"
+			"addr":"00a0",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x00c0",
-			"data": "01010101ffffffff"
-		},		
-		{
-			"addr": "0x00c8",
-			"data": "01010101ffffffff"
+			"addr":"00a8",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x00d0",
-			"data": "01010101ffffffff"
+			"addr":"00b0",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x00d8",
-			"data": "01010101ffffffff"
+			"addr":"00b8",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x00e0",
-			"data": "01010101ffffffff"
+			"addr":"00c0",
+			"data":"01020102ffffffaa"
 		},
 		{
-			"addr": "0x00e8",
-			"data": "01010101ffffffff"
+			"addr":"00c8",
+			"data":"01020102ffffffaa"
+		},
+		{
+			"addr":"00d0",
+			"data":"01020102ffffffaa"
+		},
+		{
+			"addr":"00d8",
+			"data":"01020102ffffffaa"
+		},
+		{
+			"addr":"00e0",
+			"data":"01020102ffffffaa"
+		},
+		{
+			"addr":"00e8",
+			"data":"01020102ffffffaa"
 		}
 	]
 }

@@ -105,14 +105,67 @@
 			var i;
 			
 			if (module_name.indexOf("251e") == 0) {
-				//251e TO-DO
+				//251e has 128 characters with some exceptions.
 				for (i = 0; i < 1013; i++) {
 					dataskip[i] = 128;
-				}				
+				}
+				dataskip[32]=112;
+				dataskip[33]=16;
+				dataskip[66]=96;
+				dataskip[67]=32;
+				dataskip[100]=80;
+				dataskip[101]=48;		
+				dataskip[134]=64;	
+				dataskip[135]=64;
+				dataskip[168]=48;
+				dataskip[169]=80;
+				dataskip[202]=32;
+				dataskip[203]=96;
+				dataskip[236]=16;
+				dataskip[237]=112;				
+				dataskip[302]=112;
+				dataskip[303]=16;
+				dataskip[336]=96;
+				dataskip[337]=32;
+				dataskip[370]=80;
+				dataskip[371]=48;
+				dataskip[404]=64;
+				dataskip[405]=64;
+				dataskip[438]=48;
+				dataskip[439]=80;
+				dataskip[472]=32;
+				dataskip[473]=96;
+				dataskip[506]=16;
+				dataskip[507]=112;
+				dataskip[572]=112;
+				dataskip[573]=16;
+				dataskip[606]=96;
+				dataskip[607]=32;
+				dataskip[640]=80;
+				dataskip[641]=48;
+				dataskip[674]=64;
+				dataskip[675]=64;
+				dataskip[708]=48;
+				dataskip[709]=80;
+				dataskip[742]=32;
+				dataskip[743]=96;
+				dataskip[776]=16;
+				dataskip[777]=112;
+				dataskip[842]=112;
+				dataskip[843]=16;
+				dataskip[876]=96;
+				dataskip[877]=32;
+				dataskip[910]=80;
+				dataskip[911]=48;
+				dataskip[944]=64;
+				dataskip[945]=64;
+				dataskip[978]=48;
+				dataskip[979]=80;
+				dataskip[1012]=32;
 			}
 			
 			else if (module_name.indexOf("291e") == 0) {
-				//291e generally has 128 characters with some exceptions.
+				//291e has 128 characters with some exceptions.
 				for (i = 0; i < 140; i++) {
 					dataskip[i] = 128;
 				}

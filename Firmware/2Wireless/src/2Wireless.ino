@@ -714,8 +714,8 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
             {
                 //Optional parameter to suppress module update. Write to fram only. 
                 //This can be used to send multiple POSTs to fram before updating 
-                //the module. Maximum POST size is about 20k, and this is about 1/5
-                //of the 251e data. So we need to be able to lay down the data to 
+                //the module. Maximum POST size is about 20k, and this is about 1/8
+                //of the 251e JSON. So we need to be able to lay down the data to 
                 //fram with multiple POSTs before telling the module to restore.
                 //Last POST of the batch should either omit this parameter or include 
                 //it with value of "false".
