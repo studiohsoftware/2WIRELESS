@@ -12,7 +12,7 @@
 			<option value="0x5A">223e M</option>
 			<option value="0x5B">223e A</option>
 			<option value="0x21">225e</option>
-			<option value="0x22">225s</option>
+			<!-- <option value="0x22">225s</option> -->
 			<option value="0x23">227e</option>
 			<option value="0x66">230e A</option>
 			<option value="0x67">230e B</option>
@@ -25,8 +25,8 @@
 			<option value="0x5C">251e A</option>
 			<option value="0x5F">252e A</option>
 			<option value="0x34">256e A1</option>
-			<option value="0x35">256e A2</option>
-			<option value="0x36">256e B1</option>
+			<option value="0x36">256e A2</option>
+			<option value="0x35">256e B1</option>
 			<option value="0x37">256e B2</option>
 			<option value="0x10">257e A</option>
 			<option value="0x11">257e B</option>
@@ -66,10 +66,8 @@
 			<option value="0x64">296e A</option>
 			<option value="0x65">296e B</option>
 			<option value="0x20">Studio H 210e</option>
-			<option value="0x34">Studio H 254e A1 </option>
-			<option value="0x35">Studio H 254e A2</option>
-			<option value="0x36">Studio H 254e B1</option>
-			<option value="0x37">Studio H 254e B2</option>
+			<option value="0x35">Studio H 254e A</option>
+			<option value="0x37">Studio H 254e B</option>
 			<option value="0x10">Studio H 255e A</option>
 			<option value="0x11">Studio H 255e B</option>
 			<option value="0x28">Studio H DPO (259e) A</option>
@@ -104,7 +102,73 @@
 			var dataskip = [];
 			var i;
 			
-			if (module_name.indexOf("251e") == 0) {
+			if (module_name.indexOf("225e") == 0) {
+				//225e every line is different.
+				dataskip[0]=128;
+				dataskip[1]=12;
+				dataskip[2]=116;
+				dataskip[3]=24;
+				dataskip[4]=104;
+				dataskip[5]=36;
+				dataskip[6]=92;
+				dataskip[7]=48;
+				dataskip[8]=80;
+				dataskip[9]=60;
+				dataskip[10]=68;
+				dataskip[11]=72;
+				dataskip[12]=56;
+				dataskip[13]=84;
+				dataskip[14]=44;
+				dataskip[15]=96;
+				dataskip[16]=32;
+				dataskip[17]=108;
+				dataskip[18]=20;
+				dataskip[19]=120;
+				dataskip[20]=8;
+				dataskip[21]=128;
+				dataskip[22]=4;
+				dataskip[23]=124;
+				dataskip[24]=16;
+				dataskip[25]=112;
+				dataskip[26]=28;
+				dataskip[27]=100;
+				dataskip[28]=40;
+				dataskip[29]=88;
+				dataskip[30]=52;
+				dataskip[31]=76;
+				dataskip[32]=64;
+				dataskip[33]=64;
+				dataskip[34]=76;
+				dataskip[35]=52;
+				dataskip[36]=88;
+				dataskip[37]=40;
+				dataskip[38]=100;
+				dataskip[39]=28;
+				dataskip[40]=112;
+				dataskip[41]=16;
+				dataskip[42]=124;
+				dataskip[43]=4;
+				dataskip[44]=128;
+				dataskip[45]=8;
+				dataskip[46]=120;
+				dataskip[47]=20;
+				dataskip[48]=108;
+				dataskip[49]=32;
+				dataskip[50]=96;
+				dataskip[51]=44;
+				dataskip[52]=84;
+				dataskip[53]=56;
+				dataskip[54]=72;
+				dataskip[55]=68;
+				dataskip[56]=60;
+				dataskip[57]=80;
+				dataskip[58]=48;
+				dataskip[59]=92;
+				dataskip[60]=36;
+				dataskip[61]=104;
+			}
+			
+			else if (module_name.indexOf("251e") == 0) {
 				//251e has 128 characters with some exceptions.
 				for (i = 0; i < 1013; i++) {
 					dataskip[i] = 128;
@@ -162,6 +226,76 @@
 				dataskip[978]=48;
 				dataskip[979]=80;
 				dataskip[1012]=32;
+			}
+			
+			else if (module_name.indexOf("254e") > -1) {
+				//254e is 32.
+				for (i = 0; i < 30; i++) {
+					dataskip[i] = 32;
+				}
+			}
+			
+			else if (module_name.indexOf("259e") == 0) {
+				//259e has a pattern. Every third line is 66.
+				for (i = 0; i < 45; i++) {
+					dataskip[i] = 66;
+				}
+				dataskip[1] = 62;
+				dataskip[2] = 4;
+				dataskip[4] = 58;
+				dataskip[5] = 8;
+				dataskip[7] = 54;
+				dataskip[8] = 12;
+				dataskip[10] = 52;
+				dataskip[11] = 14;
+				dataskip[13] = 46;
+				dataskip[14] = 20;
+				dataskip[16] = 42;
+				dataskip[17] = 24;
+				dataskip[19] = 38;
+				dataskip[20] = 28;
+				dataskip[22] = 34;
+				dataskip[23] = 32;
+				dataskip[25] = 30;
+				dataskip[26] = 36;
+				dataskip[28] = 26;
+				dataskip[29] = 40;
+				dataskip[31] = 22;
+				dataskip[32] = 44;
+				dataskip[34] = 18;
+				dataskip[35] = 48;
+				dataskip[37] = 14;
+				dataskip[38] = 52;
+				dataskip[40] = 10;
+				dataskip[41] = 56;
+				dataskip[43] = 6;
+				dataskip[44] = 60;
+			}
+			
+			else if (module_name.indexOf("266e") == 0) {
+				//266e is mostly 14.
+				for (i = 0; i < 33; i++) {
+					dataskip[i] = 14;
+				}
+				dataskip[9] = 2;
+				dataskip[10] = 12;
+				dataskip[19] = 4;
+				dataskip[20] = 10;
+				dataskip[29] = 6;
+				dataskip[30] = 8;
+			}
+			
+			else if (module_name.indexOf("281e") == 0) {
+				//281e is mostly 14.
+				for (i = 0; i < 33; i++) {
+					dataskip[i] = 14;
+				}
+				dataskip[9] = 2;
+				dataskip[10] = 12;
+				dataskip[19] = 4;
+				dataskip[20] = 10;
+				dataskip[29] = 6;
+				dataskip[30] = 8;
 			}
 			
 			else if (module_name.indexOf("291e") == 0) {
@@ -237,6 +371,125 @@
 					dataskip[i] = 16;
 				}
 			}
+			
+			else if (module_name.indexOf("Studio H 210e") == 0) {
+				//Every line different in CSR. 
+				
+				//Note CSR data is packed. Each value is 12 bits, so bytes are shared to save space.  
+				//Unpacking will be necessary if you want to edit the data. Packing would be necessary 
+				//before writing the edited data back to the module. 
+				//If no editing is needed, no need to unpack and pack. Just leave the data as received 
+				//and send it back as it is.
+				
+				/* HERE IS THE PACK CODE USED BY THE MODULE. 
+				  //Pack data into packed_data.
+				  //First get the nibbles into a byte array as the lower nibble in each byte
+				  int j = 0;
+				  for (int i=0;i<PRESET_LENGTH;i++){
+					tmp_data[j] = 0 | ((data[i] & 0x000F));
+					j++;
+					tmp_data[j] = 0 | ((data[i] & 0x00F0) >> 4);
+					j++;
+					tmp_data[j] = 0 | ((data[i] & 0x0F00) >> 8);
+					j++;
+				  }
+				  
+				  //Now read all of the nibbles into the packed array
+				  j = 0;
+				  for (int i=0;i<PACKED_PRESET_LENGTH;i++){
+					packed_data[i] = tmp_data[j] & 0x000F;
+					j++;
+					packed_data[i] = packed_data[i] | ((tmp_data[j] & 0x000F) << 4);
+					j++;
+					packed_data[i] = packed_data[i] | ((tmp_data[j] & 0x000F) << 8);
+					j++;
+					packed_data[i] = packed_data[i] | ((tmp_data[j] & 0x000F) << 12);
+					j++;
+				  }
+				 */
+							
+				/* HERE IS THE UNPACK CODE USED BY THE MODULE.
+				  //Unpack packed_data into data.
+				  //First read the packed data nibbles into bytes
+				  int j = 0;
+				  for (int i=0;i<PACKED_PRESET_LENGTH;i++){
+					tmp_data[j] = 0  | (packed_data[i] & 0x000F);
+					j++;
+					tmp_data[j] = 0  | ((packed_data[i] & 0x00F0) >> 4);
+					j++;
+					tmp_data[j] = 0  | ((packed_data[i] & 0x0F00) >> 8);
+					j++;
+					tmp_data[j] = 0  | ((packed_data[i] & 0xF000) >> 12);
+					j++;
+				  }
+
+				  //Now read the nibbles into 12 bit words
+				  j = 0;
+				  for (int i=0;i<PRESET_LENGTH;i++){
+					data[i] = 0 | tmp_data[j];
+					j++;
+					data[i] = data[i] | (tmp_data[j] << 4);
+					j++;
+					data[i] = data[i] | (tmp_data[j] << 8);
+					j++; 
+				  }	
+				*/
+				dataskip[0]=212;
+				dataskip[1]=44;
+				dataskip[2]=168;
+				dataskip[3]=88;
+				dataskip[4]=124;
+				dataskip[5]=132;
+				dataskip[6]=80;
+				dataskip[7]=176;
+				dataskip[8]=36;
+				dataskip[9]=212;
+				dataskip[10]=8;
+				dataskip[11]=204;
+				dataskip[12]=52;
+				dataskip[13]=160;
+				dataskip[14]=96;
+				dataskip[15]=116;
+				dataskip[16]=140;
+				dataskip[17]=72;
+				dataskip[18]=184;
+				dataskip[19]=28;
+				dataskip[20]=212;
+				dataskip[21]=16;
+				dataskip[22]=196;
+				dataskip[23]=60;
+				dataskip[24]=152;
+				dataskip[25]=104;
+				dataskip[26]=108;
+				dataskip[27]=148;
+				dataskip[28]=64;
+				dataskip[29]=192;
+				dataskip[30]=20;
+				dataskip[31]=212;
+				dataskip[32]=24;
+				dataskip[33]=188;
+				dataskip[34]=68;
+				dataskip[35]=144;
+				dataskip[36]=112;
+				dataskip[37]=100;
+				dataskip[38]=156;
+				dataskip[39]=56;
+				dataskip[40]=200;
+				dataskip[41]=12;
+				dataskip[42]=212;
+				dataskip[43]=32;
+				dataskip[44]=180;
+				dataskip[45]=76;
+				dataskip[46]=136;
+				dataskip[47]=120;
+				dataskip[48]=92;
+				dataskip[49]=164;
+				dataskip[50]=48;
+				dataskip[51]=208;
+				dataskip[52]=4;
+				dataskip[53]=212;	
+			}
+			
 			var rawdata = rawJsonMessage.data;	
 			for (i = 0; i < dataskip.length; i++) {
 				var memory_address = rawdata.substring(0,4);
