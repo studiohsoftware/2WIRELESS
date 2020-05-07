@@ -235,6 +235,32 @@
 				}
 			}
 			
+			else if (module_name.indexOf("255e") > -1) {
+				//255e is mostly 72.
+				//Note 255e data is packed. Each value is 12 bits, so bytes are shared to save space. 
+				//Refer to CSR comments below. Same thing here except PRESET_LENGTH=24 and
+				//PACKED_PRESET_LENGTH=18.
+				for (i = 0; i < 38; i++) {
+					dataskip[i] = 72;
+				}
+				dataskip[3]=40;
+				dataskip[4]=32;
+				dataskip[8]=8;
+				dataskip[9]=64;
+				dataskip[12]=48;
+				dataskip[13]=24;
+				dataskip[17]=16;
+				dataskip[18]=56;
+				dataskip[21]=56;
+				dataskip[22]=16;
+				dataskip[26]=24;
+				dataskip[27]=48;
+				dataskip[30]=64;
+				dataskip[31]=8;
+				dataskip[35]=32;
+				dataskip[36]=40;
+			}
+			
 			else if (module_name.indexOf("259e") == 0) {
 				//259e has a pattern. Every third line is 66.
 				for (i = 0; i < 45; i++) {
@@ -382,6 +408,7 @@
 				//and send it back as it is.
 				
 				/* HERE IS THE PACK CODE USED BY THE MODULE. 
+				   On the CSR, PRESET_LENGTH=70. PACKED_PRESET_LENGTH is 53.
 				  //Pack data into packed_data.
 				  //First get the nibbles into a byte array as the lower nibble in each byte
 				  int j = 0;
@@ -408,7 +435,8 @@
 				  }
 				 */
 							
-				/* HERE IS THE UNPACK CODE USED BY THE MODULE.
+				/* HERE IS THE UNPACK CODE USED BY THE MODULE. 
+				   On the CSR, PRESET_LENGTH=70. PACKED_PRESET_LENGTH is 53.
 				  //Unpack packed_data into data.
 				  //First read the packed data nibbles into bytes
 				  int j = 0;
@@ -488,6 +516,13 @@
 				dataskip[51]=208;
 				dataskip[52]=4;
 				dataskip[53]=212;	
+			}
+			
+			else if (module_name.indexOf("Studio H DPO") == 0) {
+				//DPO is 64 per line. 
+				for (i = 0; i < 30; i++) {
+					dataskip[i] = 64;
+				}
 			}
 			
 			var rawdata = rawJsonMessage.data;	
