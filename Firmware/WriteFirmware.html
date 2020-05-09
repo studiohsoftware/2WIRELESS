@@ -1,7 +1,7 @@
 <html>
 	<body>
-		<button onclick="input.click()">Click me</button>
-		<p id="demo">Hi.</p>
+		<button onclick="input.click()">Browse for hex file.</button>
+		<pre id="demo"></pre>
 	</body>
 	<script>
 		var url = "http://192.168.0.1/writefirmware";
@@ -27,16 +27,163 @@
 			var reader = new FileReader();
 			reader.readAsText(file,'UTF-8');
 			reader.onload = readerEvent => {
-				var content = readerEvent.target.result; 
-				document.getElementById("demo").innerHTML = "sending";
+				document.getElementById("demo").innerHTML = "Generating Header";
+				var filename = input.value.replace(/^.*\\/, "");
+				var content = readerEvent.target.result; //hex file contents as string
+				var header_id = {
+					addr : "0x0000",
+					data : getAsciiHexString("#!200EFU") 
+				}
+				var card_i2c_address = {
+					addr : "0x0008",
+					data : "0a"
+				}
+				var chip_count = {
+					addr : "0x0009",
+					data : "01"
+				}
+				var chip_size = {
+					addr : "0x000a",
+					data : "ffff"
+				}
+				var toc_start = {
+					addr : "0x000c",
+					data : "0010"
+				}
+				var termination1 = {
+					addr : "0x000e",
+					data : "0000"
+				}
+				var bang = {
+					addr : "0x0010",
+					data : getAsciiHexString("!") 
+				}
+				var module_name = {
+					addr : "0x0011",
+					data : getAsciiHexString(filename.substring(0,4)) //get from filename, convert to hex
+				}
+				var hardware_version = {
+					addr : "0x0015",
+					data : "0001" 
+				}
+				var firmware_version = {
+					addr : "0x0017",
+					data : getAsciiHexString(getFirmwareVersion(filename)) //get from filename, convert to hex
+				}
+				var hex_i2c_address = {
+					addr : "0x0019",
+					data : "0a" 
+				}
+				var hex_start_address = {
+					addr : "0x001a",
+					data : "0100"
+				}
+				var hex_end_address = {
+					addr : "0x001c",
+					data : (readerEvent.target.result.length + 0x100).toString(16) //file length plus start address.
+				}
+				var termination2 = {
+					addr : "0x001e",
+					data : "00"
+				}
+							
+				var v2FirmwareImage = [];
+				var v3FirmwareImage = [];
+				
+				v2FirmwareImage.push(header_id);
+				v2FirmwareImage.push(card_i2c_address);
+				v2FirmwareImage.push(chip_count);
+				v2FirmwareImage.push(chip_size);
+				v2FirmwareImage.push(toc_start);
+				v2FirmwareImage.push(termination1);
+				v2FirmwareImage.push(bang);
+				v2FirmwareImage.push(module_name);
+				v2FirmwareImage.push(hardware_version);
+				v2FirmwareImage.push(firmware_version);
+				v2FirmwareImage.push(hex_i2c_address);
+				v2FirmwareImage.push(hex_start_address);
+				v2FirmwareImage.push(hex_end_address);
+				v2FirmwareImage.push(termination2);
+
+				if (!filenameIsV3(filename)) {
+					document.getElementById("demo").innerHTML =  JSON.stringify(v2FirmwareImage, undefined, 2);
+				} else {
+					//Now V3 stuff
+					header_id.data =  getAsciiHexString("#$200EFU");  
+					chip_size.data = "0003ffff"; //FRAM has 18 bit address.
+					module_name.addr = "0x000e";
+					hardware_version.addr = "0x0012";
+					firmware_version.addr = "0x0014";
+					var firmware_size = {
+						addr : "0x0016",
+						data: readerEvent.target.result.length.toString(16) //From hex file length.
+					}
+					v3FirmwareImage.push(header_id);
+					v3FirmwareImage.push(card_i2c_address);
+					v3FirmwareImage.push(chip_count);
+					v3FirmwareImage.push(chip_size);
+					v3FirmwareImage.push(module_name);
+					v3FirmwareImage.push(hardware_version);
+					v3FirmwareImage.push(firmware_version);
+					v3FirmwareImage.push(firmware_size);
+					document.getElementById("demo").innerHTML =  JSON.stringify(v3FirmwareImage, undefined, 2);
+				}
+
+				/*
 				request.open(method, url, shouldBeAsync);
 				request.setRequestHeader("Content-Length", content.length);
 				request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-				//request.setRequestHeader("Content-Type", "text/plain");
-				//request.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
 				request.send(content);
-				//request.send(null);
+				*/
 			}
 		}
+		
+		function getAsciiHexString(text) {
+		  var result = "";
+		  var i;
+		  for (i = 0; i < text.length; i++){
+			result = result + text[i].charCodeAt(0).toString(16); 
+		  }
+		  return result;
+		}
+		
+		function filenameIsV3(filename){
+			var module_id = filename.substring(0,4);
+			var result = true;
+			switch(module_id) {
+			  case "296E": {break;}
+			  case "251E": {break;}
+			  case "220E" : {break;}
+			  case "257E": {break;}
+			  case "267E": {break;}
+			  case "218E": {break;}
+			  case "252E": {break;}
+			  case "225H": {break;}
+			  case "226H": {break;}
+			  case "222E": {break;}
+			  case "223M": {break;}
+			  case "261E": {break;}
+			  case "225S": {break;}
+			  case "225E": {break;}
+			  default: {result = false;}
+			}
+			return result;
+		}
+		
+		function getFirmwareVersion(filename) {
+			//The firmware version is one to three numbers between "v" and ".hex"
+			var result = "00";
+			var v_index = filename.lastIndexOf("v");
+			var dot_index = filename.lastIndexOf(".hex");
+			result = filename.substring(v_index + 1,dot_index);
+			if (result.length == 1){
+				result = "0" + result;
+			} else if (result.length == 3) {
+				result = result.substring(0,2);
+			}
+			return result;
+		}
+		
+		
 	</script>
 </html>
