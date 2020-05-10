@@ -31,102 +31,124 @@
 				var filename = input.value.replace(/^.*\\/, "");
 				var content = readerEvent.target.result; //hex file contents as string
 				var header_id = {
-					addr : "0x0000",
+					addr : "0000",
 					data : getAsciiHexString("#!200EFU") 
 				}
 				var card_i2c_address = {
-					addr : "0x0008",
+					addr : "0008",
 					data : "0a"
 				}
 				var chip_count = {
-					addr : "0x0009",
+					addr : "0009",
 					data : "01"
 				}
 				var chip_size = {
-					addr : "0x000a",
+					addr : "000a",
 					data : "ffff"
 				}
 				var toc_start = {
-					addr : "0x000c",
-					data : "0010"
+					addr : "000c",
+					data : "A00010"
 				}
 				var termination1 = {
-					addr : "0x000e",
-					data : "0000"
+					addr : "000f",
+					data : "00"
 				}
 				var bang = {
-					addr : "0x0010",
+					addr : "0010",
 					data : getAsciiHexString("!") 
 				}
 				var module_name = {
-					addr : "0x0011",
+					addr : "0011",
 					data : getAsciiHexString(filename.substring(0,4)) //get from filename, convert to hex
 				}
 				var hardware_version = {
-					addr : "0x0015",
+					addr : "0015",
 					data : "0001" 
 				}
 				var firmware_version = {
-					addr : "0x0017",
-					data : getAsciiHexString(getFirmwareVersion(filename)) //get from filename, convert to hex
+					addr : "0017",
+					data : "0" + getFirmwareVersion(filename).substring(0,1) + "0" + getFirmwareVersion(filename).substring(1,2) //get from filename
 				}
-				var hex_i2c_address = {
-					addr : "0x0019",
+				var hex_start_i2c_address = {
+					addr : "0019",
 					data : "0a" 
 				}
 				var hex_start_address = {
-					addr : "0x001a",
-					data : "0100"
+					addr : "001a",
+					data : "0050"
+				}
+				var hex_end_i2c_address = {
+					addr : "001c",
+					data : "0a" 
 				}
 				var hex_end_address = {
-					addr : "0x001c",
-					data : (readerEvent.target.result.length + 0x100).toString(16) //file length plus start address.
+					addr : "001d",
+					data : "" //calculated below.
 				}
 				var termination2 = {
-					addr : "0x001e",
+					addr : "001f",
 					data : "00"
 				}
 							
-				var v2FirmwareImage = [];
-				var v3FirmwareImage = [];
-				
-				v2FirmwareImage.push(header_id);
-				v2FirmwareImage.push(card_i2c_address);
-				v2FirmwareImage.push(chip_count);
-				v2FirmwareImage.push(chip_size);
-				v2FirmwareImage.push(toc_start);
-				v2FirmwareImage.push(termination1);
-				v2FirmwareImage.push(bang);
-				v2FirmwareImage.push(module_name);
-				v2FirmwareImage.push(hardware_version);
-				v2FirmwareImage.push(firmware_version);
-				v2FirmwareImage.push(hex_i2c_address);
-				v2FirmwareImage.push(hex_start_address);
-				v2FirmwareImage.push(hex_end_address);
-				v2FirmwareImage.push(termination2);
-
-				if (!filenameIsV3(filename)) {
-					document.getElementById("demo").innerHTML =  JSON.stringify(v2FirmwareImage, undefined, 2);
+				var V1FirmwareImage = [];
+				var V2FirmwareImage = [];
+			
+				if (!filenameIsV2(filename)) {
+					V1FirmwareImage.push(header_id);
+					V1FirmwareImage.push(card_i2c_address);
+					V1FirmwareImage.push(chip_count);
+					V1FirmwareImage.push(chip_size);
+					V1FirmwareImage.push(toc_start);
+					V1FirmwareImage.push(termination1);
+					V1FirmwareImage.push(bang);
+					V1FirmwareImage.push(module_name);
+					V1FirmwareImage.push(hardware_version);
+					V1FirmwareImage.push(firmware_version);
+					V1FirmwareImage.push(hex_start_i2c_address);
+					V1FirmwareImage.push(hex_start_address);
+					V1FirmwareImage.push(hex_end_i2c_address);
+					V1FirmwareImage.push(hex_end_address);
+					V1FirmwareImage.push(termination2);
+					
+					var lines = content.split(":");	
+					var address = 0x50;
+					for(var i = 1;i < lines.length;i++){ //Start at 1 because split on colon gives null result first time.
+						V1FirmwareImage.push(getJsonFromLine(address,lines[i]));
+						address = address + lines[i].length - 1;
+					}
+					hex_end_address.data = (address).toString(16); //Now that last address is known, update data. 
+					document.getElementById("demo").innerHTML =  JSON.stringify(V1FirmwareImage, undefined, 2);
 				} else {
-					//Now V3 stuff
+					//Now V2 stuff
 					header_id.data =  getAsciiHexString("#$200EFU");  
 					chip_size.data = "0003ffff"; //FRAM has 18 bit address.
-					module_name.addr = "0x000e";
-					hardware_version.addr = "0x0012";
-					firmware_version.addr = "0x0014";
+					module_name.addr = "000e";
+					hardware_version.addr = "0012";
+					firmware_version.addr = "0014";
 					var firmware_size = {
-						addr : "0x0016",
-						data: readerEvent.target.result.length.toString(16) //From hex file length.
+						addr : "0016",
+						data: "" //calculated below.
 					}
-					v3FirmwareImage.push(header_id);
-					v3FirmwareImage.push(card_i2c_address);
-					v3FirmwareImage.push(chip_count);
-					v3FirmwareImage.push(chip_size);
-					v3FirmwareImage.push(module_name);
-					v3FirmwareImage.push(hardware_version);
-					v3FirmwareImage.push(firmware_version);
-					v3FirmwareImage.push(firmware_size);
-					document.getElementById("demo").innerHTML =  JSON.stringify(v3FirmwareImage, undefined, 2);
+					V2FirmwareImage.push(header_id);
+					V2FirmwareImage.push(card_i2c_address);
+					V2FirmwareImage.push(chip_count);
+					V2FirmwareImage.push(chip_size);
+					V2FirmwareImage.push(module_name);
+					V2FirmwareImage.push(hardware_version);
+					V2FirmwareImage.push(firmware_version);
+					V2FirmwareImage.push(firmware_size);
+					
+					var lines = content.split(":");	
+					var address = 0x1A;  //Starts immediately after the four bytes of firmware_size.
+					for(var i = 1;i < lines.length;i++){ //Start at 1 because split on colon gives null result first time.
+						V2FirmwareImage.push(getJsonFromLine(address,lines[i]));
+						address = address + lines[i].length - 1;
+					}
+					var total_size = (address - 0x1A).toString(16); //Now that last address is known, update data. 
+					firmware_size.data = total_size.padStart(8,'0'); // Zero pad to eight characters.
+					
+					document.getElementById("demo").innerHTML =  JSON.stringify(V2FirmwareImage, undefined, 2);
 				}
 
 				/*
@@ -147,13 +169,12 @@
 		  return result;
 		}
 		
-		function filenameIsV3(filename){
+		function filenameIsV2(filename){
 			var module_id = filename.substring(0,4);
 			var result = true;
 			switch(module_id) {
 			  case "296E": {break;}
 			  case "251E": {break;}
-			  case "220E" : {break;}
 			  case "257E": {break;}
 			  case "267E": {break;}
 			  case "218E": {break;}
@@ -172,6 +193,7 @@
 		
 		function getFirmwareVersion(filename) {
 			//The firmware version is one to three numbers between "v" and ".hex"
+			//Always output the first two, padding with "0" if necessary.
 			var result = "00";
 			var v_index = filename.lastIndexOf("v");
 			var dot_index = filename.lastIndexOf(".hex");
@@ -180,6 +202,28 @@
 				result = "0" + result;
 			} else if (result.length == 3) {
 				result = result.substring(0,2);
+			}
+			return result;
+		}
+		
+		function getJsonFromLine(address,line){
+			var tmp = "3a";
+			line = line.replace(/^\s+|\s+$/gm,'');
+			for(var i = 0;i < line.length;i++){
+				var digit = parseInt(line[i],16);
+				//Not sure what is going on, but each 
+				//character in the file expands to a 
+				//byte in the following way.
+				if (digit < 0xA) {
+					digit = digit + 0x30;
+				} else {
+					digit = digit + 0x37;
+				}
+				tmp = tmp + digit.toString(16);
+			}
+			var result = {
+				addr : address.toString(16),
+				data : tmp 
 			}
 			return result;
 		}
