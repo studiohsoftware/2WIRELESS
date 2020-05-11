@@ -762,22 +762,22 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
             switchToSlave(); //Switch to slave to receive the read requests.
         }
         delete token;
-    } else if (urlString.indexOf("/readmemory?addr") == 0) {
+    } else if (urlString.indexOf("/readbyte?addr") == 0) {
         cb(cbArg, 0, 200, "application/json", nullptr);
         int len = urlString.length();
         int eqloc = urlString.indexOf('=');
-        int addr = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+        int addr = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
         uint8_t value;
         value = framRead(addr);
         String tmp = String(value,HEX);
         result->write("{ \"data\": \"" + tmp + "\"\r\n"); 
         result->write("}\r\n");
-    } else if (urlString.indexOf("/writememory?addr") == 0) {
+    } else if (urlString.indexOf("/writebyte?addr") == 0) {
         cb(cbArg, 0, 200, "text/plain", nullptr);
         int len = urlString.length();
         int eqloc = urlString.indexOf('=');
         int amploc = urlString.indexOf('&');
-        int addr = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
+        int addr = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
         eqloc = urlString.indexOf('=',amploc);
         int value = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
         framWrite(addr,value);
