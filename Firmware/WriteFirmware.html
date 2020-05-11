@@ -93,6 +93,7 @@
 							
 				var V1FirmwareImage = [];
 				var V2FirmwareImage = [];
+				var jsonAll = "";
 			
 				if (!filenameIsV2(filename)) {
 					V1FirmwareImage.push(header_id);
@@ -116,9 +117,16 @@
 					for(var i = 1;i < lines.length;i++){ //Start at 1 because split on colon gives null result first time.
 						V1FirmwareImage.push(getJsonFromLine(address,lines[i]));
 						address = address + lines[i].length - 1;
+						if ((i%135 == 0) && (i != (lines.length - 1))){
+						//POST data size limited to 20k. Splitting every 135 lines creates 17k chunks on average.
+							V1FirmwareImage.push("pagebreak");
+						}
 					}
 					hex_end_address.data = (address).toString(16); //Now that last address is known, update data. 
-					document.getElementById("demo").innerHTML =  JSON.stringify(V1FirmwareImage, undefined, 2);
+					jsonAll = JSON.stringify(V1FirmwareImage, undefined, 2);
+					lines = undefined; //free memory?
+					V1FirmwareImage = undefined; //free memory?
+					
 				} else {
 					//Now V2 stuff
 					header_id.data =  getAsciiHexString("#$200EFU");  
@@ -152,13 +160,29 @@
 					for(var i = 1;i < lines.length;i++){ //Start at 1 because split on colon gives null result first time.
 						V2FirmwareImage.push(getJsonFromLine(address,lines[i]));
 						address = address + lines[i].length - 1;
+						if ((i%135 == 0) && (i != (lines.length - 1))){
+						    //POST data size limited to 20k. Splitting every 135 lines creates 17k chunks on average.
+							V2FirmwareImage.push("pagebreak");
+						}
 					}
 					var total_size = (address - 0x2B).toString(16); //Now that last address is known, update data. 
 					firmware_size.data = total_size.padStart(8,'0'); // Zero pad to eight characters.
-					
-					document.getElementById("demo").innerHTML =  JSON.stringify(V2FirmwareImage, undefined, 2);
+					jsonAll = JSON.stringify(V2FirmwareImage, undefined, 2);
+					lines = undefined; //free memory?
+					V2FirmwareImage = undefined; //free memory?
 				}
-
+				
+				var jsonPart = jsonAll.split("\"pagebreak\""); //Max post size is 20k. Split into smaller pieces.
+				for(var i = 0;i < jsonPart.length;i++){
+					//Fix up split JSON (not necessary, but makes it look good)
+					jsonPart[i] = jsonPart[i].trim();
+					jsonPart[i] = jsonPart[i].substring(0,jsonPart[i].length - 1) + "]";
+					if (jsonPart[i].substring(0,1) == ","){
+						jsonPart[i] = jsonPart[i].replace(",","[");
+					}
+				}
+				document.getElementById("demo").innerHTML =  jsonPart[0]; //Show first part for debugging.
+				
 				/*
 				request.open(method, url, shouldBeAsync);
 				request.setRequestHeader("Content-Length", content.length);
