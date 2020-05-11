@@ -36,7 +36,7 @@
 				}
 				var card_i2c_address = {
 					addr : "0008",
-					data : "0a"
+					data : "a0"
 				}
 				var chip_count = {
 					addr : "0009",
@@ -72,7 +72,7 @@
 				}
 				var hex_start_i2c_address = {
 					addr : "0019",
-					data : "0a" 
+					data : "a0" 
 				}
 				var hex_start_address = {
 					addr : "001a",
@@ -80,7 +80,7 @@
 				}
 				var hex_end_i2c_address = {
 					addr : "001c",
-					data : "0a" 
+					data : "a0" 
 				}
 				var hex_end_address = {
 					addr : "001d",
@@ -122,15 +122,23 @@
 				} else {
 					//Now V2 stuff
 					header_id.data =  getAsciiHexString("#$200EFU");  
+					var version = {
+						addr : "0008",
+						data: "02"
+					}
+					card_i2c_address.addr = "0009";
+					chip_count.addr = "000a";
+					chip_size.addr = "000b";
 					chip_size.data = "0003ffff"; //FRAM has 18 bit address.
-					module_name.addr = "000e";
-					hardware_version.addr = "0012";
-					firmware_version.addr = "0014";
+					module_name.addr = "000f";
+					hardware_version.addr = "0013";
+					firmware_version.addr = "0015";
 					var firmware_size = {
-						addr : "0016",
+						addr : "0017",
 						data: "" //calculated below.
 					}
 					V2FirmwareImage.push(header_id);
+					V2FirmwareImage.push(version);
 					V2FirmwareImage.push(card_i2c_address);
 					V2FirmwareImage.push(chip_count);
 					V2FirmwareImage.push(chip_size);
@@ -140,12 +148,12 @@
 					V2FirmwareImage.push(firmware_size);
 					
 					var lines = content.split(":");	
-					var address = 0x1A;  //Starts immediately after the four bytes of firmware_size.
+					var address = 0x2B;  //Starts at 0x2B in V2.
 					for(var i = 1;i < lines.length;i++){ //Start at 1 because split on colon gives null result first time.
 						V2FirmwareImage.push(getJsonFromLine(address,lines[i]));
 						address = address + lines[i].length - 1;
 					}
-					var total_size = (address - 0x1A).toString(16); //Now that last address is known, update data. 
+					var total_size = (address - 0x2B).toString(16); //Now that last address is known, update data. 
 					firmware_size.data = total_size.padStart(8,'0'); // Zero pad to eight characters.
 					
 					document.getElementById("demo").innerHTML =  JSON.stringify(V2FirmwareImage, undefined, 2);

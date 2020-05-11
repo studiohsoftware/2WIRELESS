@@ -188,18 +188,34 @@ void requestEvent() {
     //The number of bytes requested varies by module. 292e requests 8 bytes per preset, and 291e
     //requests 253 bytes per preset. 251e is over 2k. When the module is done reading, it issues
     //a STOP and this handler will not be called until the next time a restore is requested.
-    
-    if (Wire.available() > 0){
+    int available = Wire.available();
+    if (available > 0){
         //This is the first read following address write from the module.
-        //The master wrote the two byte memory address, and we now retrieve it
+        //The master wrote two or three bytes for the memory address, and we now retrieve it
         //from the rxBuffer. MSB is sent first, LSB second.
         //Typically this happens once at the beginning of each preset.
         read_counter = 0;
-        uint8_t framMSB = Wire.read(); //MSB
-        uint8_t framLSB = Wire.read(); //LSB
+        uint8_t addr_byte_upper = 0x00;
+        uint8_t addr_byte_middle = 0x00;
+        uint8_t addr_byte_lower = 0x00;
+
+        while (Wire.available() > 3) {
+            Wire.read(); //Only three bytes supported. If buffer has more, clear it out.
+        }
+        if (available == 1){
+            addr_byte_lower = Wire.read();
+        } else if (available == 2) {
+            addr_byte_middle = Wire.read();
+            addr_byte_lower = Wire.read();
+        } else if (available == 3) {
+            addr_byte_upper = Wire.read();
+            addr_byte_middle = Wire.read();
+            addr_byte_lower = Wire.read();
+        } 
         fram_address = 0;
-        fram_address = (framMSB) << 8;
-        fram_address = fram_address | framLSB;
+        fram_address = (addr_byte_upper) << 16;
+        fram_address = fram_address | (addr_byte_middle) << 8;
+        fram_address = fram_address | addr_byte_lower;
     } 
     
     if (read_counter < 65535) { //Max 16 bit address possible, although FRAM supports 18 bits. Will this ever happen?
