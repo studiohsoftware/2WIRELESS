@@ -6,7 +6,7 @@
 </div>
 	</body>
 	<script>
-		var url = "http://192.168.0.1/writefirmware";
+		var url = "http://192.168.0.1/writememory";
 		var method = "POST";
 		var shouldBeAsync = false;
 		var request = new XMLHttpRequest();
@@ -181,7 +181,8 @@
 					request.send(jsonPart[i]);
 					responseString = responseString + request.responseText;
 				}
-				document.getElementById("demo").innerHTML = responseString;
+				//document.getElementById("demo").innerHTML = responseString;
+				document.getElementById("demo").innerHTML = "Firmare successfully uploaded to preset manager."
 			}
 		}
 		

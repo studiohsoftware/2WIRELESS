@@ -785,20 +785,29 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
         eqloc = urlString.indexOf('=',amploc);
         int value = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
         framWrite(addr,value);
-    } else if (urlString.indexOf("/writefirmware") == 0) {
+    } else if (urlString.indexOf("/writememory") == 0) {
         cb(cbArg, 0, 200, "text/plain", nullptr);
-        //char* postData = body->fetch_as_string();
-        //Serial.printlnf("received data %s", postData);
-        //free(postData);
-
-        static uint8_t s_buffer[1024] = {0};
-        int bread = 0;
-        do {
-            bread = body->read(s_buffer, sizeof(s_buffer));
-            if (bread > 0) {
-                result->write(s_buffer, bread);
+        fram_address = 0;
+        JsonToken* token = new JsonToken();
+        getJsonToken(token, body);
+        while (token->data != "") {
+            if (token->data ==  "addr") 
+            {
+                //This parameter carries the memory address for the data.
+                getJsonToken(token, body);
+                fram_address = (int)strtol((token->data).c_str(), nullptr, 16);
+            } else if (token->data ==  "data") {
+                //This parameter carries the data that will be written to fram.
+                String data_string = "";
+                getJsonToken(token, body);
+                data_string = token->data;
+                if (data_string.length() > 0) {
+                    framWriteHexString(fram_address,data_string);
+                }
             }
-        } while(bread > 0);
+            getJsonToken(token, body);
+        } 
+        delete token;
     } else if (urlString.indexOf("/debug") == 0) {
         cb(cbArg, 0, 200, "text/plain", nullptr);
         while (ringBuffer.bytesQueued())
