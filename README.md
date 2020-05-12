@@ -5,10 +5,10 @@
 Global remote enable.
 - ### http://192.168.0.1/remotedisable
 Global remote disable.
-- ### http://192.168.0.1/savepreset?preset=(0-29)
+- ### http://192.168.0.1/savepreset?preset=(1-30)
 Save current settings to specified preset.<br/>
-Example: http://192.168.0.1/savepreset?preset=0
-- ### http://192.168.0.1/recallpreset?preset=(0-29)
+Example: http://192.168.0.1/savepreset?preset=1
+- ### http://192.168.0.1/recallpreset?preset=(1-30)
 Recall specified preset.<br/>
 Example: http://192.168.0.1/recallpreset?preset=29
 - ### http://192.168.0.1/getpresets?addr=(module addr in hex)

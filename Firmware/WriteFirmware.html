@@ -68,7 +68,7 @@
 				}
 				var firmware_version = {
 					addr : "0017",
-					data : "0" + getFirmwareVersion(filename).substring(0,1) + "0" + getFirmwareVersion(filename).substring(1,2) //get from filename
+					data : getFirmwareVersion(filename) //get from filename
 				}
 				var hex_start_i2c_address = {
 					addr : "0019",
@@ -226,7 +226,7 @@
 		function getFirmwareVersion(filename) {
 			//The firmware version is one to three numbers between "v" and ".hex"
 			//Always output the first two, padding with "0" if necessary.
-			var result = "00";
+			var result = "0000";
 			var v_index = filename.lastIndexOf("v");
 			var dot_index = filename.lastIndexOf(".hex");
 			result = filename.substring(v_index + 1,dot_index);
@@ -235,6 +235,7 @@
 			} else if (result.length == 3) {
 				result = result.substring(0,2);
 			}
+			result = "0" + result.substring(0,1) + "0" + result.substring(1,2);
 			return result;
 		}
 		

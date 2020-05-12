@@ -543,22 +543,28 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
         int len = urlString.length();
         int eqloc = urlString.indexOf('=');
         int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
-        preset = preset % 29;
-        //Serial.println(preset);
-        switchToMaster();
-        sendSavePreset(preset);
-        switchToSlave();
+        if ((preset >=1) && (preset <=30)) {
+            preset = preset - 1; //0-29 internally.
+            //Serial.println(preset);
+            switchToMaster();
+            sendSavePreset(preset);
+            switchToSlave();
+        }
+
     }
     else if (urlString.indexOf("/recallpreset?preset") == 0) {
         cb(cbArg, 0, 200, "text/plain", nullptr);
         int len = urlString.length();
         int eqloc = urlString.indexOf('=');
         int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
-        preset = preset % 29;
-        //Serial.println(preset);
-        switchToMaster();
-        sendRecallPreset(preset);
-        switchToSlave();
+        if ((preset >=1) && (preset <=30)) {
+            preset = preset - 1; //0-29 internally.
+            //Serial.println(preset);
+            switchToMaster();
+            sendRecallPreset(preset);
+            switchToSlave();
+        }
+
     }
     else if (urlString.indexOf("/midinoteon?mask") == 0) {
         cb(cbArg, 0, 200, "text/plain", nullptr);
