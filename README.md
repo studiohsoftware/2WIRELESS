@@ -43,10 +43,19 @@ Midi clock stop.
 - ### http://192.168.0.1/midiclock
 Midi clock. 24 per beat required?
 - ### http://192.168.0.1/readbyte?addr=(0x0-0x03FFFF)
-Read one byte from on board non volatile memory at the specified address.<br/>
-Example (Address 0x1F. Note 0x001F, or 0x00001F also acceptable): http://192.168.0.1/readmemory?addr=0x1F
+Read one byte from on-board non-volatile memory at the specified address.<br/>
+Example (Address 0x1F. Note 0x001F, or 0x00001F also acceptable): http://192.168.0.1/readbyte?addr=0x1F
 - ### http://192.168.0.1/writebyte?addr=(0x0-0x03FFFF)&value=(0x00-0xFF)
-Write one byte to on board non volatile memory at the specified address.<br/>
-Example (Address 0x1ABCD, value 0x0A): http://192.168.0.1/writememory?addr=0x1ABCD&value=0x0A <br/>
+Write one byte to on-board non-volatile memory at the specified address.<br/>
+Example (Address 0x1ABCD, value 0x0A): http://192.168.0.1/writebyte?addr=0x1ABCD&value=0x0A <br/>
 Note all addresses below 0x02C000 are used as scratch space by preset and firmware transfers. 
+- ### http://192.168.0.1/writememory
+Write bulk data to on-board non-volatile memory.<br/>
+Note this is an HTTP POST with a JSON formatted body.<br/> 
+Example JSON here https://github.com/studiohsoftware/2WIRELESS/blob/master/Firmware/writeMemoryExample.json<br/>
+Notes:
+- #### 20k byte JSON file limit.
+- #### Adresses are arbitrary locations within 0x0-0x03FFFF.
+- #### Data elements can be up to 256 bytes long each (512 characters).
+- #### All addresses below 0x02C000 are used as scratch space by preset and firmware transfers. 
 
