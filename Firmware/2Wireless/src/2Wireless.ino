@@ -188,8 +188,7 @@ void requestEvent() {
     //The number of bytes requested varies by module. 292e requests 8 bytes per preset, and 291e
     //requests 253 bytes per preset. 251e is over 2k. When the module is done reading, it issues
     //a STOP and this handler will not be called until the next time a restore is requested.
-    int available = Wire.available();
-    if (available > 0){
+    if (Wire.available() > 0){
         //This is the first read following address write from the module.
         //The master wrote two or three bytes for the memory address, and we now retrieve it
         //from the rxBuffer. MSB is sent first, LSB second.
@@ -202,12 +201,12 @@ void requestEvent() {
         while (Wire.available() > 3) {
             Wire.read(); //Only three bytes supported. If buffer has more, clear it out.
         }
-        if (available == 1){
+        if (Wire.available() == 1){
             addr_byte_lower = Wire.read();
-        } else if (available == 2) {
+        } else if (Wire.available() == 2) {
             addr_byte_middle = Wire.read();
             addr_byte_lower = Wire.read();
-        } else if (available == 3) {
+        } else if (Wire.available() == 3) {
             addr_byte_upper = Wire.read();
             addr_byte_middle = Wire.read();
             addr_byte_lower = Wire.read();
@@ -284,7 +283,6 @@ void sendRecallPreset(byte preset) {
     Wire.write(0x01);
     Wire.write(preset);
     Wire.endTransmission();
-
 }
 
 void sendBackupPresets(byte address) {

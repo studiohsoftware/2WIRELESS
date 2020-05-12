@@ -2,33 +2,26 @@
 	<body>
 		<button onclick="input.click()">Browse for hex file.</button>
 		<pre id="demo"></pre>
+
+</div>
 	</body>
 	<script>
 		var url = "http://192.168.0.1/writefirmware";
 		var method = "POST";
-		var shouldBeAsync = true;
+		var shouldBeAsync = false;
 		var request = new XMLHttpRequest();
-		request.onload = function () {
-			var status = request.status; // HTTP response status, e.g., 200 for "200 OK"
-			var data = request.responseText; // Returned data, e.g., an HTML document.
-			document.getElementById("demo").innerHTML = data;  
-
-		}
-	
 	
 		var input = document.createElement('input');
 		input.type = 'file';
 		input.accept = ".hex";
 		input.click();
 		
-		
 		input.onchange = e => { 
 			var file = e.target.files[0]; 		
 			var reader = new FileReader();
 			reader.readAsText(file,'UTF-8');
 			reader.onload = readerEvent => {
-				document.getElementById("demo").innerHTML = "Generating Header";
-				var filename = input.value.replace(/^.*\\/, "");
+				var filename = input.value.replace(/^.*\\/, ""); //strip path from filename
 				var content = readerEvent.target.result; //hex file contents as string
 				var header_id = {
 					addr : "0000",
@@ -172,23 +165,23 @@
 					V2FirmwareImage = undefined; //free memory?
 				}
 				
+				var responseString = "";
 				var jsonPart = jsonAll.split("\"pagebreak\""); //Max post size is 20k. Split into smaller pieces.
 				for(var i = 0;i < jsonPart.length;i++){
-					//Fix up split JSON (not necessary, but makes it look good)
+					//Fix up split JSON (not necessary, but makes it look good in case anyone sees it.)
 					jsonPart[i] = jsonPart[i].trim();
 					jsonPart[i] = jsonPart[i].substring(0,jsonPart[i].length - 1) + "]";
 					if (jsonPart[i].substring(0,1) == ","){
 						jsonPart[i] = jsonPart[i].replace(",","[");
 					}
+					//Send the JSON part
+					request.open(method, url, shouldBeAsync);
+					request.setRequestHeader("Content-Length", jsonPart[i].length);
+					request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+					request.send(jsonPart[i]);
+					responseString = responseString + request.responseText;
 				}
-				document.getElementById("demo").innerHTML =  jsonPart[0]; //Show first part for debugging.
-				
-				/*
-				request.open(method, url, shouldBeAsync);
-				request.setRequestHeader("Content-Length", content.length);
-				request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-				request.send(content);
-				*/
+				document.getElementById("demo").innerHTML = responseString;
 			}
 		}
 		
@@ -222,6 +215,7 @@
 			}
 			return result;
 		}
+		
 		
 		function getFirmwareVersion(filename) {
 			//The firmware version is one to three numbers between "v" and ".hex"
