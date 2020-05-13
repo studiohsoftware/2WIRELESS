@@ -55,7 +55,7 @@ Note this is an HTTP POST with a JSON formatted body.<br/>
 Example JSON here https://github.com/studiohsoftware/2WIRELESS/blob/master/Firmware/writeMemoryExample.json<br/>
 Notes:
 - #### 20k byte JSON file limit.
-- #### Adresses are arbitrary locations within 0x0-0x03FFFF.
+- #### Addresses are arbitrary locations within 0x0-0x03FFFF.
 - #### Data elements can be up to 256 bytes long each (512 characters).
 - #### All addresses below 0x02C000 are used as scratch space by preset and firmware transfers. 
 

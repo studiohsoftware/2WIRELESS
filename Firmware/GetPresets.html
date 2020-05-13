@@ -83,6 +83,15 @@
 		<p id="result"></p>
 	</body>
 	<script>
+		//This script retrieves raw preset data from the module and processes it. 
+		//The processed data is then displayed on the page. The processed data is 
+		//in the required JSON format for writing back to the module. (See SetPresets.html)
+		//
+		//Details:
+		//The raw data has memory addresses embedded within it, and these addresses must be found
+		//and separated from the preset data to produce the processed data. 
+		//Each module is different, and the addresses are located using the dataskip[] values below.
+		//The dataskip values were found by manual inspection of the raw data!
 		var module_address;
 		var module_name;
 		var url = "http://192.168.0.1/getpresets?addr=";
