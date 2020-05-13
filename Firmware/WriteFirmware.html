@@ -17,6 +17,8 @@
 		input.click();
 		
 		input.onchange = e => { 
+			const MAX_JSON_PART_LENGTH = 18000; //Max bytes per POST to writememory.
+			const JSON_DATA_ELEMENT_OVERHEAD = 26; //bytes used up for each data element by tag names, colons, and other formatting.
 			var file = e.target.files[0]; 		
 			var reader = new FileReader();
 			reader.readAsText(file,'UTF-8');
@@ -84,44 +86,45 @@
 					data : "00"
 				}
 							
-				var V1FirmwareImage = [];
-				var V2FirmwareImage = [];
-				var jsonAll = "";
+				var FirmwareImage = [];
+				var FirmwareImagePart = [];
+				FirmwareImage.push(FirmwareImagePart);
 			
 				if (!filenameIsV2(filename)) {
-					V1FirmwareImage.push(header_id);
-					V1FirmwareImage.push(card_i2c_address);
-					V1FirmwareImage.push(chip_count);
-					V1FirmwareImage.push(chip_size);
-					V1FirmwareImage.push(toc_start);
-					V1FirmwareImage.push(termination1);
-					V1FirmwareImage.push(bang);
-					V1FirmwareImage.push(module_name);
-					V1FirmwareImage.push(hardware_version);
-					V1FirmwareImage.push(firmware_version);
-					V1FirmwareImage.push(hex_start_i2c_address);
-					V1FirmwareImage.push(hex_start_address);
-					V1FirmwareImage.push(hex_end_i2c_address);
-					V1FirmwareImage.push(hex_end_address);
-					V1FirmwareImage.push(termination2);
+				//This is the V1 case.
+					FirmwareImagePart.push(header_id);
+					FirmwareImagePart.push(card_i2c_address);
+					FirmwareImagePart.push(chip_count);
+					FirmwareImagePart.push(chip_size);
+					FirmwareImagePart.push(toc_start);
+					FirmwareImagePart.push(termination1);
+					FirmwareImagePart.push(bang);
+					FirmwareImagePart.push(module_name);
+					FirmwareImagePart.push(hardware_version);
+					FirmwareImagePart.push(firmware_version);
+					FirmwareImagePart.push(hex_start_i2c_address);
+					FirmwareImagePart.push(hex_start_address);
+					FirmwareImagePart.push(hex_end_i2c_address);
+					FirmwareImagePart.push(hex_end_address);
+					FirmwareImagePart.push(termination2);
 					
 					var lines = content.split(":");	
 					var address = 0x50;
+					var datacount = 0;
 					for(var i = 1;i < lines.length;i++){ //Start at 1 because split on colon gives null result first time.
-						V1FirmwareImage.push(getJsonFromLine(address,lines[i]));
+						FirmwareImagePart.push(getJsonFromLine(address,lines[i]));
 						address = address + lines[i].length - 1;
-						if ((i%135 == 0) && (i != (lines.length - 1))){
-						//POST data size limited to 20k. Splitting every 135 lines creates 17k chunks on average.
-							V1FirmwareImage.push("pagebreak");
+						datacount = datacount + FirmwareImagePart[FirmwareImagePart.length - 1].data.length;
+						if ((datacount + JSON_DATA_ELEMENT_OVERHEAD  * FirmwareImagePart.length)> MAX_JSON_PART_LENGTH){
+						//POST data size limited to 20k. Split into parts.
+							FirmwareImagePart = [];
+							FirmwareImage.push(FirmwareImagePart);
+							datacount = 0;
 						}
 					}
-					hex_end_address.data = (address).toString(16); //Now that last address is known, update data. 
-					jsonAll = JSON.stringify(V1FirmwareImage, undefined, 2);
-					lines = undefined; //free memory?
-					V1FirmwareImage = undefined; //free memory?
-					
+					hex_end_address.data = (address).toString(16); //Now that last address is known, update data. 	
 				} else {
-					//Now V2 stuff
+					//This is the V2 case.
 					header_id.data =  getAsciiHexString("#$200EFU");  
 					var version = {
 						addr : "0008",
@@ -138,47 +141,41 @@
 						addr : "0017",
 						data: "" //calculated below.
 					}
-					V2FirmwareImage.push(header_id);
-					V2FirmwareImage.push(version);
-					V2FirmwareImage.push(card_i2c_address);
-					V2FirmwareImage.push(chip_count);
-					V2FirmwareImage.push(chip_size);
-					V2FirmwareImage.push(module_name);
-					V2FirmwareImage.push(hardware_version);
-					V2FirmwareImage.push(firmware_version);
-					V2FirmwareImage.push(firmware_size);
+					FirmwareImagePart.push(header_id);
+					FirmwareImagePart.push(version);
+					FirmwareImagePart.push(card_i2c_address);
+					FirmwareImagePart.push(chip_count);
+					FirmwareImagePart.push(chip_size);
+					FirmwareImagePart.push(module_name);
+					FirmwareImagePart.push(hardware_version);
+					FirmwareImagePart.push(firmware_version);
+					FirmwareImagePart.push(firmware_size);
 					
 					var lines = content.split(":");	
 					var address = 0x2B;  //Starts at 0x2B in V2.
+					var datacount = 0;
 					for(var i = 1;i < lines.length;i++){ //Start at 1 because split on colon gives null result first time.
-						V2FirmwareImage.push(getJsonFromLine(address,lines[i]));
+						FirmwareImagePart.push(getJsonFromLine(address,lines[i]));
 						address = address + lines[i].length - 1;
-						if ((i%135 == 0) && (i != (lines.length - 1))){
-						    //POST data size limited to 20k. Splitting every 135 lines creates 17k chunks on average.
-							V2FirmwareImage.push("pagebreak");
+						datacount = datacount + FirmwareImagePart[FirmwareImagePart.length - 1].data.length;
+						if ((datacount + JSON_DATA_ELEMENT_OVERHEAD  * FirmwareImagePart.length)> MAX_JSON_PART_LENGTH){
+						//POST data size limited to 20k. Split into parts.
+							FirmwareImagePart = [];
+							FirmwareImage.push(FirmwareImagePart);
+							datacount = 0;
 						}
 					}
 					var total_size = (address - 0x2B).toString(16); //Now that last address is known, update data. 
 					firmware_size.data = total_size.padStart(8,'0'); // Zero pad to eight characters.
-					jsonAll = JSON.stringify(V2FirmwareImage, undefined, 2);
-					lines = undefined; //free memory?
-					V2FirmwareImage = undefined; //free memory?
 				}
 				
-				var responseString = "";
-				var jsonPart = jsonAll.split("\"pagebreak\""); //Max post size is 20k. Split into smaller pieces.
-				for(var i = 0;i < jsonPart.length;i++){
-					//Fix up split JSON (not necessary, but makes it look good in case anyone sees it.)
-					jsonPart[i] = jsonPart[i].trim();
-					jsonPart[i] = jsonPart[i].substring(0,jsonPart[i].length - 1) + "]";
-					if (jsonPart[i].substring(0,1) == ","){
-						jsonPart[i] = jsonPart[i].replace(",","[");
-					}
-					//Send the JSON part
+				for(var i = 0;i < FirmwareImage.length;i++){
+					//Send each FirmwareImage part
+					var FirmwareImagePartString = JSON.stringify(FirmwareImage[i],undefined,2);
 					request.open(method, url, shouldBeAsync);
-					request.setRequestHeader("Content-Length", jsonPart[i].length);
+					request.setRequestHeader("Content-Length", FirmwareImagePartString.length);
 					request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-					request.send(jsonPart[i]);
+					request.send(FirmwareImagePartString);
 					responseString = responseString + request.responseText;
 				}
 				//document.getElementById("demo").innerHTML = responseString;
