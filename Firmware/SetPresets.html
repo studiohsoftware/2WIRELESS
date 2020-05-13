@@ -5,14 +5,11 @@
 </div>
 	</body>
 	<script>
-		//This script processes the selected JSON file and writes it to the device's
-		//on-board non-volatile memory. It then instructs the module to read the presets
-		//from the on-board non-volatile memory.
+		//This script processes the selected JSON file and writes it to the device (writememory). 
+		//It then instructs the module to read the presets from the device (setpresets).
 		//The maximum POST size to writememory is 20k so data is split into parts if necessary.
 		const MAX_JSON_PART_LENGTH = 18000; //Max bytes per POST to writememory.
-		const JSON_DATA_ELEMENT_OVERHEAD = 26; //bytes used up for each data element by tag names, colons, and other formatting.
-		var request = new XMLHttpRequest();
-	
+		const JSON_DATA_ELEMENT_OVERHEAD = 26; //bytes used up for each data element by tag names, colons, etc.
 		var input = document.createElement('input');
 		input.type = 'file';
 		input.accept = ".json";
@@ -39,10 +36,11 @@
 						datacount = 0;
 					}
 				}
+				var request = new XMLHttpRequest();
 				for(var i = 0;i < jsonParts.length;i++){
 					//Send each JSON part
 					var jsonPartString = JSON.stringify(jsonParts[i],undefined,2);
-					request.open("POST", "http://192.168.0.1/writememory", false);
+					request.open("POST", "http://192.168.0.1/writememory", false); //Seems synchronous (false) is needed here, right?
 					request.setRequestHeader("Content-Length", jsonPartString.length);
 					request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 					request.send(jsonPartString);

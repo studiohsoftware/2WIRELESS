@@ -6,11 +6,6 @@
 </div>
 	</body>
 	<script>
-		var url = "http://192.168.0.1/writememory";
-		var method = "POST";
-		var shouldBeAsync = false;
-		var request = new XMLHttpRequest();
-	
 		var input = document.createElement('input');
 		input.type = 'file';
 		input.accept = ".hex";
@@ -86,39 +81,39 @@
 					data : "00"
 				}
 							
-				var FirmwareImage = [];
-				var FirmwareImagePart = [];
-				FirmwareImage.push(FirmwareImagePart);
+				var firmwareImage = [];
+				var firmwareImagePart = [];
+				firmwareImage.push(firmwareImagePart);
 			
 				if (!filenameIsV2(filename)) {
 				//This is the V1 case.
-					FirmwareImagePart.push(header_id);
-					FirmwareImagePart.push(card_i2c_address);
-					FirmwareImagePart.push(chip_count);
-					FirmwareImagePart.push(chip_size);
-					FirmwareImagePart.push(toc_start);
-					FirmwareImagePart.push(termination1);
-					FirmwareImagePart.push(bang);
-					FirmwareImagePart.push(module_name);
-					FirmwareImagePart.push(hardware_version);
-					FirmwareImagePart.push(firmware_version);
-					FirmwareImagePart.push(hex_start_i2c_address);
-					FirmwareImagePart.push(hex_start_address);
-					FirmwareImagePart.push(hex_end_i2c_address);
-					FirmwareImagePart.push(hex_end_address);
-					FirmwareImagePart.push(termination2);
+					firmwareImagePart.push(header_id);
+					firmwareImagePart.push(card_i2c_address);
+					firmwareImagePart.push(chip_count);
+					firmwareImagePart.push(chip_size);
+					firmwareImagePart.push(toc_start);
+					firmwareImagePart.push(termination1);
+					firmwareImagePart.push(bang);
+					firmwareImagePart.push(module_name);
+					firmwareImagePart.push(hardware_version);
+					firmwareImagePart.push(firmware_version);
+					firmwareImagePart.push(hex_start_i2c_address);
+					firmwareImagePart.push(hex_start_address);
+					firmwareImagePart.push(hex_end_i2c_address);
+					firmwareImagePart.push(hex_end_address);
+					firmwareImagePart.push(termination2);
 					
 					var lines = content.split(":");	
-					var address = 0x50;
+					var address = 0x50; //Starts at 0x50 in V1.
 					var datacount = 0;
 					for(var i = 1;i < lines.length;i++){ //Start at 1 because split on colon gives null result first time.
-						FirmwareImagePart.push(getJsonFromLine(address,lines[i]));
+						firmwareImagePart.push(getJsonFromLine(address,lines[i]));
 						address = address + lines[i].length - 1;
-						datacount = datacount + FirmwareImagePart[FirmwareImagePart.length - 1].data.length;
-						if ((datacount + JSON_DATA_ELEMENT_OVERHEAD  * FirmwareImagePart.length)> MAX_JSON_PART_LENGTH){
+						datacount = datacount + firmwareImagePart[firmwareImagePart.length - 1].data.length;
+						if ((datacount + JSON_DATA_ELEMENT_OVERHEAD  * firmwareImagePart.length)> MAX_JSON_PART_LENGTH){
 						//POST data size limited to 20k. Split into parts.
-							FirmwareImagePart = [];
-							FirmwareImage.push(FirmwareImagePart);
+							firmwareImagePart = [];
+							firmwareImage.push(firmwareImagePart);
 							datacount = 0;
 						}
 					}
@@ -141,44 +136,42 @@
 						addr : "0017",
 						data: "" //calculated below.
 					}
-					FirmwareImagePart.push(header_id);
-					FirmwareImagePart.push(version);
-					FirmwareImagePart.push(card_i2c_address);
-					FirmwareImagePart.push(chip_count);
-					FirmwareImagePart.push(chip_size);
-					FirmwareImagePart.push(module_name);
-					FirmwareImagePart.push(hardware_version);
-					FirmwareImagePart.push(firmware_version);
-					FirmwareImagePart.push(firmware_size);
+					firmwareImagePart.push(header_id);
+					firmwareImagePart.push(version);
+					firmwareImagePart.push(card_i2c_address);
+					firmwareImagePart.push(chip_count);
+					firmwareImagePart.push(chip_size);
+					firmwareImagePart.push(module_name);
+					firmwareImagePart.push(hardware_version);
+					firmwareImagePart.push(firmware_version);
+					firmwareImagePart.push(firmware_size);
 					
 					var lines = content.split(":");	
 					var address = 0x2B;  //Starts at 0x2B in V2.
 					var datacount = 0;
 					for(var i = 1;i < lines.length;i++){ //Start at 1 because split on colon gives null result first time.
-						FirmwareImagePart.push(getJsonFromLine(address,lines[i]));
+						firmwareImagePart.push(getJsonFromLine(address,lines[i]));
 						address = address + lines[i].length - 1;
-						datacount = datacount + FirmwareImagePart[FirmwareImagePart.length - 1].data.length;
-						if ((datacount + JSON_DATA_ELEMENT_OVERHEAD  * FirmwareImagePart.length)> MAX_JSON_PART_LENGTH){
+						datacount = datacount + firmwareImagePart[firmwareImagePart.length - 1].data.length;
+						if ((datacount + JSON_DATA_ELEMENT_OVERHEAD  * firmwareImagePart.length)> MAX_JSON_PART_LENGTH){
 						//POST data size limited to 20k. Split into parts.
-							FirmwareImagePart = [];
-							FirmwareImage.push(FirmwareImagePart);
+							firmwareImagePart = [];
+							firmwareImage.push(firmwareImagePart);
 							datacount = 0;
 						}
 					}
 					var total_size = (address - 0x2B).toString(16); //Now that last address is known, update data. 
 					firmware_size.data = total_size.padStart(8,'0'); // Zero pad to eight characters.
 				}
-				
-				for(var i = 0;i < FirmwareImage.length;i++){
-					//Send each FirmwareImage part
-					var FirmwareImagePartString = JSON.stringify(FirmwareImage[i],undefined,2);
-					request.open(method, url, shouldBeAsync);
-					request.setRequestHeader("Content-Length", FirmwareImagePartString.length);
+				var request = new XMLHttpRequest();
+				for(var i = 0;i < firmwareImage.length;i++){
+					//Send each firmwareImage part
+					var firmwareImagePartString = JSON.stringify(firmwareImage[i],undefined,2);
+					request.open("POST", "http://192.168.0.1/writememory", false); //Seems synchronous (false) is needed here, right?
+					request.setRequestHeader("Content-Length", firmwareImagePartString.length);
 					request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-					request.send(FirmwareImagePartString);
-					responseString = responseString + request.responseText;
+					request.send(firmwareImagePartString);
 				}
-				//document.getElementById("demo").innerHTML = responseString;
 				document.getElementById("demo").innerHTML = "Firmare successfully uploaded to preset manager."
 			}
 		}
