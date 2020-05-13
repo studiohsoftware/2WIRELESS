@@ -713,59 +713,18 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
         //Finish the message.
         result->write("\"\r\n");
         result->write("}\r\n");
-    } else if (urlString.indexOf("/setpresets") == 0) {
+    } else if (urlString.indexOf("/setpresets?addr") == 0) {
         cb(cbArg, 0, 200, "text/plain", nullptr);
-        uint8_t module_address = 0x00;
-        fram_address = 0;
-        String fram_write_only = "";
-        JsonToken* token = new JsonToken();
-        getJsonToken(token, body);
-        while (token->data != "") {
-            if (token->data ==  "module_address") 
-            {
-                //REQUIRED: The module address is needed in the restore presets command
-                //to the module. Ignored and unnecessary if fram_write_only = "true".
-                getJsonToken(token, body);
-                int len = (token->data).length();
-                if (len >= 2){
-                    module_address = (int)strtol((token->data).c_str(), nullptr, 16);
-                }
-            } else if (token->data ==  "fram_write_only") 
-            {
-                //Optional parameter to suppress module update. Write to fram only. 
-                //This can be used to send multiple POSTs to fram before updating 
-                //the module. Maximum POST size is about 20k, and this is about 1/8
-                //of the 251e JSON. So we need to be able to lay down the data to 
-                //fram with multiple POSTs before telling the module to restore.
-                //Last POST of the batch should either omit this parameter or include 
-                //it with value of "false".
-                getJsonToken(token, body);
-                fram_write_only = token->data;
-            } else if (token->data ==  "addr") 
-            {
-                //This parameter carries the memory address for the preset data.
-                getJsonToken(token, body);
-                fram_address = (int)strtol((token->data).c_str(), nullptr, 16);
-            } else if (token->data ==  "data") {
-                //This parameter carries the data that will be written to fram and then later read
-                //by the module. Some modules have one per preset, others (eg. 251e) 
-                //have many per preset. 
-                String data_string = "";
-                getJsonToken(token, body);
-                data_string = token->data;
-                if (data_string.length() > 0) {
-                    framWriteHexString(fram_address,data_string);
-                }
-            }
-            getJsonToken(token, body);
-        } 
-        if ((module_address != 0x00) && (fram_write_only != "true")) {
+        int len = urlString.length();
+        int eqloc = urlString.indexOf('=');
+        int module_address = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
+        module_address = module_address & 0x7F;
+        if (module_address != 0x00) {
             read_counter = 0; //Initialize counter for subsequent I2C READs from master.
             switchToMaster(); //Send preset restore request to module
             sendRestorePresets(module_address); 
             switchToSlave(); //Switch to slave to receive the read requests.
         }
-        delete token;
     } else if (urlString.indexOf("/readbyte?addr") == 0) {
         cb(cbArg, 0, 200, "application/json", nullptr);
         int len = urlString.length();
@@ -808,12 +767,6 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
             getJsonToken(token, body);
         } 
         delete token;
-    } else if (urlString.indexOf("/debug") == 0) {
-        cb(cbArg, 0, 200, "text/plain", nullptr);
-        while (ringBuffer.bytesQueued())
-        {
-            result->write(String(ringBuffer.read(),HEX) + "\r\n");
-        }
     } else if (!strcmp(url, "/favicon.ico")) {
         cb(cbArg, 0, 200, "image/x-icon", nullptr);
         //return URL icon here, if desired.

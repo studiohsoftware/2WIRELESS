@@ -14,10 +14,10 @@ Example: http://192.168.0.1/recallpreset?preset=29
 - ### http://192.168.0.1/getpresets?addr=(module addr in hex)
 Retrieve all 30 presets from the specified module.<br/>
 Example (259A): http://192.168.0.1/getpresets?addr=0x28
-- ### http://192.168.0.1/setpresets
-Write all 30 presets to the specified module.<br/>
-Example: http://192.168.0.1/setpresets <br/> </br>
-Note this is an HTTP POST with a JSON formatted body. <br/> 
+- ### http://192.168.0.1/setpresets?addr=(module addr in hex)
+Command specified module to read all 30 presets from on-board non-volatile memory.<br/>
+Example (259A): http://192.168.0.1/setpresets?addr=(0x28) <br/> </br>
+Use writememory to send presets to on-board non-volatile memory first.
 Example HTML here https://github.com/studiohsoftware/2WIRELESS/blob/master/Firmware/SetPresets.html <br/>
 Example JSON (for 292e) here https://github.com/studiohsoftware/2WIRELESS/blob/master/Firmware/presetData.json <br/>
 - ### http://192.168.0.1/midinoteon?mask=(0x0-0xF)&note=(0-127)&velo=(0-255)
