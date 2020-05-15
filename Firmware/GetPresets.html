@@ -1,6 +1,8 @@
 <html>
 	<body>
-		<p id="demo">Fetch presets from module.</p>
+		<p id="title" style="font-family:'Arial';font-size:16px">
+				Fetch Presets from Module		
+		</p>
 		<button id="button">Fetch Presets</button>
 		<select id="module">
 			<option value="Select">Select....</option>
@@ -80,7 +82,7 @@
 			<option value="0x2F">Studio H DPO (261e) D</option>
 			<option value="0x72">226h</option>
 		</select>
-		<p id="result"></p>
+		<p id="result" style="font-family:'Arial';font-size:12px"></p>
 	</body>
 	<script>
 		//This script retrieves raw preset data from the module and processes it. 
@@ -92,19 +94,21 @@
 		//and separated from the preset data to produce the processed data. 
 		//Each module is different, and the addresses are located using the dataskip[] values below.
 		//The dataskip values were found by manual inspection of the raw data!
+		const HTTP_REQUEST_TIMEOUT = 5000; 
 		var module_address;
 		var module_name;
 		var url = "http://192.168.0.1/getpresets?addr=";
 		var method = "GET";
 		var shouldBeAsync = true;
 		var request = new XMLHttpRequest();
+		request.timeout = HTTP_REQUEST_TIMEOUT; // time in milliseconds
 		request.onload = function () {
 			var status = request.status; // HTTP response status, e.g., 200 for "200 OK"
 			var data = request.responseText; // Returned data, e.g., an HTML document.
 			//document.getElementById("result").innerHTML = data;
 			var rawJsonMessage = JSON.parse(data);
 			document.getElementById("result").innerHTML = rawJsonMessage.data;
-			document.getElementById("demo").innerHTML = "Done.";
+			document.getElementById("result").innerHTML = "Done.";
 			
 			var refinedJson;
 			var presetData = [];
@@ -559,15 +563,24 @@
 			}	
 			
 		}
+		
+		request.ontimeout = function (e) {
+			// XMLHttpRequest timed out. 
+			var textValue = document.getElementById("result").innerHTML;
+			textValue = textValue + "Request timed out.<br/>"
+			document.getElementById("result").innerHTML = textValue;
+			
+		};
 	
 		document.getElementById("button").onclick = function () {
 			module_address = module.value;
 			module_name = module.options[module.selectedIndex].text;
+			document.getElementById("result").innerHTML = "Please select a module.<br/>";
 			if (module_address != "Select") {
 				url = url + module_address;
 				request.open(method, url, shouldBeAsync);
 				request.send(null);
-				document.getElementById("demo").innerHTML = "Sending request for presets at address " + module_address + "...";			
+				document.getElementById("result").innerHTML = "Sending request for presets at address " + module_address + "...<br/>";			
 			}
 		}; 
 		

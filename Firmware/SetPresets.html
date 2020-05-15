@@ -13,22 +13,24 @@
 		const DATA_TRANSFER_WAIT = 500; //Wait this long between sending data parts to preset manager. Too short gives timeouts.
 		const MODULE_COMMAND_WAIT = 500; //Wait this long before commanding module to restore.
 		
+		//Set up button to open a file of type *.json.
 		var input = document.createElement('input');
 		input.type = 'file';
 		input.accept = ".json";
 		input.click();
 		
+		//HTTP stuff for communicating with the preset manager
 		var request = new XMLHttpRequest();
 		var url = "";
 		request.onreadystatechange = requestHandler;
 		request.timeout = HTTP_REQUEST_TIMEOUT; // time in milliseconds
 		var requestTimeout;
 		
-		var textValue; //Running status text on page
-		var module_address;
-		var module_name;
-		var jsonParts; 
-		var partsSent;
+		var textValue; //Used for text display only.
+		var module_address; //Used in setpresets URL.
+		var module_name; //Used for text display only.
+		var jsonParts; //Array of data elements to be sent.
+		var partsSent; //Number of array elements sent.
 		
 		input.onchange = e => { 
 			var file = e.target.files[0]; 		
