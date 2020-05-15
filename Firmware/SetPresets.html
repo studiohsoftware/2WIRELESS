@@ -12,39 +12,37 @@
 		const HTTP_REQUEST_TIMEOUT = 5000; 
 		const DATA_TRANSFER_WAIT = 500; //Wait this long between sending data parts to preset manager. Too short gives timeouts.
 		const MODULE_COMMAND_WAIT = 500; //Wait this long before commanding module to restore.
+		
 		var input = document.createElement('input');
 		input.type = 'file';
 		input.accept = ".json";
 		input.click();
+		
 		var request = new XMLHttpRequest();
 		var url = "";
 		request.onreadystatechange = requestHandler;
 		request.timeout = HTTP_REQUEST_TIMEOUT; // time in milliseconds
 		var requestTimeout;
 		
-		var textValue;
-		var filename;
-		var jsonString;
-		var parsedJson;
+		var textValue; //Running status text on page
 		var module_address;
 		var module_name;
-		var jsonParts;
-		var jsonPart;
+		var jsonParts; 
 		var partsSent;
+		
 		input.onchange = e => { 
 			var file = e.target.files[0]; 		
 			var reader = new FileReader();
 			reader.readAsText(file,'UTF-8');
 			reader.onload = readerEvent => {	
 				textValue = "";
-				filename = "";
-				jsonParts = [];
-				jsonPart = [];
 				partsSent = 0;
-				requesetTimeout = false;
-				filename = input.value.replace(/^.*\\/, ""); //strip path from filename
-				jsonString = readerEvent.target.result; //json file contents as string
-				parsedJson = JSON.parse(jsonString);
+				requestTimeout = false;
+				jsonParts = [];
+				var jsonPart = [];
+				var filename = input.value.replace(/^.*\\/, ""); //strip path from filename
+				var jsonString = readerEvent.target.result; //json file contents as string
+				var parsedJson = JSON.parse(jsonString);
 				module_address = parsedJson.module_address;
 				module_name = parsedJson.module_name;
 				jsonParts.push(jsonPart);
@@ -55,8 +53,36 @@
 				textValue = textValue + "First address: " + parsedJson.presets[0].addr + ".<br/>";
 				textValue = textValue + "Last address: " + parsedJson.presets[parsedJson.presets.length - 1].addr + ".<br/>";
 				document.getElementById("text").innerHTML = textValue;
-				executeCommands();
+				textValue = textValue + "Preparing output for sending...<br/>";
+				document.getElementById("text").innerHTML = textValue;
+				setTimeout(()=>{ //Use of timeout here with timeout of 0 lets the script update the text on the page.
+					//Break JSON into parts if necessary due to ~20k POST limit on Photon.
+					var datacount = 0;
+					for(var i = 0;i < parsedJson.presets.length;i++){
+						jsonPart.push(parsedJson.presets[i]);
+						datacount = datacount + parsedJson.presets[i].data.length;
+						if ((datacount + JSON_DATA_ELEMENT_OVERHEAD  * jsonPart.length)> MAX_JSON_PART_LENGTH) {
+							jsonPart = [];
+							jsonParts.push(jsonPart);
+							datacount = 0;
+						}
+					}
+					partsSent = 0;	
+					//Trigger HTTP requests. Note that requestHandler() case 4 is in control from here on out.
+					sendPart();
+				}, 0)
 			}
+		}
+		
+		function sendPart() {
+			var jsonPartString = JSON.stringify(jsonParts[partsSent],undefined,2);
+			url = "http://192.168.0.1/writememory";
+			textValue = textValue + "Sending part " + (partsSent + 1) + " of " + jsonParts.length + "...<br/>";
+			document.getElementById("text").innerHTML = textValue;
+			request.open("POST", url);
+			request.setRequestHeader("Content-Length", jsonPartString.length);
+			request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");	
+			request.send(jsonPartString);	
 		}
 		
 		request.ontimeout = function (e) {
@@ -98,14 +124,7 @@
 						setTimeout(()=>{
 							if (!requestTimeout) {							
 								partsSent++;
-								var jsonPartString = JSON.stringify(jsonParts[partsSent],undefined,2);
-								url = "http://192.168.0.1/writememory";
-								textValue = textValue + "Sending part " + (partsSent + 1) + " of " + jsonParts.length + "...<br/>";
-								document.getElementById("text").innerHTML = textValue;
-								request.open("POST", url);
-								request.setRequestHeader("Content-Length", jsonPartString.length);
-								request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-								request.send(jsonPartString);
+								sendPart();
 							}
 						}, DATA_TRANSFER_WAIT)
 					} else if (url == "http://192.168.0.1/writememory") {
@@ -127,47 +146,6 @@
 					break;
 			}
 
-		}
-				
-		async function executeCommands() {
-				var result;
-				result = await commandHandler("ProcessJson");
-				result = await commandHandler("SendJsonParts");
-		}
-		
-		function commandHandler (command) {
-			switch(command) {
-				case "ProcessJson":
-					textValue = textValue + "Preparing output for sending...<br/>";
-					document.getElementById("text").innerHTML = textValue;
-					var datacount = 0;
-					for(var i = 0;i < parsedJson.presets.length;i++){
-						jsonPart.push(parsedJson.presets[i]);
-						datacount = datacount + parsedJson.presets[i].data.length;
-						if ((datacount + JSON_DATA_ELEMENT_OVERHEAD  * jsonPart.length)> MAX_JSON_PART_LENGTH) {
-							jsonPart = [];
-							jsonParts.push(jsonPart);
-							datacount = 0;
-						}
-					}
-					break;
-				case "SendJsonParts":
-					partsSent = 0;
-					var jsonPartString = JSON.stringify(jsonParts[partsSent],undefined,2);
-					url = "http://192.168.0.1/writememory";
-					textValue = textValue + "Sending part " + (partsSent + 1) + " of " + jsonParts.length + "...<br/>";
-					document.getElementById("text").innerHTML = textValue;
-					request.open("POST", url);
-					request.setRequestHeader("Content-Length", jsonPartString.length);
-					request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");	
-					request.send(jsonPartString);
-					break;
-			} 
-			return new Promise(resolve => {
-				setTimeout(() => {
-				  resolve('resolved');
-				}, 0);
-			  });
 		}
 		
 	</script>
