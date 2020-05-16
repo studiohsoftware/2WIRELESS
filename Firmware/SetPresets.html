@@ -10,6 +10,11 @@
 		<p id="text" style="font-family:'Arial';font-size:12px"></p>
 	</body>
 	<script>
+		//This script sends the contents of a preset data file to the preset manager and then instructs the module to read the
+		//data from the preset manager. Use GetPresets.html to generate the required JSON file format.
+		//
+		//Note the max POST size permitted by the Photon is ~20k, so the preset data must be broken up into parts if necessary.
+		
 		const MAX_JSON_PART_LENGTH = 18000; //Max bytes per POST to writememory.
 		const JSON_DATA_ELEMENT_OVERHEAD = 26; //bytes used up for each data element by tag names, colons, etc.
 		const HTTP_REQUEST_TIMEOUT = 5000; 
@@ -23,10 +28,8 @@
 		input.click();
 		
 		//HTTP stuff for communicating with the preset manager
-		var request = new XMLHttpRequest();
+		var request;
 		var url = "";
-		request.onreadystatechange = requestHandler;
-		request.timeout = HTTP_REQUEST_TIMEOUT; // time in milliseconds
 		var requestTimeout;
 		
 		var textValue; //Used for text display only.
@@ -40,6 +43,11 @@
 			var reader = new FileReader();
 			reader.readAsText(file,'UTF-8');
 			reader.onload = readerEvent => {	
+				request = new XMLHttpRequest();
+				url = "";
+				request.onreadystatechange = requestHandler;
+				request.ontimeout = requestOnTimeout;
+				request.timeout = HTTP_REQUEST_TIMEOUT;
 				textValue = "";
 				partsSent = 0;
 				requestTimeout = false;
@@ -90,13 +98,12 @@
 			request.send(jsonPartString);	
 		}
 		
-		request.ontimeout = function (e) {
+		function requestOnTimeout(e) {
 			// XMLHttpRequest timed out. 
 			requestTimeout = true;
 			textValue = textValue + "Request timed out.<br/>";
 			document.getElementById("text").innerHTML = textValue;
-			
-		};
+		}
 				
 		function requestHandler () {
 			var stateString = "";

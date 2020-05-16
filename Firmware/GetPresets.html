@@ -3,11 +3,11 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 	</head>
 	<body>
-		<p id="title" style="font-family:'Arial';font-size:16px">
-				Fetch Presets from Module		
-		</p>
-		<button id="button">Fetch Presets</button>
-		<select id="module">
+			<p id="title" style="font-family:'Arial';font-size:16px">
+					Fetch Presets from Module		
+			</p>
+			<button id="button">Fetch Presets</button>
+			<select id="moduleSelect">
 			<option value="Select">Select....</option>
 			<option value="0x60">206e</option>
 			<option value="0x63">207e</option>
@@ -86,6 +86,9 @@
 			<option value="0x72">226h</option>
 		</select>
 		<p id="result" style="font-family:'Arial';font-size:12px"></p>
+		<div id="saveDiv">
+			<a id="saveLink" href="data:application/xml;charset=utf-8,this is a test?" download="filename.json">Save</a>
+		</div>
 	</body>
 	<script>
 		//This script retrieves raw preset data from the module and processes it. 
@@ -97,15 +100,43 @@
 		//and separated from the preset data to produce the processed data. 
 		//Each module is different, and the addresses are located using the dataskip[] values below.
 		//The dataskip values were found by manual inspection of the raw data!
-		const HTTP_REQUEST_TIMEOUT = 5000; 
+		const HTTP_REQUEST_TIMEOUT = 12000; //Long for 251e.
 		var module_address;
 		var module_name;
-		var url = "http://192.168.0.1/getpresets?addr=";
-		var method = "GET";
-		var shouldBeAsync = true;
-		var request = new XMLHttpRequest();
-		request.timeout = HTTP_REQUEST_TIMEOUT; // time in milliseconds
-		request.onload = function () {
+		var request;
+		document.getElementById("saveDiv").style.visibility = "hidden";
+		
+		document.getElementById("moduleSelect").onchange = e => {
+			document.getElementById("result").innerHTML = "";
+			document.getElementById("saveDiv").style.visibility = "hidden";
+		}
+		
+	
+		//Get preset button.
+		document.getElementById("button").onclick = function () {
+			document.getElementById("saveDiv").style.visibility = "hidden";
+			module_address = moduleSelect.value;
+			module_name = moduleSelect.options[moduleSelect.selectedIndex].text;
+			document.getElementById("result").innerHTML = "Please select a module.<br/>";
+			if (module_address != "Select") {
+				request = new XMLHttpRequest();
+				request.timeout = HTTP_REQUEST_TIMEOUT; // time in milliseconds
+				request.onload = requestOnLoad;
+				request.ontimeout = requestOnTimeout;
+				request.open("GET", "http://192.168.0.1/getpresets?addr=" + module_address);
+				request.send(null);
+				document.getElementById("result").innerHTML = "Sending request for presets at address " + module_address + "...<br/>";			
+			}
+		}; 
+		
+		function requestOnTimeout(e) {
+			// XMLHttpRequest timed out. 
+			var textValue = document.getElementById("result").innerHTML;
+			textValue = textValue + "Request timed out.<br/>"
+			document.getElementById("result").innerHTML = textValue;
+		}
+		
+		function requestOnLoad() {
 			var status = request.status; // HTTP response status, e.g., 200 for "200 OK"
 			var data = request.responseText; // Returned data, e.g., an HTML document.
 			//document.getElementById("result").innerHTML = data;
@@ -561,31 +592,13 @@
 					module_name: module_name,
 					presets : presetData
 				}
-				document.getElementById("result").innerHTML = JSON.stringify(refinedJson);
-				
-			}	
-			
+				var refinedJsonString = JSON.stringify(refinedJson);
+				document.getElementById("result").innerHTML = refinedJsonString;
+				document.getElementById("saveDiv").style.visibility = "visible";
+				document.getElementById("saveLink").download = module_name + ".json";	
+				document.getElementById("saveLink").href = "data:application/xml;charset=utf-8," + refinedJsonString;					
+			}		
 		}
-		
-		request.ontimeout = function (e) {
-			// XMLHttpRequest timed out. 
-			var textValue = document.getElementById("result").innerHTML;
-			textValue = textValue + "Request timed out.<br/>"
-			document.getElementById("result").innerHTML = textValue;
-			
-		};
-	
-		document.getElementById("button").onclick = function () {
-			module_address = module.value;
-			module_name = module.options[module.selectedIndex].text;
-			document.getElementById("result").innerHTML = "Please select a module.<br/>";
-			if (module_address != "Select") {
-				url = url + module_address;
-				request.open(method, url, shouldBeAsync);
-				request.send(null);
-				document.getElementById("result").innerHTML = "Sending request for presets at address " + module_address + "...<br/>";			
-			}
-		}; 
 		
 	</script>
 </html>
