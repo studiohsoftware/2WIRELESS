@@ -1,25 +1,46 @@
 <html>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+	</head>
 	<body>
+		<p id="title" style="font-family:'Arial';font-size:16px">
+				Send Firmware to Preset Manager		
+		</p>
 		<button onclick="input.click()">Browse for hex file.</button>
-		<pre id="demo"></pre>
-
-</div>
+		<p id="text"></p>
 	</body>
 	<script>
+		//This script sends the selected firmware HEX file to the preset manager. Once sent, the target module firmware is updated
+		//in the usual way: reboot system with remote enable button held. The module will read the firmware from the preset manager.
+		const MAX_JSON_PART_LENGTH = 18000; //Max bytes per POST to writememory.
+		const JSON_DATA_ELEMENT_OVERHEAD = 26; //bytes used up for each data element by tag names, colons, and other formatting.
+		const HTTP_REQUEST_TIMEOUT = 5000; 
+		const DATA_TRANSFER_WAIT = 500; //Wait this long between sending data parts to preset manager. Too short gives timeouts.
+		
 		var input = document.createElement('input');
 		input.type = 'file';
 		input.accept = ".hex";
 		input.click();
 		
+		var request;
+		var url = "";
+		var requestTimeout;
+		
+		var firmwareImage = [];
+		var partsSent; //Number of array elements sent.
+		var textValue; //Used for text display only.
+		var filename = "";
+		
 		input.onchange = e => { 
-			const MAX_JSON_PART_LENGTH = 18000; //Max bytes per POST to writememory.
-			const JSON_DATA_ELEMENT_OVERHEAD = 26; //bytes used up for each data element by tag names, colons, and other formatting.
 			var file = e.target.files[0]; 		
 			var reader = new FileReader();
+			textValue = "";
 			reader.readAsText(file,'UTF-8');
 			reader.onload = readerEvent => {
-				var filename = input.value.replace(/^.*\\/, ""); //strip path from filename
+				filename = input.value.replace(/^.*\\/, ""); //strip path from filename
 				var content = readerEvent.target.result; //hex file contents as string
+				textValue = "";
+				document.getElementById("text").innerHTML = textValue;
 				var header_id = {
 					addr : "0000",
 					data : getAsciiHexString("#!200EFU") 
@@ -81,99 +102,190 @@
 					data : "00"
 				}
 							
-				var firmwareImage = [];
+
 				var firmwareImagePart = [];
 				firmwareImage.push(firmwareImagePart);
-			
+				textValue = textValue + "Processing file " + filename + "...<br/>";
+				textValue = textValue + "Firmware for module: " + filename.substring(0,4) + ".<br/>";
+				textValue = textValue + "Hardware version: " + hardware_version.data + ".<br/>";
+				textValue = textValue + "Firmware version: " + filename.substring(filename.lastIndexOf("v") + 1,filename.lastIndexOf(".hex")) + ".<br/>";
 				if (!filenameIsV2(filename)) {
-				//This is the V1 case.
-					firmwareImagePart.push(header_id);
-					firmwareImagePart.push(card_i2c_address);
-					firmwareImagePart.push(chip_count);
-					firmwareImagePart.push(chip_size);
-					firmwareImagePart.push(toc_start);
-					firmwareImagePart.push(termination1);
-					firmwareImagePart.push(bang);
-					firmwareImagePart.push(module_name);
-					firmwareImagePart.push(hardware_version);
-					firmwareImagePart.push(firmware_version);
-					firmwareImagePart.push(hex_start_i2c_address);
-					firmwareImagePart.push(hex_start_address);
-					firmwareImagePart.push(hex_end_i2c_address);
-					firmwareImagePart.push(hex_end_address);
-					firmwareImagePart.push(termination2);
-					
-					var lines = content.split(":");	
-					var address = 0x50; //Starts at 0x50 in V1.
-					var datacount = 0;
-					for(var i = 1;i < lines.length;i++){ //Start at 1 because split on colon gives null result first time.
-						firmwareImagePart.push(getJsonFromLine(address,lines[i]));
-						address = address + lines[i].length - 1;
-						datacount = datacount + firmwareImagePart[firmwareImagePart.length - 1].data.length;
-						if ((datacount + JSON_DATA_ELEMENT_OVERHEAD  * firmwareImagePart.length)> MAX_JSON_PART_LENGTH){
-						//POST data size limited to 20k. Split into parts.
-							firmwareImagePart = [];
-							firmwareImage.push(firmwareImagePart);
-							datacount = 0;
-						}
-					}
-					hex_end_address.data = (address).toString(16); //Now that last address is known, update data. 	
+					textValue = textValue + "Generating v1 I2C Card Header...<br/>";
+					textValue = textValue + "Writing card table of contents...<br/>";
 				} else {
-					//This is the V2 case.
-					header_id.data =  getAsciiHexString("#$200EFU");  
-					var version = {
-						addr : "0008",
-						data: "02"
+					textValue = textValue + "Generating v2 I2C Card Header...<br/>";
+				}
+				textValue = textValue + "Preparing output for sending...<br/>";
+				document.getElementById("text").innerHTML = textValue;
+				
+				setTimeout(()=>{ //Use of timeout here with timeout of 0 lets the script update the text on the page.			
+					if (!filenameIsV2(filename)) {
+					//This is the V1 case.
+						firmwareImagePart.push(header_id);
+						firmwareImagePart.push(card_i2c_address);
+						firmwareImagePart.push(chip_count);
+						firmwareImagePart.push(chip_size);
+						firmwareImagePart.push(toc_start);
+						firmwareImagePart.push(termination1);
+						firmwareImagePart.push(bang);
+						firmwareImagePart.push(module_name);
+						firmwareImagePart.push(hardware_version);
+						firmwareImagePart.push(firmware_version);
+						firmwareImagePart.push(hex_start_i2c_address);
+						firmwareImagePart.push(hex_start_address);
+						firmwareImagePart.push(hex_end_i2c_address);
+						firmwareImagePart.push(hex_end_address);
+						firmwareImagePart.push(termination2);
+						
+						var lines = content.split(":");	
+						var address = 0x50; //Starts at 0x50 in V1.
+						var datacount = 0;
+						for(var i = 1;i < lines.length;i++){ //Start at 1 because split on colon gives null result first time.
+							firmwareImagePart.push(getJsonFromLine(address,lines[i]));
+							address = address + lines[i].length - 1;
+							datacount = datacount + firmwareImagePart[firmwareImagePart.length - 1].data.length;
+							if ((datacount + JSON_DATA_ELEMENT_OVERHEAD  * firmwareImagePart.length)> MAX_JSON_PART_LENGTH){
+							//POST data size limited to 20k. Split into parts.
+								firmwareImagePart = [];
+								firmwareImage.push(firmwareImagePart);
+								datacount = 0;
+							}
+						}
+						hex_end_address.data = (address).toString(16); //Now that last address is known, update data. 	
+					} else {
+						//This is the V2 case.
+						header_id.data =  getAsciiHexString("#$200EFU");  
+						var version = {
+							addr : "0008",
+							data: "02"
+						}
+						card_i2c_address.addr = "0009";
+						chip_count.addr = "000a";
+						chip_size.addr = "000b";
+						chip_size.data = "0003ffff"; //FRAM has 18 bit address.
+						module_name.addr = "000f";
+						hardware_version.addr = "0013";
+						firmware_version.addr = "0015";
+						var firmware_size = {
+							addr : "0017",
+							data: "" //calculated below.
+						}
+						firmwareImagePart.push(header_id);
+						firmwareImagePart.push(version);
+						firmwareImagePart.push(card_i2c_address);
+						firmwareImagePart.push(chip_count);
+						firmwareImagePart.push(chip_size);
+						firmwareImagePart.push(module_name);
+						firmwareImagePart.push(hardware_version);
+						firmwareImagePart.push(firmware_version);
+						firmwareImagePart.push(firmware_size);
+						
+						var lines = content.split(":");	
+						var address = 0x2B;  //Starts at 0x2B in V2.
+						var datacount = 0;
+						for(var i = 1;i < lines.length;i++){ //Start at 1 because split on colon gives null result first time.
+							firmwareImagePart.push(getJsonFromLine(address,lines[i]));
+							address = address + lines[i].length - 1;
+							datacount = datacount + firmwareImagePart[firmwareImagePart.length - 1].data.length;
+							if ((datacount + JSON_DATA_ELEMENT_OVERHEAD  * firmwareImagePart.length)> MAX_JSON_PART_LENGTH){
+							//POST data size limited to 20k. Split into parts.
+								firmwareImagePart = [];
+								firmwareImage.push(firmwareImagePart);
+								datacount = 0;
+							}
+						}
+						var total_size = (address - 0x2B).toString(16); //Now that last address is known, update data. 
+						firmware_size.data = total_size.padStart(8,'0'); // Zero pad to eight characters.
 					}
-					card_i2c_address.addr = "0009";
-					chip_count.addr = "000a";
-					chip_size.addr = "000b";
-					chip_size.data = "0003ffff"; //FRAM has 18 bit address.
-					module_name.addr = "000f";
-					hardware_version.addr = "0013";
-					firmware_version.addr = "0015";
-					var firmware_size = {
-						addr : "0017",
-						data: "" //calculated below.
-					}
-					firmwareImagePart.push(header_id);
-					firmwareImagePart.push(version);
-					firmwareImagePart.push(card_i2c_address);
-					firmwareImagePart.push(chip_count);
-					firmwareImagePart.push(chip_size);
-					firmwareImagePart.push(module_name);
-					firmwareImagePart.push(hardware_version);
-					firmwareImagePart.push(firmware_version);
-					firmwareImagePart.push(firmware_size);
 					
-					var lines = content.split(":");	
-					var address = 0x2B;  //Starts at 0x2B in V2.
-					var datacount = 0;
-					for(var i = 1;i < lines.length;i++){ //Start at 1 because split on colon gives null result first time.
-						firmwareImagePart.push(getJsonFromLine(address,lines[i]));
-						address = address + lines[i].length - 1;
-						datacount = datacount + firmwareImagePart[firmwareImagePart.length - 1].data.length;
-						if ((datacount + JSON_DATA_ELEMENT_OVERHEAD  * firmwareImagePart.length)> MAX_JSON_PART_LENGTH){
-						//POST data size limited to 20k. Split into parts.
-							firmwareImagePart = [];
-							firmwareImage.push(firmwareImagePart);
-							datacount = 0;
+					var total_elements = 0;
+					for(var i = 1;i < firmwareImage.length;i++){
+						total_elements = total_elements + firmwareImage[i].length;
+					}
+					
+					var first_part = firmwareImage[0];
+					var last_part = firmwareImage[firmwareImage.length - 1];
+					
+					textValue = textValue + "Number of data elements: " + total_elements + ".<br/>";
+					textValue = textValue + "First element address: " + first_part[0].addr + ".<br/>";
+					textValue = textValue + "Last element address: " + last_part[0].addr + ".<br/>";
+					textValue = textValue + "Flashing new firmware...<br/>";
+					document.getElementById("text").innerHTML = textValue;
+					
+					request = new XMLHttpRequest();
+					url = "http://192.168.0.1/writememory";
+					request.onreadystatechange = requestHandler;
+					request.ontimeout = requestOnTimeout;
+					request.timeout = HTTP_REQUEST_TIMEOUT;
+					partsSent = 0;
+					requestTimeout = false;		
+					//Trigger HTTP requests. Note that requestHandler() case 4 is in control from here on out.				
+					sendPart();
+				}, 0)	
+			}
+		}
+		
+		function requestHandler () {
+			var stateString = "";
+			switch(request.readyState) {
+				case 0:
+					//stateString = "UNSENT	Client has been created. open() not called yet.";
+					//textValue = textValue + url + ": " + stateString + "<br/>";
+					//document.getElementById("text").innerHTML = textValue;
+					break;
+				case 1:
+					//stateString = "OPENED	open() has been called.";
+					//textValue = textValue + url + ": " + stateString + "<br/>";
+					//document.getElementById("text").innerHTML = textValue;
+					break;
+				case 2:
+					//stateString = "HEADERS_RECEIVED	send() has been called, and headers and status are available.";
+					//textValue = textValue + url + ": " + stateString + "<br/>";
+					//document.getElementById("text").innerHTML = textValue;
+					break;
+				case 3:
+					//stateString = "LOADING	Downloading; responseText holds partial data.";
+					//textValue = textValue + url + ": " + stateString + "<br/>";
+					//document.getElementById("text").innerHTML = textValue;
+					break;
+				case 4:
+					//stateString = "DONE	The operation is complete.";
+					//textValue = textValue + url + ": " + stateString + "<br/>";
+					//document.getElementById("text").innerHTML = textValue;
+					if (partsSent < (firmwareImage.length - 1)) {	
+						setTimeout(()=>{
+							if (!requestTimeout) {							
+								partsSent++;
+								sendPart();
+							}
+						}, DATA_TRANSFER_WAIT)
+					} else {
+						if (!requestTimeout) {
+							textValue = textValue + "Done.<br/>";
+							textValue = textValue + "Reboot system with button held on " + filename.substring(0,4) + ".<br/>";
+							document.getElementById("text").innerHTML = textValue;
 						}
 					}
-					var total_size = (address - 0x2B).toString(16); //Now that last address is known, update data. 
-					firmware_size.data = total_size.padStart(8,'0'); // Zero pad to eight characters.
-				}
-				var request = new XMLHttpRequest();
-				for(var i = 0;i < firmwareImage.length;i++){
-					//Send each firmwareImage part
-					var firmwareImagePartString = JSON.stringify(firmwareImage[i],undefined,2);
-					request.open("POST", "http://192.168.0.1/writememory", false); //Seems synchronous (false) is needed here, right?
-					request.setRequestHeader("Content-Length", firmwareImagePartString.length);
-					request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-					request.send(firmwareImagePartString);
-				}
-				document.getElementById("demo").innerHTML = "Firmare successfully uploaded to preset manager."
+					break;
 			}
+
+		}
+		
+		function requestOnTimeout(e) {
+			// XMLHttpRequest timed out. 
+			requestTimeout = true;
+			textValue = textValue + "Request timed out.<br/>";
+			document.getElementById("text").innerHTML = textValue;
+		}
+		
+		function sendPart(){
+			var firmwareImagePartString = JSON.stringify(firmwareImage[partsSent],undefined,2);
+			textValue = textValue + "Sending part " + (partsSent + 1) + " of " + firmwareImage.length + "...<br/>";
+			document.getElementById("text").innerHTML = textValue;
+			request.open("POST", url); 
+			request.setRequestHeader("Content-Length", firmwareImagePartString.length);
+			request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+			request.send(firmwareImagePartString);
 		}
 		
 		function getAsciiHexString(text) {
