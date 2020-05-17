@@ -35,7 +35,7 @@
 				border-left: 1px solid darkblue;
 				border-right: 1px solid darkblue;
 				border-bottom: 1px solid darkblue;
-				height: 40px;
+				height: 50px;
 			}
 			.row2 {
 				display: flex;
@@ -49,6 +49,12 @@
 				padding: 10px;
 				border-left: 1px solid darkblue;
 				border-right: 1px solid darkblue;		
+			}
+			.column {
+				display: flex;
+				flex-direction: column;
+				justify-content: space-around;
+				align-items: center;
 			}
 			.footer {
 				display: flex;
@@ -162,8 +168,11 @@
 		<div class="screw">+</div>
 	  </div>
 	  <div class="row1">
-		<div id="saveButton" class="button" tabindex="2"></div>
-		<div style="font-size:14px;">store</div>
+		<div class="column">
+			<div id="saveButton" class="button" tabindex="2"></div>
+			<div style="height:2"></div>
+			<div style="font-size:14px;">store</div>
+		</div>
 		<div class="display">
 			<div class="display_left" >
 				<input id="current_preset_display" class="display_common" input style="width:21px;background-color: #afa;" type="text" disabled>
@@ -178,8 +187,11 @@
 				<input id="restore_preset_display" class="display_common" input style="width:40px;" type="number" min="1" max="30" tabindex="4">
 			</div>
 		</div>
-		<div style="font-size:14px;">recall</div>
-		<div id="recallButton" class="button" tabindex="5"></div>
+		<div class="column">
+			<div id="recallButton" class="button" tabindex="5"></div>
+			<div style="height:2"></div>
+			<div style="font-size:14px;">recall</div>
+		</div>
 	  </div>
 	  <div class="row2">3</div>
 		<div class="footer">
