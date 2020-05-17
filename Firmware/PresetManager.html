@@ -1,0 +1,221 @@
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<style>
+			.panel {
+				display: flex;
+				flex-direction: column;
+				background-color:lightgray;
+				color:darkblue;
+				font-family:Arial;
+				height: 300px;
+			}
+			.header {
+				display: flex;
+				flex-direction: row;
+				justify-content: space-around;
+				align-items: center;
+				font-style:normal;
+				font-weight:bold;
+				font-size:12px;
+				letter-spacing: 2px;
+				padding: 10px;
+				border: 1px solid darkblue;
+			}
+			.row1 {
+				display: flex;
+				flex-direction: row;
+				justify-content: space-around;
+				align-items: center;
+				font-style:italic;
+				font-weight:bold;
+				font-size:20px;
+				letter-spacing: 2px;
+				padding: 10px;
+				border-left: 1px solid darkblue;
+				border-right: 1px solid darkblue;
+				border-bottom: 1px solid darkblue;
+				height: 40px;
+			}
+			.row2 {
+				display: flex;
+				flex-direction: row;
+				justify-content: space-around;
+				align-items: center;
+				font-style:italic;
+				font-weight:bold;
+				font-size:20px;
+				letter-spacing: 2px;
+				padding: 10px;
+				border-left: 1px solid darkblue;
+				border-right: 1px solid darkblue;		
+			}
+			.footer {
+				display: flex;
+				flex-direction: row;
+				justify-content: space-around;
+				align-items: center;
+				font-style:normal;
+				font-weight:bold;
+				font-size:12px;
+				letter-spacing: 2px;
+				padding: 10px;
+				border: 1px solid darkblue;
+			}
+			.screw {
+				display: flex;
+				justify-content: center;
+				align-content: center;
+				flex-direction: column;
+				height: 18px;
+				width: 18px;
+				background-color: #999;
+				border-radius: 50%;
+				color:black;
+				font-size:30px;
+				font-weight:normal;
+				border: 1px solid black;
+			}
+			.button {
+				height: 30px;
+				width: 30px;
+				background-color: #33f;
+				border-radius: 50%;
+				display: inline-block;
+
+			}
+			.display {
+				display: flex;
+				flex-direction: row;
+				justify-content: space-around;
+				align-items: center;
+				height: 50px;
+				width: 222px;
+				background-color: white;
+				padding: 0px;
+				margin: 0px;
+				border: 1px solid black;
+			}
+			.display_left {
+				display: flex;
+				flex-direction: column;
+				justify-content: space-around;
+				align-items: center;
+				height: 50px;
+				width: 200px;
+				background-color: white;
+				padding: 0px;
+				margin: 0px;
+				border: 0px;
+			}
+			.display_right {
+				display: flex;
+				flex-direction: column;
+				justify-content: space-around;
+				align-items: center;
+				height: 50px;
+				width: 200px;
+				background-color: white;
+				padding: 0px;
+				margin: 0px;
+				border: 0px;
+			}
+			.display_center {
+				display: flex;
+				flex-direction: column;
+				justify-content: space-around;
+				align-items: center;
+				height: 50px;
+				width: 200px;
+				background-color: white;
+				padding: 0px;
+				margin: 0px;
+			}
+			.hole {
+				height: 10px;
+				width: 10px;
+				background-color: #000;
+				border-radius: 50%;
+				display: inline-block;
+			}
+			
+			.display_common {
+				font-family: Courier New;"
+				font-weight:bold;
+				background-color: #cfc;
+				padding: 0px;
+				margin: 0px;
+				height: 50px;
+				border: 0px;
+			}
+			
+			div:focus {
+				outline: gray 0px;
+			}
+		</style>
+	</head>
+	<body>
+	<div class="panel">
+	  <div class="header">
+		<div class="screw">+</div>
+		<div>PRESET &nbsp; MANAGER</div>
+		<div class="screw">+</div>
+	  </div>
+	  <div class="row1">
+		<div id="saveButton" class="button" tabindex="2"></div>
+		<div style="font-size:14px;">store</div>
+		<div class="display">
+			<div class="display_left" >
+				<input id="current_preset_display" class="display_common" input style="width:21px;background-color: #afa;" type="text" disabled>
+				<input class="display_common" input type="text" disabled style="width:21px;background-color: #afa;">
+			</div>
+			<div class="display_center" >
+				<input class="display_common" input type="text" maxlength="20" tabindex="3">
+				<input class="display_common" input type="text" disabled style="background-color: #afa;">
+			</div>
+			<div class="display_right" >
+				<input class="display_common" input type="text" disabled style="width:40px;background-color: #afa;">
+				<input id="restore_preset_display" class="display_common" input style="width:40px;" type="number" min="1" max="30" tabindex="4">
+			</div>
+		</div>
+		<div style="font-size:14px;">recall</div>
+		<div id="recallButton" class="button" tabindex="5"></div>
+	  </div>
+	  <div class="row2">3</div>
+		<div class="footer">
+			<div id="hole" class="hole" tabindex="1"></div>
+			<div>STUDIO H SOFTWARE</div>
+			<div class="hole"></div>
+		</div>
+	</div>
+	</body>
+	<script>
+		document.getElementById("saveButton").onclick = saveButtonOnClick;
+		document.getElementById("saveButton").onfocus = saveButtonOnFocus;
+		document.getElementById("recallButton").onclick = recallButtonOnClick;
+		document.getElementById("recallButton").onfocus = recallButtonOnFocus;
+		document.getElementById("current_preset_display").value = "1";
+		document.getElementById("restore_preset_display").value = "1";
+		
+		
+		
+		function saveButtonOnClick() {
+			document.getElementById("saveButton").style.background="#33f";	
+			document.getElementById('hole').focus();
+		}
+		
+		function recallButtonOnClick() {
+			document.getElementById("recallButton").style.background="#33f";	
+			document.getElementById('hole').focus();
+			document.getElementById("current_preset_display").value = document.getElementById("restore_preset_display").value;
+		}
+		
+		function saveButtonOnFocus() {
+			document.getElementById("saveButton").style.background="red";	
+		}
+		
+		function recallButtonOnFocus() {
+			document.getElementById("recallButton").style.background="red";	
+		}
+	</script>
+</html>
