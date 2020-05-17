@@ -2,71 +2,41 @@
 	<head>
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<style>
-			.panel {
+			.p {
 				display: flex;
 				flex-direction: column;
 				background-color:lightgray;
 				color:darkblue;
 				font-family:Arial;
-				height: 300px;
-			}
-			.header {
-				display: flex;
-				flex-direction: row;
-				justify-content: space-around;
-				align-items: center;
-				font-style:normal;
 				font-weight:bold;
-				font-size:12px;
 				letter-spacing: 2px;
+				height: 218px;
+			}
+			.hf {
+				font-size:12px;
 				padding: 10px;
 				border: 1px solid darkblue;
 			}
-			.row1 {
-				display: flex;
-				flex-direction: row;
-				justify-content: space-around;
-				align-items: center;
+			.r {
 				font-style:italic;
-				font-weight:bold;
 				font-size:20px;
-				letter-spacing: 2px;
 				padding: 10px;
 				border-left: 1px solid darkblue;
 				border-right: 1px solid darkblue;
-				border-bottom: 1px solid darkblue;
 				height: 50px;
 			}
-			.row2 {
+			.row {
 				display: flex;
 				flex-direction: row;
 				justify-content: space-around;
 				align-items: center;
-				font-style:italic;
-				font-weight:bold;
-				font-size:20px;
-				letter-spacing: 2px;
-				padding: 10px;
-				border-left: 1px solid darkblue;
-				border-right: 1px solid darkblue;		
 			}
-			.column {
+			.col {
 				display: flex;
 				flex-direction: column;
 				justify-content: space-around;
 				align-items: center;
-			}
-			.footer {
-				display: flex;
-				flex-direction: row;
-				justify-content: space-around;
-				align-items: center;
-				font-style:normal;
-				font-weight:bold;
-				font-size:12px;
-				letter-spacing: 2px;
-				padding: 10px;
-				border: 1px solid darkblue;
+				font-size:14px;
 			}
 			.screw {
 				display: flex;
@@ -77,24 +47,18 @@
 				width: 18px;
 				background-color: #999;
 				border-radius: 50%;
-				color:black;
+				color: #444;
 				font-size:30px;
-				font-weight:normal;
 				border: 1px solid black;
 			}
-			.button {
-				height: 30px;
-				width: 30px;
-				background-color: #36f;
+			.b {
 				border-radius: 50%;
-				display: inline-block;
+				height:40px;
+				width:40px;
+				background-color: #777;
 
 			}
-			.display {
-				display: flex;
-				flex-direction: row;
-				justify-content: space-around;
-				align-items: center;
+			.d {
 				height: 50px;
 				width: 223px;
 				background-color: white;
@@ -102,40 +66,20 @@
 				margin: 0px;
 				border: 1px solid black;
 			}
-			.display_left {
-				display: flex;
-				flex-direction: column;
-				justify-content: space-around;
-				align-items: center;
+			.dx {
 				height: 50px;
 				width: 200px;
 				background-color: white;
 				padding: 0px;
 				margin: 0px;
 				border: 0px;
-			}
-			.display_right {
-				display: flex;
-				flex-direction: column;
-				justify-content: space-around;
-				align-items: center;
+			}		
+			.dc {
+				font-family: Courier New;"
+				font-weight:bold;
+				background-color: #cfc;
 				height: 50px;
-				width: 200px;
-				background-color: white;
-				padding: 0px;
-				margin: 0px;
 				border: 0px;
-			}
-			.display_center {
-				display: flex;
-				flex-direction: column;
-				justify-content: space-around;
-				align-items: center;
-				height: 50px;
-				width: 200px;
-				background-color: white;
-				padding: 0px;
-				margin: 0px;
 			}
 			.hole {
 				height: 10px;
@@ -143,93 +87,91 @@
 				background-color: #000;
 				border-radius: 50%;
 				display: inline-block;
-			}
-			
-			.display_common {
-				font-family: Courier New;"
-				font-weight:bold;
-				background-color: #cfc;
-				padding: 0px;
-				margin: 0px;
-				height: 50px;
-				border: 0px;
-			}
-			
-			div:focus {
-				outline: gray 0px;
-			}
+			}	
 		</style>
 	</head>
 	<body>
-	<div class="panel">
-	  <div class="header">
+	<div class="p">
+		<div class="hf row">
+			<div class="screw">+</div>
+			<div>PRESET &nbsp; MANAGER</div>
 		<div class="screw">+</div>
-		<div>PRESET &nbsp; MANAGER</div>
-		<div class="screw">+</div>
-	  </div>
-	  <div class="row1">
-		<div class="column">
-			<button id="saveButton" type="button" style="border-radius: 50%;height:40px;width:40px;background-color: #36f;"></button>
-			<!-- <div id="saveButton" class="button" tabindex="2"></div> -->
+	</div>
+	<div class="r row" style="border-bottom: 1px solid darkblue;">
+		<div class="col">
+			<button id="sB" type="button" class="b" style="background-color: #36f;" tabindex="1"></button>
 			<div style="height:2"></div>
-			<div style="font-size:14px;">store</div>
+			<div>store</div>
 		</div>
-		<div class="display">
-			<div class="display_left" >
-				<input id="current_preset_display" class="display_common" input style="width:21px;background-color: #afa;" type="text" disabled>
-				<input class="display_common" input type="text" disabled style="width:21px;background-color: #afa;">
+		<div class="d row">
+			<div class="dx col" >
+				<input id="current_preset" class="dc" input style="width:21px;background-color: #afa;" disabled>
+				<input class="dc" disabled style="width:21px;background-color: #afa;">
 			</div>
-			<div class="display_center" >
-				<input class="display_common" input type="text" maxlength="20" tabindex="3">
-				<input class="display_common" input type="text" disabled style="background-color: #afa;">
+			<div class="dx col" >
+				<input class="dc" maxlength="20" tabindex="2">
+				<input class="dc" disabled style="background-color: #afa;">
 			</div>
-			<div class="display_right" >
-				<input class="display_common" input type="text" disabled style="width:40px;background-color: #afa;">
-				<input id="restore_preset_display" class="display_common" input style="width:40px;" type="number" min="1" max="30" tabindex="4">
+			<div class="dx col" >
+				<input class="dc" disabled style="width:40px;background-color: #afa;">
+				<input id="restore_preset" class="dc" input style="width:40px;" type="number" min="1" max="30" tabindex="3">
 			</div>
 		</div>
-		<div class="column">
-			<button id="recallButton" type="button" style="border-radius: 50%;height:40px;width:40px;background-color: #36f;"></button>
-			<!-- <div id="recallButton" class="button" tabindex="5"></div> -->
+		<div class="col">
+			<button id="rB" type="button" class="b" style="background-color: #36f;" tabindex="4"></button>
 			<div style="height:2"></div>
-			<div style="font-size:14px;">recall</div>
+			<div>recall</div>
 		</div>
-	  </div>
-	  <div class="row2">3</div>
-		<div class="footer">
-			<div id="hole" class="hole" tabindex="1"></div>
-			<div>STUDIO H SOFTWARE</div>
-			<div class="hole"></div>
+	</div>
+	<div class="r row">
+		<div class="row" style="width:200px">
+			<div class="col">
+				<button id="lB" type="button" class="b" tabindex="5"></button>
+				<div style="height:2"></div>
+				<div>last</div>
+			</div>
+			<div class="col">
+				<button id="nB" type="button" class="b" tabindex="6"></button>
+				<div style="height:2"></div>
+				<div>next</div>
+			</div>
 		</div>
+		<div style="width:33%"></div>
+		<div class="col" style="width:33%">
+			<button id="remB" type="button" class="b" tabindex="7"></button>
+			<div style="height:2"></div>
+			<div>remote</div>
+		</div>
+	  
+	</div>
+	<div class="hf row">
+		<div id="hole" class="hole"></div>
+		<div>STUDIO H SOFTWARE</div>
+		<div class="hole"></div>
+	</div>
 	</div>
 	</body>
 	<script>
-		document.getElementById("saveButton").onclick = saveButtonOnClick;
-		document.getElementById("saveButton").onfocus = saveButtonOnFocus;
-		document.getElementById("recallButton").onclick = recallButtonOnClick;
-		document.getElementById("recallButton").onfocus = recallButtonOnFocus;
-		document.getElementById("current_preset_display").value = "1";
-		document.getElementById("restore_preset_display").value = "1";
-		
-		
-		
-		function saveButtonOnClick() {
-			document.getElementById("saveButton").style.background="#33f";	
-			document.getElementById('hole').focus();
+		document.getElementById("sB").onclick = sBOnClick;
+		document.getElementById("rB").onclick = rBOnClick;
+		document.getElementById("lB").onclick = lBOnClick;
+		document.getElementById("nB").onclick = nBOnClick;
+		document.getElementById("remB").onclick = remBOnClick;
+		document.getElementById("current_preset").value = "1";
+		document.getElementById("restore_preset").value = "1";
+	
+		function sBOnClick() {
 		}
 		
-		function recallButtonOnClick() {
-			document.getElementById("recallButton").style.background="#33f";	
-			document.getElementById('hole').focus();
-			document.getElementById("current_preset_display").value = document.getElementById("restore_preset_display").value;
+		function rBOnClick() {
+			document.getElementById("current_preset").value = document.getElementById("restore_preset").value;
 		}
 		
-		function saveButtonOnFocus() {
-			document.getElementById("saveButton").style.background="red";	
+		function lBOnClick() {
 		}
-		
-		function recallButtonOnFocus() {
-			document.getElementById("recallButton").style.background="red";	
+		function nBOnClick() {
+		}
+		function remBOnClick() {
 		}
 	</script>
 </html>
