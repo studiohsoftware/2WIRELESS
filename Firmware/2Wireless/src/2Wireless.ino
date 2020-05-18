@@ -479,7 +479,8 @@ struct Page
 };
 
 
-static const char index_html[] = "<html><div align=\"center\"><form action=\"color\" method=\"get\"><input id=\"background-color\" name=\"color\" type=\"color\"/><input type=\"submit\" value=\"Go!\"/></form></div></html>";
+static const char index_html[] = "<html> <head> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> <style> .p { display: flex; flex-direction: column; background-color:lightgray; color:darkblue; font-family:Arial; font-weight:bold; letter-spacing: 2px; height: 218px; } .hf { font-size:12px; padding: 10px; border: 1px solid darkblue; } .r { font-style:italic; font-size:20px; padding: 10px; border-left: 1px solid darkblue; border-right: 1px solid darkblue; height: 50px; } .row { display: flex; flex-direction: row; justify-content: space-around; align-items: center; } .col { display: flex; flex-direction: column; justify-content: space-around; align-items: center; font-size:14px; } .screw { display: flex; justify-content: center; align-content: center; flex-direction: column; height: 18px; width: 18px; background-color: #999; border-radius: 50%; color: #444; font-size:30px; border: 1px solid black; } .b { border-radius: 50%; height:40px; width:40px; background-color: #777;  } .d { height: 50px; width: 225px; background-color: white; padding: 0px; margin: 0px; border: 1px solid black; } .dx { height: 50px; width: 200px; background-color: white; padding: 0px; margin: 0px; border: 0px; } .dc { font-family: Courier New; font-weight:bold; background-color: #cfc; height: 50px; border: 0px; } .hole { height: 10px; width: 10px; background-color: #000; border-radius: 50%; display: inline-block; } </style> </head> <body> <div class=\"p\"> <div class=\"hf row\"> <div class=\"screw\">+</div> <div>PRESET &nbsp; MANAGER</div> <div class=\"screw\">+</div> </div> <div class=\"r row\" style=\"border-bottom: 1px solid darkblue;\"> <div class=\"col\"> <button id=\"sB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"1\"></button> <div style=\"height:2\"></div> <div>store</div> </div> <div class=\"d row\"> <div class=\"dx col\" > <input id=\"current_preset\" class=\"dc\" style=\"width:21px;background-color: #afa;\" disabled> <input class=\"dc\" disabled style=\"width:21px;background-color: #afa;\"> </div> <div class=\"dx col\" > <input id=\"current_name\" class=\"dc\" maxlength=\"20\" tabindex=\"2\"> <input id=\"recall_name\" class=\"dc\" disabled style=\"background-color: #afa;\"> </div> <div class=\"dx col\" > <input class=\"dc\" disabled style=\"width:40px;background-color: #afa;\"> <input id=\"recall_preset\" class=\"dc\" style=\"width:40px;\" type=\"number\" min=\"1\" max=\"30\" tabindex=\"3\"> </div> </div> <div class=\"col\"> <button id=\"rB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"4\"></button> <div style=\"height:2\"></div> <div>recall</div> </div> </div> <div class=\"r row\"> <div class=\"row\" style=\"width:200px\"> <div class=\"col\"> <button id=\"lB\" type=\"button\" class=\"b\" tabindex=\"5\"></button> <div style=\"height:2\"></div> <div>last</div> </div> <div class=\"col\"> <button id=\"nB\" type=\"button\" class=\"b\" tabindex=\"6\"></button> <div style=\"height:2\"></div> <div>next</div> </div> </div> <div style=\"width:33%\"></div> <div class=\"col\" style=\"width:33%\"> <button id=\"remB\" type=\"button\" class=\"b\" tabindex=\"7\"></button> <div style=\"height:2\"></div> <div>remote</div> </div>  </div> <div class=\"hf row\"> <div class=\"hole\"></div> <div>STUDIO H SOFTWARE</div> <div class=\"hole\"></div> </div> </div> </body> <script> var rem = true; var req; var c_pset = document.getElementById(\"current_preset\"); var r_pset = document.getElementById(\"recall_preset\"); var c_name = document.getElementById(\"current_name\"); var r_name = document.getElementById(\"recall_name\"); var names = []; r_pset.onchange = rOnChange; c_name.onchange = cnameOnChange; document.getElementById(\"sB\").onclick = sBOnClick; document.getElementById(\"rB\").onclick = rBOnClick; document.getElementById(\"lB\").onclick = lBOnClick; document.getElementById(\"nB\").onclick = nBOnClick; document.getElementById(\"remB\").onclick = remBOnClick;  for (var i=1; i<31; i++){ /*Read in all preset names.*/ names[i]=\"Preset \" + i; }  c_pset.value = \"1\"; cOnChange(); r_pset.value = \"1\"; rOnChange();  function sBOnClick() { /*Write new name to memory.*/ send(\"http://192.168.0.1/savepreset?preset=\" + r_pset.value); names[r_pset.value] = names[c_pset.value]; rOnChange(); }  function rBOnClick() { if (c_pset.value != r_pset.value) { c_pset.value = r_pset.value; cOnChange(); } }  function lBOnClick() { var pset = c_pset.value; pset = pset - 1; if (pset < 1) { pset = pset + 30; } pset = pset % 31; c_pset.value = pset; r_pset.value = pset; cOnChange(); rOnChange(); } function nBOnClick() { var pset = c_pset.value; pset = pset % 30 + 1; c_pset.value = pset; r_pset.value = pset; cOnChange(); rOnChange(); } function remBOnClick() { rem = !rem; if (rem){ send(\"http://192.168.0.1/remoteenable\"); } else { send(\"http://192.168.0.1/remotedisable\"); } }  function cOnChange(){ c_name.value = names[c_pset.value]; send(\"http://192.168.0.1/recallpreset?preset=\" + c_pset.value); }  function rOnChange(){ r_name.value = names[r_pset.value]; }  function cnameOnChange(){ /*Write new name to memory.*/ names[c_pset.value] = c_name.value; rOnChange(); }  function send(url) { req = new XMLHttpRequest(); req.open(\"GET\", url); req.send(null); } </script> </html>";
+
 
 Page myPages[] = {
      { "/index.html", "text/html", index_html },
@@ -496,20 +497,6 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
         Header h("Location: /index.html\r\n");
         cb(cbArg, 0, 301, "text/plain", &h);
         return;
-    }
-    if (urlString.indexOf("/color") != -1) {
-        r = (int)strtol(urlString.substring(14, 16).c_str(), nullptr, 16);
-        g = (int)strtol(urlString.substring(16, 18).c_str(), nullptr, 16);
-        b = (int)strtol(urlString.substring(18).c_str(), nullptr, 16);
-        //Serial.println(r);
-        //Serial.println(g);
-        //Serial.println(b);
-        if (r > 0) {
-            //System.set(SYSTEM_CONFIG_SOFTAP_DISABLE_BROADCAST,"1");
-
-        } else {
-            //System.set(SYSTEM_CONFIG_SOFTAP_DISABLE_BROADCAST,"0");
-        }
     }
 
     int8_t idx = 0;
@@ -767,6 +754,17 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
             getJsonToken(token, body);
         } 
         delete token;
+    } else if (urlString.indexOf("/test") == 0) {
+        cb(cbArg, 0, 200, "text/plain", nullptr);
+        //Used to determine the max POST size.
+        static uint8_t s_buffer[1] = {0};
+        int bread = 0;
+        do {
+            bread = body->read(s_buffer, sizeof(s_buffer));
+            if (bread > 0) {
+                result->write(s_buffer, bread);
+            }
+        } while(bread > 0);
     } else if (!strcmp(url, "/favicon.ico")) {
         cb(cbArg, 0, 200, "image/x-icon", nullptr);
         //return URL icon here, if desired.
