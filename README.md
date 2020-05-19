@@ -49,6 +49,9 @@ Example (Address 0x1F. Note 0x001F, or 0x00001F also acceptable): http://192.168
 Write one byte to on-board non-volatile memory at the specified address.<br/>
 Example (Address 0x1ABCD, value 0x0A): http://192.168.0.1/writebyte?addr=0x1ABCD&value=0x0A <br/>
 Note all addresses below 0x02C000 are used as scratch space by preset and firmware transfers. 
+- ### http://192.168.0.1/readmemory?addr=(0x0-0x03FFFF)&length=0-262143
+Read bulk data from on-board non-volatile memory.<br/>
+Example (Address 0x1C, return 32 bytes. Note 0x001C, or 0x00001C also acceptable): http://192.168.0.1/readmemory?addr=0x1F&length=32
 - ### http://192.168.0.1/writememory
 Write bulk data to on-board non-volatile memory.<br/>
 Note this is an HTTP POST with a JSON formatted body.<br/> 

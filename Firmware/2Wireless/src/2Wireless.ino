@@ -731,6 +731,36 @@ static void myPage(const char* url, ResponseCallback* cb, void* cbArg, Reader* b
         eqloc = urlString.indexOf('=',amploc);
         int value = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
         framWrite(addr,value);
+    } else if (urlString.indexOf("/readmemory?addr") == 0) {
+        cb(cbArg, 0, 200, "application/json", nullptr);
+        int len = urlString.length();
+        int amploc = urlString.indexOf('&');
+        if (amploc==-1) amploc=len;
+        int eqloc = urlString.indexOf('=');
+        int addr = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+        eqloc = urlString.indexOf('=',amploc);
+        int length = 1; 
+        if (eqloc > -1) {
+            length = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+        }
+        String dataString = "";
+        String tmp="";
+        int offset = 0;
+        result->write("[{\"addr\": \"" + String(addr,HEX) + "\",\"data\": \"");
+        for (int i = 0; i<length; i++){
+            tmp = String(framRead(addr + offset),HEX);
+            if (tmp.length() == 1) tmp = "0" + tmp;
+            dataString = dataString + tmp;
+            offset++; 
+            if (i == (length - 1)) {
+                result->write(dataString + "\"}]");
+            } else if ( offset % 128 == 0 ) {
+                addr = addr + offset;
+                result->write(dataString + "\"},{\"addr\": \"" + String(addr,HEX) + "\",\"data\": \"");
+                offset = 0;
+                dataString = "";
+            }
+        }
     } else if (urlString.indexOf("/writememory") == 0) {
         cb(cbArg, 0, 200, "text/plain", nullptr);
         fram_address = 0;
