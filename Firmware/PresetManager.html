@@ -167,6 +167,12 @@
 		document.getElementById("nB").onclick = nBOnClick;
 		document.getElementById("remB").onclick = remBOnClick;
 		
+		send("http://192.168.0.1/readmemory?addr=0x02BDA0&length=6");
+		var jres = request.responseText; 
+		var data = JSON.parse(jres).data;
+		if (data != "425543484C41") {
+			send("http://192.168.0.1/writememory?addr=0x02BDA0&data=425543484C41");
+		}
 		for (var i=1; i<31; i++){
 			/*Read in all preset names.*/
 			names[i]="Preset " + i;
