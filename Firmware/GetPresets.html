@@ -125,7 +125,7 @@
 				request.ontimeout = requestOnTimeout;
 				request.open("GET", "http://192.168.0.1/getpresets?addr=" + module_address);
 				request.send(null);
-				document.getElementById("result").innerHTML = "Sending request for presets at address " + module_address + "...<br/>";			
+				document.getElementById("result").innerHTML = "Sending request for presets at address " + module_address;			
 			}
 		}; 
 		
@@ -141,8 +141,8 @@
 			var data = request.responseText; // Returned data, e.g., an HTML document.
 			//document.getElementById("result").innerHTML = data;
 			var rawJsonMessage = JSON.parse(data);
-			document.getElementById("result").innerHTML = rawJsonMessage.data;
-			document.getElementById("result").innerHTML = "Done.";
+			document.getElementById("result").innerHTML = data + "<br/>WARNING: This module has an unknown data format.";
+
 			
 			var refinedJson;
 			var presetData = [];
@@ -597,7 +597,7 @@
 				document.getElementById("saveDiv").style.visibility = "visible";
 				document.getElementById("saveLink").download = module_name + ".json";	
 				document.getElementById("saveLink").href = "data:application/xml;charset=utf-8," + refinedJsonString;					
-			}		
+			}	
 		}
 		
 	</script>

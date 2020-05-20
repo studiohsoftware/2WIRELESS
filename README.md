@@ -45,7 +45,7 @@ Midi clock. 24 per beat required?
 - ### http://192.168.0.1/readmemory?addr=(0x0-0x03FFFF)&length=0-262143
 Read bulk data from on-board non-volatile memory.<br/>
 Example (Address 0x1C, return 32 bytes. Note 0x001C, or 0x00001C also acceptable): http://192.168.0.1/readmemory?addr=0x1C&length=32
-- ### http://192.168.0.1/writememory?addr=(0x0-0x03FFFF)&data=<hex string>
+- ### http://192.168.0.1/writememory?addr=(0x0-0x03FFFF)&data=(hex string)
 Write data to on-board non-volatile memory at the specified address.<br/>
 Example (Address 0x1ABCD, five data bytes 0AFF1B0432): http://192.168.0.1/writememory?addr=0x1ABCD&data=0AFF1B0432<br/>
 Note all addresses below 0x02C000 are used as scratch space by preset and firmware transfers. 
