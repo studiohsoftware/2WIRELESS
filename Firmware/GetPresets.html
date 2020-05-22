@@ -149,7 +149,30 @@
 			var dataskip = [];
 			var i;
 			
-			if (module_name.indexOf("225e") == 0) {
+			if (module_name.indexOf("206e") == 0) {
+				//206e is mostly 40.
+				for (i = 0; i < 38; i++) {
+					dataskip[i] = 40;
+				}
+				dataskip[3] = 8;
+				dataskip[4] = 32;
+				dataskip[7] = 16;
+				dataskip[8] = 24;
+				dataskip[11] = 24;
+				dataskip[12] = 16;
+				dataskip[15] = 32;
+				dataskip[16] = 8;
+				dataskip[23] = 8;
+				dataskip[24] = 32;
+				dataskip[27] = 16;
+				dataskip[28] = 24;
+				dataskip[31] = 24;
+				dataskip[32] = 16;
+				dataskip[35] = 32;
+				dataskip[36] = 8;
+			}
+			
+			else if (module_name.indexOf("225e") == 0) {
 				//225e every line is different.
 				dataskip[0]=128;
 				dataskip[1]=12;
@@ -343,6 +366,41 @@
 				dataskip[41] = 56;
 				dataskip[43] = 6;
 				dataskip[44] = 60;
+			}
+			
+			else if (module_name.indexOf("261e") == 0) {
+				//261e is mostly 62.
+				for (i = 0; i < 44; i++) {
+					dataskip[i] = 62;
+				}
+				dataskip[2] = 4;
+				dataskip[3] = 58;
+				dataskip[5] = 8;
+				dataskip[6] = 54;
+				dataskip[8] = 12;
+				dataskip[9] = 50;
+				dataskip[11] = 16;
+				dataskip[12] = 46;
+				dataskip[14] = 20;
+				dataskip[15] = 42;
+				dataskip[17] = 24;
+				dataskip[18] = 38;
+				dataskip[20] = 28;
+				dataskip[21] = 34;
+				dataskip[23] = 32;
+				dataskip[24] = 30;
+				dataskip[26] = 36;
+				dataskip[27] = 26;
+				dataskip[29] = 40;
+				dataskip[30] = 22;
+				dataskip[32] = 44;
+				dataskip[33] = 18;
+				dataskip[35] = 48;
+				dataskip[36] = 14;
+				dataskip[38] = 52;
+				dataskip[39] = 10;
+				dataskip[41] = 56;
+				dataskip[42] = 6;
 			}
 			
 			else if (module_name.indexOf("266e") == 0) {

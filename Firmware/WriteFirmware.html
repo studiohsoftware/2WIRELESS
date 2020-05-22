@@ -145,7 +145,7 @@
 							address = address + lines[i].length - 1;
 							datacount = datacount + firmwareImagePart[firmwareImagePart.length - 1].data.length;
 							if ((datacount + JSON_DATA_ELEMENT_OVERHEAD  * firmwareImagePart.length)> MAX_JSON_PART_LENGTH){
-							//POST data size limited to 20k. Split into parts.
+							//POST data size is limited. Split into parts.
 								firmwareImagePart = [];
 								firmwareImage.push(firmwareImagePart);
 								datacount = 0;

@@ -13,7 +13,7 @@
 		//This script sends the contents of a preset data file to the preset manager and then instructs the module to read the
 		//data from the preset manager. Use GetPresets.html to generate the required JSON file format.
 		//
-		//Note the max POST size permitted by the Photon is ~20k, so the preset data must be broken up into parts if necessary.
+		//Note the max POST size permitted by the Photon is ~19k, so the preset data must be broken up into parts if necessary.
 		
 		const MAX_JSON_PART_LENGTH = 18000; //Max bytes per POST to writememory.
 		const JSON_DATA_ELEMENT_OVERHEAD = 26; //bytes used up for each data element by tag names, colons, etc.
@@ -69,7 +69,7 @@
 				textValue = textValue + "Preparing output for sending...<br/>";
 				document.getElementById("text").innerHTML = textValue;
 				setTimeout(()=>{ //Use of timeout here with timeout of 0 lets the script update the text on the page.
-					//Break JSON into parts if necessary due to ~20k POST limit on Photon.
+					//Break JSON into parts if necessary.
 					var datacount = 0;
 					for(var i = 0;i < parsedJson.presets.length;i++){
 						jsonPart.push(parsedJson.presets[i]);
