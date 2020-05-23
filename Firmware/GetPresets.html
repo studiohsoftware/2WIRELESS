@@ -14,8 +14,8 @@
 			<option value="0x20">210e</option>
 			<option value="0x70">218e</option>
 			<option value="0x40">222e A</option>
-			<option value="0x5A">223e M</option>
 			<option value="0x5B">223e A</option>
+			<option value="0x5A">223e M</option>
 			<option value="0x21">225e</option>
 			<!-- <option value="0x22">225s</option> -->
 			<option value="0x23">227e</option>
@@ -58,10 +58,10 @@
 			<option value="0x3D">281e C2</option>
 			<option value="0x3E">281e D1</option>
 			<option value="0x3F">281e D2</option>
-			<option value="0x4C">285e A1</option>
-			<option value="0x4D">285e B1</option>
-			<option value="0x4E">285e A2</option>
-			<option value="0x4F">285e B2</option>
+			<option value="0x4C">285e FS A</option>
+			<option value="0x4E">285e BM A</option>
+			<option value="0x4D">285e FS B</option>
+			<option value="0x4F">285e BM B</option>
 			<option value="0x44">291e A</option>
 			<option value="0x45">291e B</option>
 			<option value="0x48">292e A</option>
@@ -170,6 +170,125 @@
 				dataskip[32] = 16;
 				dataskip[35] = 32;
 				dataskip[36] = 8;
+			}
+			
+			else if (module_name.indexOf("223e A") == 0) {
+				//223e A is mostly 128.
+				for (i = 0; i < 73; i++) {
+					dataskip[i] = 128;
+				}
+				dataskip[1]=58;
+				dataskip[2]=70;
+				dataskip[3]=116;
+				dataskip[4]=12;
+				dataskip[6]=46;
+				dataskip[7]=82;
+				dataskip[8]=104;
+				dataskip[9]=24;
+				dataskip[11]=34;
+				dataskip[12]=94;
+				dataskip[13]=92;
+				dataskip[14]=36;
+				dataskip[16]=22;
+				dataskip[17]=106;
+				dataskip[18]=80;
+				dataskip[19]=48;
+				dataskip[21]=10;
+				dataskip[22]=118;
+				dataskip[23]=68;
+				dataskip[24]=60;
+				dataskip[25]=126;
+				dataskip[26]=2;
+				dataskip[28]=56;
+				dataskip[29]=72;
+				dataskip[30]=114;
+				dataskip[31]=14;
+				dataskip[33]=44;
+				dataskip[34]=84;
+				dataskip[35]=102;
+				dataskip[36]=26;
+				dataskip[38]=32;
+				dataskip[39]=96;
+				dataskip[40]=90;
+				dataskip[41]=38;
+				dataskip[43]=20;
+				dataskip[44]=108;
+				dataskip[45]=78;
+				dataskip[46]=50;
+				dataskip[48]=8;
+				dataskip[49]=120;
+				dataskip[50]=66;
+				dataskip[51]=62;
+				dataskip[52]=124;
+				dataskip[53]=32;
+				dataskip[54]=100;
+				dataskip[55]=54;
+				dataskip[56]=74;
+				dataskip[57]=112;
+				dataskip[58]=16;
+				dataskip[60]=42;
+				dataskip[61]=86;
+				dataskip[62]=100;
+				dataskip[63]=28;
+				dataskip[65]=30;
+				dataskip[66]=98;
+				dataskip[67]=88;
+				dataskip[68]=40;
+				dataskip[70]=18;
+				dataskip[71]=110;
+				dataskip[72]=76;
+			}
+			
+			else if (module_name.indexOf("223e M") == 0) {
+				//223e M is mostly 128.
+				for (i = 0; i < 315; i++) {
+					dataskip[i] = 128;
+				}
+				dataskip[9]=96;
+				dataskip[10]=32;
+				dataskip[20]=64;
+				dataskip[21]=64;
+				dataskip[31]=32;
+				dataskip[32]=96;
+				dataskip[51]=96;
+				dataskip[52]=32;
+				dataskip[62]=64;
+				dataskip[63]=64;
+				dataskip[73]=32;
+				dataskip[74]=96;
+				dataskip[93]=96;
+				dataskip[94]=32;
+				dataskip[104]=64;
+				dataskip[105]=64;
+				dataskip[115]=32;
+				dataskip[116]=96;
+				dataskip[135]=96;
+				dataskip[136]=32;
+				dataskip[146]=64;
+				dataskip[147]=64;
+				dataskip[157]=32;
+				dataskip[158]=96;
+				dataskip[177]=96;
+				dataskip[178]=32;
+				dataskip[188]=64;
+				dataskip[189]=64;
+				dataskip[199]=32;
+				dataskip[200]=96;
+				dataskip[219]=96;
+				dataskip[220]=32;
+				dataskip[230]=64;
+				dataskip[231]=64;
+				dataskip[241]=32;
+				dataskip[242]=96;
+				dataskip[261]=96;
+				dataskip[262]=32;
+				dataskip[272]=64;
+				dataskip[273]=64;
+				dataskip[283]=32;
+				dataskip[284]=96;
+				dataskip[303]=96;
+				dataskip[304]=32;
+				dataskip[314]=64;
 			}
 			
 			else if (module_name.indexOf("225e") == 0) {
@@ -488,6 +607,36 @@
 				dataskip[20] = 10;
 				dataskip[29] = 6;
 				dataskip[30] = 8;
+			}
+			
+			else if (module_name.indexOf("285e F") == 0) {
+				//285e FM is mostly 14.
+				for (i = 0; i < 33; i++) {
+					dataskip[i] = 14;
+				}
+				dataskip[9]=2;
+				dataskip[10]=12;
+				dataskip[19]=4;
+				dataskip[20]=10;
+				dataskip[29]=6;
+				dataskip[30]=8;
+			}
+			
+			else if (module_name.indexOf("285e B") == 0) {
+				//285e BM is mostly 22.
+				for (i = 0; i < 35; i++) {
+					dataskip[i] = 22;
+				}
+				dataskip[5]=18;
+				dataskip[6]=4;
+				dataskip[12]=14;
+				dataskip[13]=8;
+				dataskip[19]=10;
+				dataskip[20]=12;
+				dataskip[26]=6;
+				dataskip[27]=16;
+				dataskip[33]=2;
+				dataskip[34]=20;
 			}
 			
 			else if (module_name.indexOf("291e") == 0) {
