@@ -117,6 +117,8 @@ void RingBuffer::flush() {
 RingBuffer ringBuffer = RingBuffer(); //Used to buffer data between HTTP and I2C.
 volatile int read_counter; //Used to auto increment read addresses during I2C READ from master.
 volatile int fram_address=0; //This is global only because it must span OnRequest calls during I2C READ from master. 
+volatile bool startup = true; //Used to free 206e when starting up.
+unsigned long readTime = 0; //used to detect idle to free up 206e at start.
 
 void framEnableWrite(){
     digitalWrite(A2, LOW); //Set CS low to select chip
@@ -223,6 +225,8 @@ void requestEvent() {
         I2C_StretchClockCmd(I2C1, DISABLE); //Say goodbye by releasing SCL. Restored on next START received.
     }
     read_counter++;
+    readTime = millis(); 
+    digitalWrite(D7, HIGH);
 }
 
 void switchToMaster(){
@@ -816,10 +820,26 @@ void setup() {
     SPI.setBitOrder(MSBFIRST); // Data is read and written MSB first.
     SPI.setDataMode(SPI_MODE0);
     waitUntil(WiFi.listening); //found in softap.cpp example
+    pinMode(D7, OUTPUT); //Light up on board LED to indicate READ activity.
+    readTime = millis(); 
+    startup = true;
 }
 
 void loop() {
     Particle.process(); //found in softap.cpp example
+    digitalWrite(D7, LOW);
+    if (startup){
+        unsigned long now = millis();
+        if ((now - readTime) >= 1000) {
+            //206e is stuck on startup, and a message seems to free it.
+            //Make sure we are not responding to firmware reads and then
+            //send a harmless message to get things going.
+            switchToMaster();
+            sendRemoteDisable();
+            switchToSlave();
+            startup = false;
+        }  
+    }
 }
 
 
