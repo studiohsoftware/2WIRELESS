@@ -238,6 +238,67 @@
 				dataskip[61]=104;
 			}
 			
+			else if (module_name.indexOf("250e") == 0) {
+				//250e is mostly 128.
+				for (i = 0; i < 158; i++) {
+					dataskip[i] = 128;
+				}
+				dataskip[4] = 48;
+				dataskip[5] = 80;
+				dataskip[9] = 96;
+				dataskip[10] = 32;
+				dataskip[15] = 16;
+				dataskip[16] = 112;
+				dataskip[20] = 64;
+				dataskip[21] = 64;
+				dataskip[25] = 112;
+				dataskip[26] = 16;
+				dataskip[31] = 32;
+				dataskip[32] = 96;
+				dataskip[36] = 80;
+				dataskip[37] = 48;
+				dataskip[46] = 48;
+				dataskip[47] = 80;
+				dataskip[51] = 96;
+				dataskip[52] = 32;
+				dataskip[57] = 16;
+				dataskip[58] = 112;
+				dataskip[62] = 64;
+				dataskip[63] = 64;
+				dataskip[67] = 112;
+				dataskip[68] = 16;
+				dataskip[73] = 32;
+				dataskip[74] = 96;
+				dataskip[78] = 80;
+				dataskip[79] = 48;
+				dataskip[88] = 48;
+				dataskip[89] = 80;
+				dataskip[93] = 96;
+				dataskip[94] = 32;
+				dataskip[99] = 16;
+				dataskip[100] = 112;
+				dataskip[104] = 64;
+				dataskip[105] = 64;
+				dataskip[109] = 112;
+				dataskip[110] = 16
+				dataskip[115] = 32;
+				dataskip[116] = 96;
+				dataskip[120] = 80;
+				dataskip[121] = 48
+				dataskip[130] = 48;
+				dataskip[131] = 80;
+				dataskip[135] = 96;
+				dataskip[136] = 32;
+				dataskip[141] = 16;
+				dataskip[142] = 112;
+				dataskip[146] = 64;
+				dataskip[147] = 64;
+				dataskip[151] = 112;
+				dataskip[152] = 16;
+				dataskip[157] = 32;
+
+			}
+			
 			else if (module_name.indexOf("251e") == 0) {
 				//251e has 128 characters with some exceptions.
 				for (i = 0; i < 1013; i++) {
