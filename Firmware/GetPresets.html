@@ -172,6 +172,58 @@
 				dataskip[36] = 8;
 			}
 			
+			else if (module_name.indexOf("210e") == 0) {
+				//210e is mostly 128.
+				for (i = 0; i < 60; i++) {
+					dataskip[i] = 128;
+				}
+				dataskip[1]=32;
+				dataskip[2]=96;
+				dataskip[3]=64;
+				dataskip[4]=64;
+				dataskip[5]=96;
+				dataskip[6]=32;
+				dataskip[9]=32;
+				dataskip[10]=96;
+				dataskip[11]=64;
+				dataskip[12]=64;
+				dataskip[13]=96;
+				dataskip[14]=32;
+				dataskip[17]=32;
+				dataskip[18]=96;
+				dataskip[19]=64;
+				dataskip[20]=64;
+				dataskip[21]=96;
+				dataskip[22]=32;
+				dataskip[25]=32;
+				dataskip[26]=96;
+				dataskip[27]=64;
+				dataskip[28]=64;
+				dataskip[29]=96;
+				dataskip[30]=32;
+				dataskip[33]=32;
+				dataskip[34]=96;
+				dataskip[35]=64;
+				dataskip[36]=64;
+				dataskip[37]=96;
+				dataskip[38]=32;
+				dataskip[41]=32;
+				dataskip[42]=96;
+				dataskip[43]=64;
+				dataskip[44]=64;
+				dataskip[45]=96;
+				dataskip[46]=32;
+				dataskip[49]=32;
+				dataskip[50]=96;
+				dataskip[51]=64;
+				dataskip[52]=64;
+				dataskip[53]=96;
+				dataskip[54]=32;
+				dataskip[57]=32;
+				dataskip[58]=96;
+				dataskip[59]=64;
+			}
+			
 			else if (module_name.indexOf("223e A") == 0) {
 				//223e A is mostly 128.
 				for (i = 0; i < 73; i++) {
@@ -357,6 +409,25 @@
 				dataskip[61]=104;
 			}
 			
+			else if (module_name.indexOf("227e") == 0) {
+				//227e is mostly 28.
+				for (i = 0; i < 36; i++) {
+					dataskip[i] = 28;
+				}
+				dataskip[4]=16;
+				dataskip[5]=12;
+				dataskip[10]=4;
+				dataskip[11]=24;
+				dataskip[15]=20;
+				dataskip[16]=8;
+				dataskip[21]=8;
+				dataskip[22]=20;
+				dataskip[26]=24;
+				dataskip[27]=4;
+				dataskip[32]=12;
+				dataskip[33]=16;
+			}
+			
 			else if (module_name.indexOf("250e") == 0) {
 				//250e is mostly 128.
 				for (i = 0; i < 158; i++) {
@@ -509,6 +580,33 @@
 				dataskip[31]=8;
 				dataskip[35]=32;
 				dataskip[36]=40;
+			}
+			
+			else if (module_name.indexOf("256e") == 0) {
+				//256e is mostly 44.
+				for (i = 0; i < 40; i++) {
+					dataskip[i] = 44;
+				}
+				dataskip[2]=40;
+				dataskip[3]=4;
+				dataskip[6]=36;
+				dataskip[7]=8;
+				dataskip[10]=32;
+				dataskip[11]=12;
+				dataskip[14]=28;
+				dataskip[15]=16;
+				dataskip[18]=24;
+				dataskip[19]=20;
+				dataskip[22]=20;
+				dataskip[23]=24;
+				dataskip[26]=16;
+				dataskip[27]=28;
+				dataskip[30]=12;
+				dataskip[31]=32;
+				dataskip[34]=8;
+				dataskip[35]=36;
+				dataskip[38]=4;
+				dataskip[39]=40;
 			}
 			
 			else if (module_name.indexOf("259e") == 0) {
@@ -711,6 +809,43 @@
 				for (i = 0; i < 30; i++) {
 					dataskip[i] = 16;
 				}
+			}
+			
+			else if (module_name.indexOf("296e") == 0) {
+				//296e is half 128. Other half is 64.
+				for (i = 0; i < 60; i++) {
+					dataskip[i] = 128;
+				}
+				dataskip[1]=64;
+				dataskip[2]=64;
+				dataskip[5]=64;
+				dataskip[6]=64;
+				dataskip[9]=64;
+				dataskip[10]=64;
+				dataskip[13]=64;
+				dataskip[14]=64;
+				dataskip[17]=64;
+				dataskip[18]=64;
+				dataskip[21]=64;
+				dataskip[22]=64;
+				dataskip[25]=64;
+				dataskip[26]=64;
+				dataskip[29]=64;
+				dataskip[30]=64;
+				dataskip[33]=64;
+				dataskip[34]=64;
+				dataskip[37]=64;
+				dataskip[38]=64;
+				dataskip[41]=64;
+				dataskip[42]=64;
+				dataskip[45]=64;
+				dataskip[46]=64;
+				dataskip[49]=64;
+				dataskip[50]=64;
+				dataskip[53]=64;
+				dataskip[54]=64;
+				dataskip[57]=64;
+				dataskip[58]=64;
 			}
 			
 			else if (module_name.indexOf("Studio H 210e") == 0) {
