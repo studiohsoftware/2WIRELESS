@@ -70,11 +70,11 @@
 			<option value="0x4B">292e D</option>
 			<option value="0x64">296e A</option>
 			<option value="0x65">296e B</option>
-			<option value="0x20">Studio H 210e</option>
-			<option value="0x35">Studio H 254e A</option>
-			<option value="0x37">Studio H 254e B</option>
-			<option value="0x10">Studio H 255e A</option>
-			<option value="0x11">Studio H 255e B</option>
+			<option value="0x20">Studio H CSR (210e)</option>
+			<option value="0x35">Studio H 254e (256e) A</option>
+			<option value="0x37">Studio H 254e (256e) B</option>
+			<option value="0x10">Studio H 255e (257e) A</option>
+			<option value="0x11">Studio H 255e (257e) B</option>
 			<option value="0x28">Studio H DPO (259e) A</option>
 			<option value="0x29">Studio H DPO (259e) B</option>
 			<option value="0x2A">Studio H DPO (259e) C</option>
@@ -125,7 +125,7 @@
 				request.ontimeout = requestOnTimeout;
 				request.open("GET", "http://192.168.0.1/getpresets?addr=" + module_address);
 				request.send(null);
-				document.getElementById("result").innerHTML = "Sending request for presets at address " + module_address;			
+				document.getElementById("result").innerHTML = "Sending request for presets at address " + module_address + "<br/>";			
 			}
 		}; 
 		
@@ -848,7 +848,7 @@
 				dataskip[58]=64;
 			}
 			
-			else if (module_name.indexOf("Studio H 210e") == 0) {
+			else if (module_name.indexOf("Studio H CSR") == 0) {
 				//Every line different in CSR. 
 				
 				//Note CSR data is packed. Each value is 12 bits, so bytes are shared to save space.  

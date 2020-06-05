@@ -136,9 +136,18 @@
 					<div>next</div>
 				</div>
 			</div>
-			<div style="width:33%"></div>
+			<div class="col" style="align-items: flex-start;">
+				<div class="row" style="align-items: flex-start;">
+					<input type="radio" id="v3" name="version" value="v3" tabindex="7">
+					<label for="v3">primo</label>
+				</div>
+				<div class="row" style="align-items: flex-start;">
+					<input type="radio" id="v2" name="version" value="v2" tabindex="8">
+					<label for="v2">v2    </label>
+				</div>
+			</div>
 			<div class="col" style="width:33%">
-				<button id="remB" type="button" class="b" tabindex="7"></button>
+				<button id="remB" type="button" class="b" tabindex="9"></button>
 				<div style="height:2"></div>
 				<div>remote</div>
 			</div>
@@ -167,15 +176,16 @@
 		document.getElementById("lB").onclick = lBOnClick;
 		document.getElementById("nB").onclick = nBOnClick;
 		document.getElementById("remB").onclick = remBOnClick;
+		document.getElementById("v3").checked = true;
 		
-		send("http://192.168.0.1/readmemory?addr=" + baseAddr.toString(16) + "&length=6");
+		send("readmemory?addr=" + baseAddr.toString(16) + "&length=6");
 		var data = JSON.parse(req.responseText)[0].data;
 		if (data != "425543484c41") {
 			for (var i=1; i<31; i++){
 				writeName(i,"");
 				names[i]="";
 			}
-			send("http://192.168.0.1/writememory?addr=" + baseAddr.toString(16) + "&data=425543484C41");
+			send("writememory?addr=" + baseAddr.toString(16) + "&data=425543484C41");
 			writePreset(1);
 		} else {
 			for (var i=1; i<31; i++){
@@ -190,7 +200,7 @@
 		
 	
 		function sBOnClick() {
-			send("http://192.168.0.1/savepreset?preset=" + r_pset.value);
+			send("savepreset?preset=" + r_pset.value);
 			names[r_pset.value] = names[c_pset.value];
 			writeName(r_pset.value,names[r_pset.value]);
 			rOnChange();
@@ -226,15 +236,15 @@
 		function remBOnClick() {
 			rem = !rem;
 			if (rem){
-				send("http://192.168.0.1/remoteenable");
+				send("remoteenable");
 			} else {
-				send("http://192.168.0.1/remotedisable");
+				send("remotedisable");
 			}
 		}
 		
 		function cOnChange(){
 			c_name.value = names[c_pset.value];
-			send("http://192.168.0.1/recallpreset?preset=" + c_pset.value);
+			send("recallpreset?preset=" + c_pset.value);
 			writePreset(c_pset.value);
 		}
 		
@@ -249,30 +259,34 @@
 		}
 		
 		function send(url) {
+			var version = "";
+			if (document.getElementById('v2').checked) {
+				version = "v2/";
+			}
 			req = new XMLHttpRequest();
-			req.open("GET", url,false); 
+			req.open("GET", "http://192.168.0.1/" + version + url,false); 
 			req.send(null);
 		}
 		
 		function writePreset(pset){
 			var pStr = pset.toString(16);
 			if (pStr.length == 1) pStr = "0" + pStr;
-			send("http://192.168.0.1/writememory?addr=" + (baseAddr + 6).toString(16) + "&data=" + pStr);
+			send("writememory?addr=" + (baseAddr + 6).toString(16) + "&data=" + pStr);
 		}
 		
 		function readPreset(){
-			send("http://192.168.0.1/readmemory?addr=" + (baseAddr + 6).toString(16) + "&length=1");
+			send("readmemory?addr=" + (baseAddr + 6).toString(16) + "&length=1");
 			return(parseInt(JSON.parse(req.responseText)[0].data));
 		}
 		
 		function readName(pset){
-			send("http://192.168.0.1/readmemory?addr=" + (baseAddr + 7 + ((pset - 1) * 21)).toString(16) + "&length=21");
+			send("readmemory?addr=" + (baseAddr + 7 + ((pset - 1) * 21)).toString(16) + "&length=21");
 			return hexToText(JSON.parse(req.responseText)[0].data);
 		}
 		
 		function writeName(pset,name){
 			var addr = baseAddr + 7 + ((pset - 1) * 21);
-			send("http://192.168.0.1/writememory?addr=" + addr.toString(16) + "&data=" + textToHex(name));
+			send("writememory?addr=" + addr.toString(16) + "&data=" + textToHex(name));
 		}
 		
 		function hexToText(hex) {
