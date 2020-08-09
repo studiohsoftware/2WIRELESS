@@ -2436,6 +2436,8 @@ Source: www.ctscorp.com</description>
 <part name="J5" library="studio_h" deviceset="MA14-1" device=""/>
 <part name="DPWR4" library="studio_h" deviceset="DPWR" device=""/>
 <part name="DGND1" library="studio_h" deviceset="DGND" device=""/>
+<part name="R1" library="studio_h" deviceset="R" device="B" value="2k"/>
+<part name="R2" library="studio_h" deviceset="R" device="B" value="2k"/>
 </parts>
 <sheets>
 <sheet>
@@ -2524,6 +2526,14 @@ MKR1000</text>
 <instance part="J5" gate="G$1" x="109.22" y="170.18"/>
 <instance part="DPWR4" gate="G$1" x="129.54" y="185.42"/>
 <instance part="DGND1" gate="G$1" x="129.54" y="175.26"/>
+<instance part="R1" gate="G$1" x="63.5" y="71.12" smashed="yes" rot="R90">
+<attribute name="NAME" x="69.8754" y="73.66" size="1.778" layer="95" font="vector" ratio="12" rot="R180"/>
+<attribute name="VALUE" x="69.342" y="70.104" size="1.778" layer="96" font="vector" ratio="12" rot="R180"/>
+</instance>
+<instance part="R2" gate="G$1" x="73.66" y="71.12" smashed="yes" rot="R90">
+<attribute name="NAME" x="80.0354" y="73.66" size="1.778" layer="95" font="vector" ratio="12" rot="R180"/>
+<attribute name="VALUE" x="79.502" y="70.104" size="1.778" layer="96" font="vector" ratio="12" rot="R180"/>
+</instance>
 </instances>
 <busses>
 </busses>
@@ -2532,7 +2542,11 @@ MKR1000</text>
 <segment>
 <label x="58.42" y="60.96" size="1.27" layer="95" font="vector" ratio="12" rot="R180" xref="yes"/>
 <pinref part="IC1" gate="G$1" pin="SCLB"/>
-<wire x1="86.36" y1="60.96" x2="58.42" y2="60.96" width="0.1524" layer="91"/>
+<wire x1="86.36" y1="60.96" x2="63.5" y2="60.96" width="0.1524" layer="91"/>
+<pinref part="R1" gate="G$1" pin="1"/>
+<wire x1="63.5" y1="60.96" x2="58.42" y2="60.96" width="0.1524" layer="91"/>
+<wire x1="63.5" y1="66.04" x2="63.5" y2="60.96" width="0.1524" layer="91"/>
+<junction x="63.5" y="60.96"/>
 </segment>
 <segment>
 <wire x1="116.84" y1="170.18" x2="119.38" y2="170.18" width="0.1524" layer="91"/>
@@ -2543,8 +2557,12 @@ MKR1000</text>
 <net name="SDA" class="0">
 <segment>
 <label x="58.42" y="58.42" size="1.27" layer="95" font="vector" ratio="12" rot="R180" xref="yes"/>
-<wire x1="86.36" y1="58.42" x2="58.42" y2="58.42" width="0.1524" layer="91"/>
+<wire x1="86.36" y1="58.42" x2="73.66" y2="58.42" width="0.1524" layer="91"/>
 <pinref part="IC1" gate="G$1" pin="SDAB"/>
+<pinref part="R2" gate="G$1" pin="1"/>
+<wire x1="73.66" y1="58.42" x2="58.42" y2="58.42" width="0.1524" layer="91"/>
+<wire x1="73.66" y1="66.04" x2="73.66" y2="58.42" width="0.1524" layer="91"/>
+<junction x="73.66" y="58.42"/>
 </segment>
 <segment>
 <wire x1="116.84" y1="167.64" x2="119.38" y2="167.64" width="0.1524" layer="91"/>
@@ -2748,6 +2766,13 @@ MKR1000</text>
 <pinref part="IC1" gate="G$1" pin="VCCB"/>
 <wire x1="86.36" y1="63.5" x2="83.82" y2="63.5" width="0.1524" layer="91"/>
 <pinref part="DPWR1" gate="G$1" pin="DPWR"/>
+<pinref part="R2" gate="G$1" pin="2"/>
+<wire x1="73.66" y1="76.2" x2="73.66" y2="78.74" width="0.1524" layer="91"/>
+<pinref part="R1" gate="G$1" pin="2"/>
+<wire x1="63.5" y1="76.2" x2="63.5" y2="78.74" width="0.1524" layer="91"/>
+<wire x1="63.5" y1="78.74" x2="73.66" y2="78.74" width="0.1524" layer="91"/>
+<wire x1="73.66" y1="78.74" x2="83.82" y2="78.74" width="0.1524" layer="91"/>
+<junction x="73.66" y="78.74"/>
 </segment>
 <segment>
 <wire x1="236.22" y1="220.98" x2="236.22" y2="223.52" width="0.1524" layer="91"/>
