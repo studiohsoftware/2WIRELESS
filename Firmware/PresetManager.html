@@ -5,72 +5,75 @@
 		<script src="assets/scripts/preset_manager.js"></script>
 	</head>
 	<body>
-		<div class="p">
-			<div class="hf row">
-				<div class="screw">+</div>
-				<div>PRESET &nbsp; MANAGER</div>
-			<div class="screw">+</div>
-		</div>
-		<div class="r row" style="border-bottom: 1px solid darkblue;">
-			<div class="col">
-				<button id="sB" type="button" class="b" style="background-color: #36f;" tabindex="1"></button>
-				<div style="height:2"></div>
-				<div>store</div>
+		<div id="preset-manager">
+			<div class="p">
+				<div class="hf row">
+					<div class="screw">+</div>
+					<div>PRESET &nbsp; MANAGER</div>
+					<div class="screw">+</div>
+				</div>
+
+				<div class="r row" style="border-bottom: 1px solid darkblue;">
+					<div class="col">
+						<button id="sB" type="button" class="b" style="background-color: #36f;" tabindex="1"></button>
+						<div style="height:2"></div>
+						<div>store</div>
+					</div>
+					<div class="d row">
+						<div class="dx col" >
+							<input id="current_preset" class="dc" style="width:21px;background-color: #afa;" disabled>
+							<input class="dc" disabled style="width:21px;background-color: #afa;">
+						</div>
+						<div class="dx col" >
+							<input id="current_name" class="dc" maxlength="20" tabindex="2">
+							<input id="recall_name" class="dc" disabled style="background-color: #afa;">
+						</div>
+						<div class="dx col" >
+							<input class="dc" disabled style="width:40px;background-color: #afa;">
+							<input id="recall_preset" class="dc" style="width:40px;" type="number" min="1" max="30" tabindex="3">
+						</div>
+					</div>
+					<div class="col">
+						<button id="rB" type="button" class="b" style="background-color: #36f;" tabindex="4"></button>
+						<div style="height:2"></div>
+						<div>recall</div>
+					</div>
+				</div>
+				<div class="r row">
+					<div class="row" style="width:200px">
+						<div class="col">
+							<button id="lB" type="button" class="b" tabindex="5"></button>
+							<div style="height:2"></div>
+							<div>last</div>
+						</div>
+						<div class="col">
+							<button id="nB" type="button" class="b" tabindex="6"></button>
+							<div style="height:2"></div>
+							<div>next</div>
+						</div>
+					</div>
+					<div class="col" style="align-items: flex-start;width:33%">
+						<div class="row" style="align-items: flex-start;">
+							<input type="radio" id="v3" name="version" value="v3" tabindex="7" hidden>
+							<label for="v3" hidden>primo</label>
+						</div>
+						<div class="row" style="align-items: flex-start;">
+							<input type="radio" id="v2" name="version" value="v2" tabindex="8" hidden>
+							<label for="v2" hidden>v2    </label>
+						</div>
+					</div>
+					<div class="col" style="width:33%">
+						<button id="remB" type="button" class="b" tabindex="9"></button>
+						<div style="height:2"></div>
+						<div>remote</div>
+					</div>
+				</div>
+				<div class="hf row">
+					<div class="hole"></div>
+					<div>STUDIO H SOFTWARE</div>
+					<div class="hole"></div>
+				</div>
 			</div>
-			<div class="d row">
-				<div class="dx col" >
-					<input id="current_preset" class="dc" style="width:21px;background-color: #afa;" disabled>
-					<input class="dc" disabled style="width:21px;background-color: #afa;">
-				</div>
-				<div class="dx col" >
-					<input id="current_name" class="dc" maxlength="20" tabindex="2">
-					<input id="recall_name" class="dc" disabled style="background-color: #afa;">
-				</div>
-				<div class="dx col" >
-					<input class="dc" disabled style="width:40px;background-color: #afa;">
-					<input id="recall_preset" class="dc" style="width:40px;" type="number" min="1" max="30" tabindex="3">
-				</div>
-			</div>
-			<div class="col">
-				<button id="rB" type="button" class="b" style="background-color: #36f;" tabindex="4"></button>
-				<div style="height:2"></div>
-				<div>recall</div>
-			</div>
-		</div>
-		<div class="r row">
-			<div class="row" style="width:200px">
-				<div class="col">
-					<button id="lB" type="button" class="b" tabindex="5"></button>
-					<div style="height:2"></div>
-					<div>last</div>
-				</div>
-				<div class="col">
-					<button id="nB" type="button" class="b" tabindex="6"></button>
-					<div style="height:2"></div>
-					<div>next</div>
-				</div>
-			</div>
-			<div class="col" style="align-items: flex-start;width:33%">
-				<div class="row" style="align-items: flex-start;">
-					<input type="radio" id="v3" name="version" value="v3" tabindex="7" hidden>
-					<label for="v3" hidden>primo</label>
-				</div>
-				<div class="row" style="align-items: flex-start;">
-					<input type="radio" id="v2" name="version" value="v2" tabindex="8" hidden>
-					<label for="v2" hidden>v2    </label>
-				</div>
-			</div>
-			<div class="col" style="width:33%">
-				<button id="remB" type="button" class="b" tabindex="9"></button>
-				<div style="height:2"></div>
-				<div>remote</div>
-			</div>
-		</div>
-		<div class="hf row">
-			<div class="hole"></div>
-			<div>STUDIO H SOFTWARE</div>
-			<div class="hole"></div>
-		</div>
 		</div>
 	</body>
 	<script>
