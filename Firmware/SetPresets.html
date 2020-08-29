@@ -1,10 +1,11 @@
 <html>
 	<head>
 		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" type="text/css" href="assets/styles/main.css">
 	</head>
 	<body>
 		<p id="title" style="font-family:'Arial';font-size:16px">
-				Send Presets to Module		
+				Send Presets to Module
 		</p>
 		<button onclick="input.click()">Browse for presets file.</button>
 		<p id="text" style="font-family:'Arial';font-size:12px"></p>
@@ -14,35 +15,35 @@
 		//data from the preset manager. Use GetPresets.html to generate the required JSON file format.
 		//
 		//Note the max POST size permitted by the Photon is ~19k, so the preset data must be broken up into parts if necessary.
-		
+
 		const MAX_JSON_PART_LENGTH = 18000; //Max bytes per POST to writememory.
 		const JSON_DATA_ELEMENT_OVERHEAD = 26; //bytes used up for each data element by tag names, colons, etc.
-		const HTTP_REQUEST_TIMEOUT = 5000; 
+		const HTTP_REQUEST_TIMEOUT = 5000;
 		const DATA_TRANSFER_WAIT = 500; //Wait this long between sending data parts to preset manager. Too short gives timeouts.
 		const MODULE_COMMAND_WAIT = 500; //Wait this long before commanding module to restore.
-		
+
 		//Set up button to open a file of type *.json.
 		var input = document.createElement('input');
 		input.type = 'file';
 		input.accept = ".json";
 		input.click();
-		
+
 		//HTTP stuff for communicating with the preset manager
 		var request;
 		var url = "";
 		var requestTimeout;
-		
+
 		var textValue; //Used for text display only.
 		var module_address; //Used in setpresets URL.
 		var module_name; //Used for text display only.
 		var jsonParts; //Array of data elements to be sent.
 		var partsSent; //Number of array elements sent.
-		
-		input.onchange = e => { 
-			var file = e.target.files[0]; 		
+
+		input.onchange = e => {
+			var file = e.target.files[0];
 			var reader = new FileReader();
 			reader.readAsText(file,'UTF-8');
-			reader.onload = readerEvent => {	
+			reader.onload = readerEvent => {
 				request = new XMLHttpRequest();
 				url = "";
 				request.onreadystatechange = requestHandler;
@@ -80,13 +81,13 @@
 							datacount = 0;
 						}
 					}
-					partsSent = 0;	
+					partsSent = 0;
 					//Trigger HTTP requests. Note that requestHandler() case 4 is in control from here on out.
 					sendPart();
 				}, 0)
 			}
 		}
-		
+
 		function sendPart() {
 			var jsonPartString = JSON.stringify(jsonParts[partsSent],undefined,2);
 			url = "http://192.168.0.1/writememory";
@@ -94,17 +95,17 @@
 			document.getElementById("text").innerHTML = textValue;
 			request.open("POST", url);
 			request.setRequestHeader("Content-Length", jsonPartString.length);
-			request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");	
-			request.send(jsonPartString);	
+			request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+			request.send(jsonPartString);
 		}
-		
+
 		function requestOnTimeout(e) {
-			// XMLHttpRequest timed out. 
+			// XMLHttpRequest timed out.
 			requestTimeout = true;
 			textValue = textValue + "Request timed out.<br/>";
 			document.getElementById("text").innerHTML = textValue;
 		}
-				
+
 		function requestHandler () {
 			var stateString = "";
 			switch(request.readyState) {
@@ -132,9 +133,9 @@
 					//stateString = "DONE	The operation is complete.";
 					//textValue = textValue + url + ": " + stateString + "<br/>";
 					//document.getElementById("text").innerHTML = textValue;
-					if (partsSent < (jsonParts.length - 1)) {	
+					if (partsSent < (jsonParts.length - 1)) {
 						setTimeout(()=>{
-							if (!requestTimeout) {							
+							if (!requestTimeout) {
 								partsSent++;
 								sendPart();
 							}
@@ -159,6 +160,6 @@
 			}
 
 		}
-		
+
 	</script>
 </html>

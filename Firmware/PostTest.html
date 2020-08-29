@@ -1,11 +1,12 @@
 <html>
 	<head>
 		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" type="text/css" href="assets/styles/main.css">
 	</head>
 	<body>
 		<p style="font-family:'Arial';font-size:16px" id="title1">Test POST size limit.</p>
 		<p style="font-family:'Arial';font-size:12px" id="title2">(Content should be echoed back.)</p>
-		
+
 		<button onclick="input.click()">Browse for hex file.</button>
 		<p style="font-family:'Arial';font-size:12px" id="demo"></p>
 	</body>
@@ -17,21 +18,21 @@
 		request.onload = function () {
 			var status = request.status; // HTTP response status, e.g., 200 for "200 OK"
 			var data = request.responseText; // Returned data, e.g., an HTML document.
-			document.getElementById("demo").innerHTML = data;  
+			document.getElementById("demo").innerHTML = data;
 		}
-	
+
 		var input = document.createElement('input');
 		input.type = 'file';
 		input.accept = ".hex";
 		input.click();
-		
-		
-		input.onchange = e => { 
-			var file = e.target.files[0]; 		
+
+
+		input.onchange = e => {
+			var file = e.target.files[0];
 			var reader = new FileReader();
 			reader.readAsText(file,'UTF-8');
 			reader.onload = readerEvent => {
-				var content = readerEvent.target.result; 
+				var content = readerEvent.target.result;
 				document.getElementById("demo").innerHTML = "sending...";
 				request.open(method, url, shouldBeAsync);
 				request.setRequestHeader("Content-Length", content.length);

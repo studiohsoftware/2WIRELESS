@@ -1,94 +1,8 @@
 <html>
 	<head>
 		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<style>
-			.p {
-				display: flex;
-				flex-direction: column;
-				background-color:lightgray;
-				color:darkblue;
-				font-family:Arial;
-				font-weight:bold;
-				letter-spacing: 2px;
-				height: 218px;
-			}
-			.hf {
-				font-size:12px;
-				padding: 10px;
-				border: 1px solid darkblue;
-			}
-			.r {
-				font-style:italic;
-				font-size:20px;
-				padding: 10px;
-				border-left: 1px solid darkblue;
-				border-right: 1px solid darkblue;
-				height: 50px;
-			}
-			.row {
-				display: flex;
-				flex-direction: row;
-				justify-content: space-around;
-				align-items: center;
-			}
-			.col {
-				display: flex;
-				flex-direction: column;
-				justify-content: space-around;
-				align-items: center;
-				font-size:14px;
-			}
-			.screw {
-				display: flex;
-				justify-content: center;
-				align-content: center;
-				flex-direction: column;
-				height: 18px;
-				width: 18px;
-				background-color: #999;
-				border-radius: 50%;
-				color: #444;
-				font-size:30px;
-				border: 1px solid black;
-			}
-			.b {
-				border-radius: 50%;
-				height:40px;
-				width:40px;
-				background-color: #777;
-
-			}
-			.d {
-				height: 50px;
-				width: 225px;
-				background-color: white;
-				padding: 0px;
-				margin: 0px;
-				border: 1px solid black;
-			}
-			.dx {
-				height: 50px;
-				width: 200px;
-				background-color: white;
-				padding: 0px;
-				margin: 0px;
-				border: 0px;
-			}		
-			.dc {
-				font-family: Courier New;
-				font-weight:bold;
-				background-color: #cfc;
-				height: 50px;
-				border: 0px;
-			}
-			.hole {
-				height: 10px;
-				width: 10px;
-				background-color: #000;
-				border-radius: 50%;
-				display: inline-block;
-			}	
-		</style>
+		<link rel="stylesheet" type="text/css" href="assets/styles/main.css">
+		<script src="assets/scripts/preset_manager.js"></script>
 	</head>
 	<body>
 		<div class="p">
@@ -150,7 +64,7 @@
 				<button id="remB" type="button" class="b" tabindex="9"></button>
 				<div style="height:2"></div>
 				<div>remote</div>
-			</div>		  
+			</div>
 		</div>
 		<div class="hf row">
 			<div class="hole"></div>
@@ -176,7 +90,7 @@
 		document.getElementById("nB").onclick = nBOnClick;
 		document.getElementById("remB").onclick = remBOnClick;
 		document.getElementById("v3").checked = true;
-		
+
 		send("readmemory?addr=" + baseAddr.toString(16) + "&length=6");
 		var data = JSON.parse(req.responseText)[0].data;
 		if (data != "425543484c41") {
@@ -191,126 +105,10 @@
 				names[i]=readName(i);
 			}
 		}
-		
+
 		c_pset.value = readPreset();
 		cOnChange();
 		r_pset.value = c_pset.value;
 		rOnChange();
-		
-	
-		function sBOnClick() {
-			send("savepreset?preset=" + r_pset.value);
-			names[r_pset.value] = names[c_pset.value];
-			writeName(r_pset.value,names[r_pset.value]);
-			rOnChange();
-		}
-		
-		function rBOnClick() {
-			if (c_pset.value != r_pset.value) {
-				c_pset.value = r_pset.value;
-				cOnChange();
-			}
-		}
-		
-		function lBOnClick() {
-			var pset = c_pset.value;
-			pset = pset - 1;
-			if (pset < 1) {
-				pset = pset + 30;
-			}
-			pset = pset % 31;
-			c_pset.value = pset;
-			r_pset.value = pset;
-			cOnChange();
-			rOnChange();
-		}
-		function nBOnClick() {
-			var pset = c_pset.value;
-			pset = pset % 30 + 1;
-			c_pset.value = pset;
-			r_pset.value = pset;
-			cOnChange();
-			rOnChange();
-		}
-		function remBOnClick() {
-			rem = !rem;
-			if (rem){
-				send("remoteenable");
-			} else {
-				send("remotedisable");
-			}
-		}
-		
-		function cOnChange(){
-			c_name.value = names[c_pset.value];
-			send("recallpreset?preset=" + c_pset.value);
-			writePreset(c_pset.value);
-		}
-		
-		function rOnChange(){
-			r_name.value = names[r_pset.value];
-		}
-		
-		function cnameOnChange(){
-			names[c_pset.value] = c_name.value;
-			writeName(c_pset.value,names[c_pset.value]);
-			rOnChange();
-		}
-		
-		function send(url) {
-			var version = "";
-			if (document.getElementById('v2').checked) {
-				version = "v2/";
-			}
-			req = new XMLHttpRequest();
-			req.open("GET", "http://192.168.0.1/" + version + url,false); 
-			req.send(null);
-		}
-		
-		function writePreset(pset){
-			var pStr = pset.toString(16);
-			if (pStr.length == 1) pStr = "0" + pStr;
-			send("writememory?addr=" + (baseAddr + 6).toString(16) + "&data=" + pStr);
-		}
-		
-		function readPreset(){
-			send("readmemory?addr=" + (baseAddr + 6).toString(16) + "&length=1");
-			return(parseInt(JSON.parse(req.responseText)[0].data));
-		}
-		
-		function readName(pset){
-			send("readmemory?addr=" + (baseAddr + 7 + ((pset - 1) * 21)).toString(16) + "&length=21");
-			return hexToText(JSON.parse(req.responseText)[0].data);
-		}
-		
-		function writeName(pset,name){
-			var addr = baseAddr + 7 + ((pset - 1) * 21);
-			send("writememory?addr=" + addr.toString(16) + "&data=" + textToHex(name));
-		}
-		
-		function hexToText(hex) {
-			var result = "";
-			if (hex != ""){
-				var code = parseInt(hex.substring(0,2),16);
-				if (code == 0) {
-					return result;
-				}
-				else if (code > 19) {
-					result = String.fromCharCode(code) + hexToText(hex.substring(2,hex.length));
-				} 	
-			}
-			return result;
-		}
-		
-		function textToHex(text) {
-		  var result = "";
-		  if (text != ""){
-			  var i;
-			  for (i = 0; i < text.length; i++){
-				result = result + text[i].charCodeAt(0).toString(16); 
-			  }
-		  }
-		  return result + "00";
-		}
 	</script>
 </html>
