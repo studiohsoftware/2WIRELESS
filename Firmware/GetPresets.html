@@ -6,6 +6,7 @@
 		<script src="assets/scripts/modules.js"></script>
 	</head>
 	<body>
+		<div id="fetch-presets">
 			<p id="title" style="font-family:'Arial';font-size:16px">
 					Fetch Presets from Module
 			</p>
@@ -13,9 +14,11 @@
 			<select id="moduleSelect" required>
 				<option value="Select">Select....</option>
 			</select>
-		<p id="result" style="font-family:'Arial';font-size:12px"></p>
-		<div id="saveDiv">
-			<a id="saveLink" href="data:application/xml;charset=utf-8,this is a test?" download="filename.json">Save</a>
+
+			<p id="result" style="font-family:'Arial';font-size:12px"></p>
+			<div id="saveDiv">
+				<a id="saveLink" href="data:application/xml;charset=utf-8,this is a test?" download="filename.json">Save</a>
+			</div>
 		</div>
 	</body>
 	<script>
