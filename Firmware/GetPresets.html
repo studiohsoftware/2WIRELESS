@@ -35,10 +35,10 @@
 		window.onload = (event) => {
 			// create html select options from a hash constant
 			for (var module in modules) {
-				var el = document.createElement("option");
-				el.value = module;
-				el.textContent = modules[module];
-				module_selector.appendChild(el);
+					var el = document.createElement("option");
+					el.value = modules[module]["address"];
+					el.textContent = module;
+					module_selector.appendChild(el);
 			}
 		}
 
