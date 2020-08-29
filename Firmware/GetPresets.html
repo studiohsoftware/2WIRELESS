@@ -4,120 +4,138 @@
 	</head>
 	<body>
 			<p id="title" style="font-family:'Arial';font-size:16px">
-					Fetch Presets from Module		
+					Fetch Presets from Module
 			</p>
 			<button id="button">Fetch Presets</button>
-			<select id="moduleSelect">
-			<option value="Select">Select....</option>
-			<option value="0x60">206e</option>
-			<option value="0x63">207e</option>
-			<option value="0x20">210e</option>
-			<option value="0x70">218e</option>
-			<option value="0x40">222e A</option>
-			<option value="0x5B">223e A</option>
-			<option value="0x5A">223e M</option>
-			<option value="0x21">225e</option>
-			<!-- <option value="0x22">225s</option> -->
-			<option value="0x23">227e</option>
-			<option value="0x66">230e A</option>
-			<option value="0x67">230e B</option>
-			<option value="0x68">230e C</option>
-			<option value="0x69">230e D</option>
-			<option value="0x24">249e A</option>
-			<option value="0x25">249e B</option>
-			<option value="0x41">250e A</option>
-			<option value="0x42">250e B</option>
-			<option value="0x5C">251e A</option>
-			<option value="0x5F">252e A</option>
-			<option value="0x34">256e A1</option>
-			<option value="0x36">256e A2</option>
-			<option value="0x35">256e B1</option>
-			<option value="0x37">256e B2</option>
-			<option value="0x10">257e A</option>
-			<option value="0x11">257e B</option>
-			<option value="0x28">259e A</option>
-			<option value="0x29">259e B</option>
-			<option value="0x2A">259e C</option>
-			<option value="0x2B">259e D</option>
-			<option value="0x30">260e A</option>
-			<option value="0x31">260e B</option>
-			<option value="0x2C">261e A</option>
-			<option value="0x2D">261e B</option>
-			<option value="0x2E">261e C</option>
-			<option value="0x2F">261e D</option>
-			<option value="0x32">266e A</option>
-			<option value="0x33">266e B</option>
-			<option value="0x12">267e A</option>
-			<option value="0x13">267e B</option>
-			<option value="0x5E">272e</option>
-			<option value="0x38">281e A1</option>
-			<option value="0x39">281e A2</option>
-			<option value="0x3A">281e B1</option>
-			<option value="0x3B">281e B2</option>
-			<option value="0x3C">281e C1</option>
-			<option value="0x3D">281e C2</option>
-			<option value="0x3E">281e D1</option>
-			<option value="0x3F">281e D2</option>
-			<option value="0x4C">285e FS A</option>
-			<option value="0x4E">285e BM A</option>
-			<option value="0x4D">285e FS B</option>
-			<option value="0x4F">285e BM B</option>
-			<option value="0x44">291e A</option>
-			<option value="0x45">291e B</option>
-			<option value="0x48">292e A</option>
-			<option value="0x49">292e B</option>
-			<option value="0x4A">292e C</option>
-			<option value="0x4B">292e D</option>
-			<option value="0x64">296e A</option>
-			<option value="0x65">296e B</option>
-			<option value="0x20">Studio H CSR (210e)</option>
-			<option value="0x35">Studio H 254e (256e) A</option>
-			<option value="0x37">Studio H 254e (256e) B</option>
-			<option value="0x10">Studio H 255e (257e) A</option>
-			<option value="0x11">Studio H 255e (257e) B</option>
-			<option value="0x28">Studio H DPO (259e) A</option>
-			<option value="0x29">Studio H DPO (259e) B</option>
-			<option value="0x2A">Studio H DPO (259e) C</option>
-			<option value="0x2B">Studio H DPO (259e) D</option>
-			<option value="0x2C">Studio H DPO (261e) A</option>
-			<option value="0x2D">Studio H DPO (261e) B</option>
-			<option value="0x2E">Studio H DPO (261e) C</option>
-			<option value="0x2F">Studio H DPO (261e) D</option>
-			<option value="0x72">226h</option>
-		</select>
+			<select id="moduleSelect" required>
+				<option value="Select">Select....</option>
+			</select>
 		<p id="result" style="font-family:'Arial';font-size:12px"></p>
 		<div id="saveDiv">
 			<a id="saveLink" href="data:application/xml;charset=utf-8,this is a test?" download="filename.json">Save</a>
 		</div>
 	</body>
 	<script>
-		//This script retrieves raw preset data from the module and processes it. 
-		//The processed data is then displayed on the page. The processed data is 
+		//This script retrieves raw preset data from the module and processes it.
+		//The processed data is then displayed on the page. The processed data is
 		//in the required JSON format for writing back to the module. (See SetPresets.html)
 		//
 		//Details:
 		//The raw data has memory addresses embedded within it, and these addresses must be found
-		//and separated from the preset data to produce the processed data. 
+		//and separated from the preset data to produce the processed data.
 		//Each module is different, and the addresses are located using the dataskip[] values below.
 		//The dataskip values were found by manual inspection of the raw data!
 		const HTTP_REQUEST_TIMEOUT = 12000; //Long for 251e.
+
+		// Modules that are commented out have yet to be implemented
+		//  "0x22": 225s
+		const modules = {
+			"0x60": "206e",
+			"0x63": "207e",
+			"0x20": "210e",
+			"0x70": "218e",
+			"0x40": "222e A",
+			"0x5B": "223e A",
+			"0x5A": "223e M",
+			"0x21": "225e",
+			"0x23": "227e",
+			"0x66": "230e A",
+			"0x67": "230e B",
+			"0x68": "230e C",
+			"0x69": "230e D",
+			"0x24": "249e A",
+			"0x25": "249e B",
+			"0x41": "250e A",
+			"0x42": "250e B",
+			"0x5C": "251e A",
+			"0x5F": "252e A",
+			"0x34": "256e A1",
+			"0x36": "256e A2",
+			"0x35": "256e B1",
+			"0x37": "256e B2",
+			"0x10": "257e A",
+			"0x11": "257e B",
+			"0x28": "259e A",
+			"0x29": "259e B",
+			"0x2A": "259e C",
+			"0x2B": "259e D",
+			"0x30": "260e A",
+			"0x31": "260e B",
+			"0x2C": "261e A",
+			"0x2D": "261e B",
+			"0x2E": "261e C",
+			"0x2F": "261e D",
+			"0x32": "266e A",
+			"0x33": "266e B",
+			"0x12": "267e A",
+			"0x13": "267e B",
+			"0x5E": "272e",
+			"0x38": "281e A1",
+			"0x39": "281e A2",
+			"0x3A": "281e B1",
+			"0x3B": "281e B2",
+			"0x3C": "281e C1",
+			"0x3D": "281e C2",
+			"0x3E": "281e D1",
+			"0x3F": "281e D2",
+			"0x4C": "285e FS A",
+			"0x4E": "285e BM A",
+			"0x4D": "285e FS B",
+			"0x4F": "285e BM B",
+			"0x44": "291e A",
+			"0x45": "291e B",
+			"0x48": "292e A",
+			"0x49": "292e B",
+			"0x4A": "292e C",
+			"0x4B": "292e D",
+			"0x64": "296e A",
+			"0x65": "296e B",
+			"0x20": "Studio H CSR (210e)",
+			"0x35": "Studio H 254e (256e) A",
+			"0x37": "Studio H 254e (256e) B",
+			"0x10": "Studio H 255e (257e) A",
+			"0x11": "Studio H 255e (257e) B",
+			"0x28": "Studio H DPO (259e) A",
+			"0x29": "Studio H DPO (259e) B",
+			"0x2A": "Studio H DPO (259e) C",
+			"0x2B": "Studio H DPO (259e) D",
+			"0x2C": "Studio H DPO (261e) A",
+			"0x2D": "Studio H DPO (261e) B",
+			"0x2E": "Studio H DPO (261e) C",
+			"0x2F": "Studio H DPO (261e) D",
+			"0x72": "226h",
+		}
 		var module_address;
 		var module_name;
 		var request;
-		document.getElementById("saveDiv").style.visibility = "hidden";
-		
-		document.getElementById("moduleSelect").onchange = e => {
-			document.getElementById("result").innerHTML = "";
-			document.getElementById("saveDiv").style.visibility = "hidden";
+		var module_selector = document.getElementById("moduleSelect");
+		var select_button = document.getElementById("button");
+		var save_div = document.getElementById("saveDiv");
+		var result = document.getElementById("result");
+
+		window.onload = (event) => {
+			// create html select options from a hash constant
+			for (var module in modules) {
+				var el = document.createElement("option");
+				el.value = module;
+				el.textContent = modules[module];
+				module_selector.appendChild(el);
+			}
 		}
-		
-	
+
+		save_div.style.visibility = "hidden";
+
+		module_selector.onchange = e => {
+			result.innerHTML = "";
+			save_div.style.visibility = "hidden";
+		}
+
 		//Get preset button.
-		document.getElementById("button").onclick = function () {
-			document.getElementById("saveDiv").style.visibility = "hidden";
+		select_button.onclick = function () {
+			save_div.style.visibility = "hidden";
 			module_address = moduleSelect.value;
 			module_name = moduleSelect.options[moduleSelect.selectedIndex].text;
-			document.getElementById("result").innerHTML = "Please select a module.<br/>";
+			result.innerHTML = "Please select a module.<br/>";
 			if (module_address != "Select") {
 				request = new XMLHttpRequest();
 				request.timeout = HTTP_REQUEST_TIMEOUT; // time in milliseconds
@@ -125,30 +143,31 @@
 				request.ontimeout = requestOnTimeout;
 				request.open("GET", "http://192.168.0.1/getpresets?addr=" + module_address);
 				request.send(null);
-				document.getElementById("result").innerHTML = "Sending request for presets at address " + module_address + "<br/>";			
+				result.innerHTML = "Sending request for presets at address " + module_address + "<br/>";
 			}
-		}; 
-		
+		};
+
 		function requestOnTimeout(e) {
-			// XMLHttpRequest timed out. 
-			var textValue = document.getElementById("result").innerHTML;
+			// XMLHttpRequest timed out.
+			var textValue = result.innerHTML;
 			textValue = textValue + "Request timed out.<br/>"
-			document.getElementById("result").innerHTML = textValue;
+			result.innerHTML = textValue;
 		}
-		
+
 		function requestOnLoad() {
 			var status = request.status; // HTTP response status, e.g., 200 for "200 OK"
 			var data = request.responseText; // Returned data, e.g., an HTML document.
-			//document.getElementById("result").innerHTML = data;
+			//result.innerHTML = data;
 			var rawJsonMessage = JSON.parse(data);
-			document.getElementById("result").innerHTML = data + "<br/>WARNING: This module has an unknown data format.";
 
-			
+			result.innerHTML = data + "<br/>WARNING: This module has an unknown data format.";
+
+
 			var refinedJson;
 			var presetData = [];
 			var dataskip = [];
 			var i;
-			
+
 			if (module_name.indexOf("206e") == 0) {
 				//206e is mostly 40.
 				for (i = 0; i < 38; i++) {
@@ -171,7 +190,7 @@
 				dataskip[35] = 32;
 				dataskip[36] = 8;
 			}
-			
+
 			else if (module_name.indexOf("210e") == 0) {
 				//210e is mostly 128.
 				for (i = 0; i < 60; i++) {
@@ -223,7 +242,7 @@
 				dataskip[58]=96;
 				dataskip[59]=64;
 			}
-			
+
 			else if (module_name.indexOf("223e A") == 0) {
 				//223e A is mostly 128.
 				for (i = 0; i < 73; i++) {
@@ -290,7 +309,7 @@
 				dataskip[71]=110;
 				dataskip[72]=76;
 			}
-			
+
 			else if (module_name.indexOf("223e M") == 0) {
 				//223e M is mostly 128.
 				for (i = 0; i < 315; i++) {
@@ -342,7 +361,7 @@
 				dataskip[304]=32;
 				dataskip[314]=64;
 			}
-			
+
 			else if (module_name.indexOf("225e") == 0) {
 				//225e every line is different.
 				dataskip[0]=128;
@@ -408,7 +427,7 @@
 				dataskip[60]=36;
 				dataskip[61]=104;
 			}
-			
+
 			else if (module_name.indexOf("227e") == 0) {
 				//227e is mostly 28.
 				for (i = 0; i < 36; i++) {
@@ -427,7 +446,7 @@
 				dataskip[32]=12;
 				dataskip[33]=16;
 			}
-			
+
 			else if (module_name.indexOf("250e") == 0) {
 				//250e is mostly 128.
 				for (i = 0; i < 158; i++) {
@@ -488,7 +507,7 @@
 				dataskip[157] = 32;
 
 			}
-			
+
 			else if (module_name.indexOf("251e") == 0) {
 				//251e has 128 characters with some exceptions.
 				for (i = 0; i < 1013; i++) {
@@ -499,15 +518,15 @@
 				dataskip[66]=96;
 				dataskip[67]=32;
 				dataskip[100]=80;
-				dataskip[101]=48;		
-				dataskip[134]=64;	
+				dataskip[101]=48;
+				dataskip[134]=64;
 				dataskip[135]=64;
 				dataskip[168]=48;
 				dataskip[169]=80;
 				dataskip[202]=32;
 				dataskip[203]=96;
 				dataskip[236]=16;
-				dataskip[237]=112;				
+				dataskip[237]=112;
 				dataskip[302]=112;
 				dataskip[303]=16;
 				dataskip[336]=96;
@@ -548,17 +567,17 @@
 				dataskip[979]=80;
 				dataskip[1012]=32;
 			}
-			
+
 			else if (module_name.indexOf("254e") > -1) {
 				//254e is 32.
 				for (i = 0; i < 30; i++) {
 					dataskip[i] = 32;
 				}
 			}
-			
+
 			else if (module_name.indexOf("255e") > -1) {
 				//255e is mostly 72.
-				//Note 255e data is packed. Each value is 12 bits, so bytes are shared to save space. 
+				//Note 255e data is packed. Each value is 12 bits, so bytes are shared to save space.
 				//Refer to CSR comments below. Same thing here except PRESET_LENGTH=24 and
 				//PACKED_PRESET_LENGTH=18.
 				for (i = 0; i < 38; i++) {
@@ -581,7 +600,7 @@
 				dataskip[35]=32;
 				dataskip[36]=40;
 			}
-			
+
 			else if (module_name.indexOf("256e") == 0) {
 				//256e is mostly 44.
 				for (i = 0; i < 40; i++) {
@@ -608,7 +627,7 @@
 				dataskip[38]=4;
 				dataskip[39]=40;
 			}
-			
+
 			else if (module_name.indexOf("259e") == 0) {
 				//259e has a pattern. Every third line is 66.
 				for (i = 0; i < 45; i++) {
@@ -645,7 +664,7 @@
 				dataskip[43] = 6;
 				dataskip[44] = 60;
 			}
-			
+
 			else if (module_name.indexOf("261e") == 0) {
 				//261e is mostly 62.
 				for (i = 0; i < 44; i++) {
@@ -680,7 +699,7 @@
 				dataskip[41] = 56;
 				dataskip[42] = 6;
 			}
-			
+
 			else if (module_name.indexOf("266e") == 0) {
 				//266e is mostly 14.
 				for (i = 0; i < 33; i++) {
@@ -693,7 +712,7 @@
 				dataskip[29] = 6;
 				dataskip[30] = 8;
 			}
-			
+
 			else if (module_name.indexOf("281e") == 0) {
 				//281e is mostly 14.
 				for (i = 0; i < 33; i++) {
@@ -706,7 +725,7 @@
 				dataskip[29] = 6;
 				dataskip[30] = 8;
 			}
-			
+
 			else if (module_name.indexOf("285e F") == 0) {
 				//285e FM is mostly 14.
 				for (i = 0; i < 33; i++) {
@@ -719,7 +738,7 @@
 				dataskip[29]=6;
 				dataskip[30]=8;
 			}
-			
+
 			else if (module_name.indexOf("285e B") == 0) {
 				//285e BM is mostly 22.
 				for (i = 0; i < 35; i++) {
@@ -736,7 +755,7 @@
 				dataskip[33]=2;
 				dataskip[34]=20;
 			}
-			
+
 			else if (module_name.indexOf("291e") == 0) {
 				//291e has 128 characters with some exceptions.
 				for (i = 0; i < 140; i++) {
@@ -800,17 +819,17 @@
 				dataskip[130]=24;
 				dataskip[134]=62;
 				dataskip[135]=66;
-				dataskip[139]=20;	
+				dataskip[139]=20;
 			}
 
 			else if (module_name.indexOf("292e") == 0) {
-				//292e is easy. First four characters are address, then 16 characters of data, 
+				//292e is easy. First four characters are address, then 16 characters of data,
 				//then four more characters of address, another 16 and so on until the end.
 				for (i = 0; i < 30; i++) {
 					dataskip[i] = 16;
 				}
 			}
-			
+
 			else if (module_name.indexOf("296e") == 0) {
 				//296e is half 128. Other half is 64.
 				for (i = 0; i < 60; i++) {
@@ -847,17 +866,17 @@
 				dataskip[57]=64;
 				dataskip[58]=64;
 			}
-			
+
 			else if (module_name.indexOf("Studio H CSR") == 0) {
-				//Every line different in CSR. 
-				
-				//Note CSR data is packed. Each value is 12 bits, so bytes are shared to save space.  
-				//Unpacking will be necessary if you want to edit the data. Packing would be necessary 
-				//before writing the edited data back to the module. 
-				//If no editing is needed, no need to unpack and pack. Just leave the data as received 
+				//Every line different in CSR.
+
+				//Note CSR data is packed. Each value is 12 bits, so bytes are shared to save space.
+				//Unpacking will be necessary if you want to edit the data. Packing would be necessary
+				//before writing the edited data back to the module.
+				//If no editing is needed, no need to unpack and pack. Just leave the data as received
 				//and send it back as it is.
-				
-				/* HERE IS THE PACK CODE USED BY THE MODULE. 
+
+				/* HERE IS THE PACK CODE USED BY THE MODULE.
 				   On the CSR, PRESET_LENGTH=70. PACKED_PRESET_LENGTH is 53.
 				  //Pack data into packed_data.
 				  //First get the nibbles into a byte array as the lower nibble in each byte
@@ -870,7 +889,7 @@
 					tmp_data[j] = 0 | ((data[i] & 0x0F00) >> 8);
 					j++;
 				  }
-				  
+
 				  //Now read all of the nibbles into the packed array
 				  j = 0;
 				  for (int i=0;i<PACKED_PRESET_LENGTH;i++){
@@ -884,8 +903,8 @@
 					j++;
 				  }
 				 */
-							
-				/* HERE IS THE UNPACK CODE USED BY THE MODULE. 
+
+				/* HERE IS THE UNPACK CODE USED BY THE MODULE.
 				   On the CSR, PRESET_LENGTH=70. PACKED_PRESET_LENGTH is 53.
 				  //Unpack packed_data into data.
 				  //First read the packed data nibbles into bytes
@@ -909,8 +928,8 @@
 					data[i] = data[i] | (tmp_data[j] << 4);
 					j++;
 					data[i] = data[i] | (tmp_data[j] << 8);
-					j++; 
-				  }	
+					j++;
+				  }
 				*/
 				dataskip[0]=212;
 				dataskip[1]=44;
@@ -965,17 +984,17 @@
 				dataskip[50]=48;
 				dataskip[51]=208;
 				dataskip[52]=4;
-				dataskip[53]=212;	
+				dataskip[53]=212;
 			}
-			
+
 			else if (module_name.indexOf("Studio H DPO") == 0) {
-				//DPO is 64 per line. 
+				//DPO is 64 per line.
 				for (i = 0; i < 30; i++) {
 					dataskip[i] = 64;
 				}
 			}
-			
-			var rawdata = rawJsonMessage.data;	
+
+			var rawdata = rawJsonMessage.data;
 			for (i = 0; i < dataskip.length; i++) {
 				var memory_address = rawdata.substring(0,4);
 				rawdata = rawdata.substring(4);
@@ -984,7 +1003,7 @@
 				var presetDataElement = {
 					addr : memory_address,
 					data : preset_data
-				}	
+				}
 				presetData.push(presetDataElement);
 			}
 
@@ -996,12 +1015,12 @@
 					presets : presetData
 				}
 				var refinedJsonString = JSON.stringify(refinedJson);
-				document.getElementById("result").innerHTML = refinedJsonString;
-				document.getElementById("saveDiv").style.visibility = "visible";
-				document.getElementById("saveLink").download = module_name + ".json";	
-				document.getElementById("saveLink").href = "data:application/xml;charset=utf-8," + refinedJsonString;					
-			}	
+				result.innerHTML = refinedJsonString;
+				save_div.visibility = "visible";
+				document.getElementById("saveLink").download = module_name + ".json";
+				document.getElementById("saveLink").href = "data:application/xml;charset=utf-8," + refinedJsonString;
+			}
 		}
-		
+
 	</script>
 </html>
