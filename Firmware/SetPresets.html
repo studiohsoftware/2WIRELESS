@@ -60,14 +60,14 @@
 				module_address = parsedJson.module_address;
 				module_name = parsedJson.module_name;
 				jsonParts.push(jsonPart);
-				textValue = textValue + "Processing file " + filename + "...<br/>";
-				textValue = textValue + "Module name: " + module_name + ".<br/>";
-				textValue = textValue + "Module address: " + module_address + ".<br/>";
-				textValue = textValue + "Number of data elements: " + parsedJson.presets.length + ".<br/>";
-				textValue = textValue + "First element address: " + parsedJson.presets[0].addr + ".<br/>";
-				textValue = textValue + "Last element address: " + parsedJson.presets[parsedJson.presets.length - 1].addr + ".<br/>";
+				textValue = `Processing file ${filename}...<br/>
+							 Module name: ${module_name}.<br/>
+							 Module address: ${module_address}.<br/>
+							 Number of data elements: ${parsedJson.presets.length}.<br/>
+							 First element address: ${parsedJson.presets[0].addr}.<br/>
+							 Last element address: ${parsedJson.presets[parsedJson.presets.length - 1].addr}.<br/>`;
 				document.getElementById("text").innerHTML = textValue;
-				textValue = textValue + "Preparing output for sending...<br/>";
+				textValue += "Preparing output for sending...<br/>";
 				document.getElementById("text").innerHTML = textValue;
 				setTimeout(()=>{ //Use of timeout here with timeout of 0 lets the script update the text on the page.
 					//Break JSON into parts if necessary.
@@ -91,7 +91,7 @@
 		function sendPart() {
 			var jsonPartString = JSON.stringify(jsonParts[partsSent],undefined,2);
 			url = "http://192.168.0.1/writememory";
-			textValue = textValue + "Sending part " + (partsSent + 1) + " of " + jsonParts.length + "...<br/>";
+			textValue += `Sending part ${partsSent + 1} of ${jsonParts.length}...<br/>`;
 			document.getElementById("text").innerHTML = textValue;
 			request.open("POST", url);
 			request.setRequestHeader("Content-Length", jsonPartString.length);
@@ -102,7 +102,7 @@
 		function requestOnTimeout(e) {
 			// XMLHttpRequest timed out.
 			requestTimeout = true;
-			textValue = textValue + "Request timed out.<br/>";
+			textValue += "Request timed out.<br/>";
 			document.getElementById("text").innerHTML = textValue;
 		}
 
@@ -143,7 +143,7 @@
 					} else if (url == "http://192.168.0.1/writememory") {
 						setTimeout(()=>{
 							if (!requestTimeout) {
-								textValue = textValue + "Commanding module " + module_name + " to restore...<br/>";
+								textValue += `Commanding module ${module_name} to restore...<br/>`;
 								document.getElementById("text").innerHTML = textValue;
 								url = "http://192.168.0.1/setpresets?addr=" + module_address;
 								request.open("GET",url);
@@ -152,7 +152,7 @@
 						}, MODULE_COMMAND_WAIT)
 					} else {
 						if (!requestTimeout) {
-							textValue = textValue + "Done.<br/>";
+							textValue += "Done.<br/>";
 							document.getElementById("text").innerHTML = textValue;
 						}
 					}
