@@ -5,67 +5,62 @@
 		<script src="assets/scripts/preset_manager.js"></script>
 	</head>
 	<body>
-		<div id="preset-manager">
-			<div class="p">
+		<div>
+			<div class="panel">
 				<div class="hf row">
 					<div class="screw">+</div>
 					<div>PRESET &nbsp; MANAGER</div>
 					<div class="screw">+</div>
 				</div>
 
-				<div class="r row" style="border-bottom: 1px solid darkblue;">
+				<div class="r row">
 					<div class="col">
-						<button id="sB" type="button" class="b" style="background-color: #36f;" tabindex="1"></button>
-						<div style="height:2"></div>
-						<div>store</div>
+						<button id="store" type="button" class="b blue" tabindex="1"></button>
+						<div class="label">store</div>
 					</div>
 					<div class="d row">
-						<div class="dx col" >
-							<input id="current_preset" class="dc" style="width:21px;background-color: #afa;" disabled>
-							<input class="dc" disabled style="width:21px;background-color: #afa;">
+						<div class="dx col">
+							<input id="current_preset" class="dc lcd w2" disabled>
+							<input class="dc lcd w2" disabled>
 						</div>
-						<div class="dx col" >
+						<div class="dx col">
 							<input id="current_name" class="dc" maxlength="20" tabindex="2">
-							<input id="recall_name" class="dc" disabled style="background-color: #afa;">
+							<input id="recall_name" class="dc lcd" disabled>
 						</div>
-						<div class="dx col" >
-							<input class="dc" disabled style="width:40px;background-color: #afa;">
-							<input id="recall_preset" class="dc" style="width:40px;" type="number" min="1" max="30" tabindex="3">
+						<div class="dx col">
+							<input class="dc lcd w4" disabled>
+							<input id="recall_preset" class="dc w4" type="number" min="1" max="30" tabindex="3">
 						</div>
 					</div>
 					<div class="col">
-						<button id="rB" type="button" class="b" style="background-color: #36f;" tabindex="4"></button>
-						<div style="height:2"></div>
-						<div>recall</div>
+						<button id="recall" type="button" class="b blue" tabindex="4"></button>
+						<div class="label">recall</div>
 					</div>
 				</div>
 				<div class="r row">
-					<div class="row" style="width:200px">
+					<div class="row w200">
 						<div class="col">
-							<button id="lB" type="button" class="b" tabindex="5"></button>
-							<div style="height:2"></div>
-							<div>last</div>
+							<button id="last" type="button" class="b" tabindex="5"></button>
+							<div class="label">last</div>
 						</div>
 						<div class="col">
-							<button id="nB" type="button" class="b" tabindex="6"></button>
-							<div style="height:2"></div>
-							<div>next</div>
+							<button id="next" type="button" class="b" tabindex="6"></button>
+							<div class="label">next</div>
 						</div>
 					</div>
-					<div class="col" style="align-items: flex-start;width:33%">
-						<div class="row" style="align-items: flex-start;">
+					<div class="col flexs w3">
+						<div class="row flexs">
 							<input type="radio" id="v3" name="version" value="v3" tabindex="7" hidden>
 							<label for="v3" hidden>primo</label>
 						</div>
-						<div class="row" style="align-items: flex-start;">
+						<div class="row flexs">
 							<input type="radio" id="v2" name="version" value="v2" tabindex="8" hidden>
 							<label for="v2" hidden>v2    </label>
 						</div>
 					</div>
-					<div class="col" style="width:33%">
-						<button id="remB" type="button" class="b" tabindex="9"></button>
-						<div style="height:2"></div>
-						<div>remote</div>
+					<div class="col w3">
+						<button id="remote" type="button" class="b" tabindex="9"></button>
+						<div class="label">remote</div>
 					</div>
 				</div>
 				<div class="hf row">

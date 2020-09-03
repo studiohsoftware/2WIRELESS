@@ -1,4 +1,13 @@
-.p {
+p {
+	font-family: Arial;
+	font-size: 12px;
+}
+
+p.title {
+	font-size: 16px;
+}
+
+.panel {
 	display: flex;
 	flex-direction: column;
 	background-color:lightgray;
@@ -7,12 +16,14 @@
 	font-weight:bold;
 	letter-spacing: 2px;
 	height: 218px;
+	border-top: 1px solid darkblue;
 }
 
 .hf {
 	font-size:12px;
 	padding: 10px;
 	border: 1px solid darkblue;
+	border-top: none;
 }
 
 .r {
@@ -31,12 +42,20 @@
 	align-items: center;
 }
 
+.r.row {
+	border-bottom: 1px solid darkblue;
+}
+
 .col {
 	display: flex;
 	flex-direction: column;
 	justify-content: space-around;
 	align-items: center;
 	font-size:14px;
+}
+
+.flexs {
+	align-items: flex-start;
 }
 
 .screw {
@@ -92,4 +111,32 @@
 	background-color: #000;
 	border-radius: 50%;
 	display: inline-block;
+}
+
+.label {
+	padding-top: 2;
+}
+
+.w2 {
+	width:21px;
+}
+
+.w200 {
+	width: 200px;
+}
+
+.w3 {
+	width: 33%;;
+}
+
+.w4 {
+	width:40px;
+}
+
+.lcd {
+	background-color: #afa;
+}
+
+.blue {
+	background-color: #36f;
 }
