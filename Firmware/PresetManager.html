@@ -82,11 +82,11 @@
 		var names = [];
 		r_pset.onchange = rOnChange;
 		c_name.onchange = cnameOnChange;
-		document.getElementById("sB").onclick = sBOnClick;
-		document.getElementById("rB").onclick = rBOnClick;
-		document.getElementById("lB").onclick = lBOnClick;
-		document.getElementById("nB").onclick = nBOnClick;
-		document.getElementById("remB").onclick = remBOnClick;
+		document.getElementById("store").onclick = sBOnClick;
+		document.getElementById("recall").onclick = rBOnClick;
+		document.getElementById("last").onclick = lBOnClick;
+		document.getElementById("next").onclick = nBOnClick;
+		document.getElementById("remote").onclick = remBOnClick;
 		document.getElementById("v3").checked = true;
 
 		send("readmemory?addr=" + baseAddr.toString(16) + "&length=6");
