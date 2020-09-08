@@ -81,50 +81,28 @@ void loop() {
   if (client) {                             // if you get a client,
     Serial.println("new client");           // print a message out the serial port
     String currentLine = "";                // make a String to hold incoming data from the client
+    String urlString = "";                  // string to hold the request URL
     while (client.connected()) {            // loop while the client's connected
       if (client.available()) {             // if there's bytes to read from the client,
         char c = client.read();             // read a byte, then
         Serial.write(c);                    // print it out the serial monitor
         if (c == '\n') {                    // if the byte is a newline character
-
           // if the current line is blank, you got two newline characters in a row.
           // that's the end of the client HTTP request, so send a response:
           if (currentLine.length() == 0) {
-            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-            // and a content-type so the client knows what's coming, then a blank line:
-            client.println("HTTP/1.1 200 OK");
-            client.println("Content-type:text/html");
-            client.println();
-
-            // the content of the HTTP response follows the header:
-            client.print("Click <a href=\"/H\">here</a> turn the LED on<br>");
-            client.print("Click <a href=\"/L\">here</a> turn the LED off<br>");
-
-            // The HTTP response ends with another blank line:
-            client.println();
-            // break out of the while loop:
-            break;
-          }
-          else {      // if you got a newline, then clear currentLine:
-            currentLine = "";
-          }
-        }
-        else if (c != '\r') {    // if you got anything else but a carriage return character,
-          currentLine += c;      // add it to the end of the currentLine
-        }
-
-        // Check to see if the client request was "GET /H" or "GET /L":
-        if (currentLine.endsWith("GET /H")) {
-          digitalWrite(led, HIGH);               // GET /H turns the LED on
-        }
-        else if (currentLine.endsWith("GET /L")) {
-          digitalWrite(led, LOW);                // GET /L turns the LED off
-        } else {
-          if ((currentLine.startsWith("GET") || (currentLine.startsWith("POST")))&& (c == '\r')){
-            String urlString = currentLine;
+            writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
             Serial.println(""); 
-            Serial.println("URL is: " + currentLine); 
-            if (urlString.indexOf("/remoteenable") >= 0) {
+            Serial.println("URL is: " + urlString); 
+            // Check to see if the client request was "GET /H" or "GET /L":
+            if (urlString.startsWith("GET /H")) {
+              writeHomepage(client);
+              digitalWrite(led, HIGH);               // GET /H turns the LED on
+            }
+            else if (urlString.startsWith("GET /L")) {
+              writeHomepage(client);
+              digitalWrite(led, LOW);                // GET /L turns the LED off
+            } 
+            else if (urlString.indexOf("/remoteenable") >= 0) {
               //cb(cbArg, 0, 200, "text/plain", nullptr);
               //switchToMaster();
               //sendRemoteEnable();
@@ -137,8 +115,21 @@ void loop() {
               //sendRemoteDisable();
               //switchToSlave();
               Serial.println("Remote Disable Received"); 
+            } else {
+                writeHomepage(client);       
             }
+            // break out of the while loop:
+            break;
           }
+          else {      // if you got a newline, then clear currentLine:
+            currentLine = "";
+          }
+        }
+        else if (c != '\r') {    // if you got anything else but a carriage return character,
+          currentLine += c;      // add it to the end of the currentLine
+        }
+        if ((currentLine.startsWith("GET") || (currentLine.startsWith("POST"))) && (c == '\r')){
+          urlString = currentLine;
         }
       }
     }
@@ -146,6 +137,23 @@ void loop() {
     client.stop();
     Serial.println("client disconnected");
   }
+}
+
+void writeHeader(WiFiClient client, String statusString, String contentString) {
+  // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
+  // and a content-type so the client knows what's coming, then a blank line:
+  client.println(statusString);
+  client.println(contentString);
+  client.println();
+}
+
+void writeHomepage(WiFiClient client) {
+  // the content of the HTTP response follows the header:
+  client.print("Click <a href=\"/H\">here</a> turn the LED on<br>");
+  client.print("Click <a href=\"/L\">here</a> turn the LED off<br>");
+  
+  // The HTTP response ends with another blank line:
+  client.println();
 }
 
 void printWiFiStatus() {
