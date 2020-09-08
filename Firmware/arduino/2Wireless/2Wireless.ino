@@ -1,23 +1,4 @@
 #include <WiFi101.h>
-
-/*
-  WiFi Web Server LED Blink
-
-  A simple web server that lets you blink an LED via the web.
-  This sketch will create a new access point (with no password).
-  It will then launch a new server and print out the IP address
-  to the Serial monitor. From there, you can open that address in a web browser
-  to turn on and off the LED on pin 13.
-
-  If the IP address of your shield is yourAddress:
-    http://yourAddress/H turns the LED on
-    http://yourAddress/L turns it off
-
-  created 25 Nov 2012
-  by Tom Igoe
-  adapted to WiFi AP by Adafruit
- */
-
 #include <SPI.h>
 #include <WiFi101.h>
 //#include "arduino_secrets.h"
@@ -136,8 +117,28 @@ void loop() {
         if (currentLine.endsWith("GET /H")) {
           digitalWrite(led, HIGH);               // GET /H turns the LED on
         }
-        if (currentLine.endsWith("GET /L")) {
+        else if (currentLine.endsWith("GET /L")) {
           digitalWrite(led, LOW);                // GET /L turns the LED off
+        } else {
+          if ((currentLine.startsWith("GET") || (currentLine.startsWith("POST")))&& (c == '\r')){
+            String urlString = currentLine;
+            Serial.println(""); 
+            Serial.println("URL is: " + currentLine); 
+            if (urlString.indexOf("/remoteenable") >= 0) {
+              //cb(cbArg, 0, 200, "text/plain", nullptr);
+              //switchToMaster();
+              //sendRemoteEnable();
+              //switchToSlave();
+              Serial.println("Remote Enable Received"); 
+            } 
+            else if (urlString.indexOf("/remotedisable") >= 0) {
+              //cb(cbArg, 0, 200, "text/plain", nullptr);
+              //switchToMaster();
+              //sendRemoteDisable();
+              //switchToSlave();
+              Serial.println("Remote Disable Received"); 
+            }
+          }
         }
       }
     }
