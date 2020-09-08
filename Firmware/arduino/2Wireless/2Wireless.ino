@@ -418,12 +418,13 @@ void loop() {
               Serial.println("Favicon Received"); 
               //cb(cbArg, 0, 200, "image/x-icon", nullptr);
               //return URL icon here, if desired.
-            } else if (urlString.indexOf("/generate_204")) {
+            } else if (urlString.indexOf("/generate_204") >= 0) {
               writeHeader(client,"HTTP/1.1 204 No Content","Content-type:text/plain");
               Serial.println("Generate 204 Received"); 
               //cb(cbArg, 0, 204, "text/plain", nullptr);
             }           
             else {
+              Serial.println("Returning homepage");
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
               writeHomepage(client);       
             }
