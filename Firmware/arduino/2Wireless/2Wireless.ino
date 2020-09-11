@@ -1,7 +1,14 @@
+#include <Wire.h>
 #include <WiFi101.h>
 #include <SPI.h>
-#include <WiFi101.h>
 //#include "arduino_secrets.h"
+
+#define CARD_ADDRESS 0x00
+#define BUFFER_SIZE 4800
+#define FRAM_WREN 0x06 //FRAM WRITE ENABLE COMMAND
+#define FRAM_WRITE 0x02 //FRAM WRITE COMMAND
+#define FRAM_READ 0x03 //FRAM READ COMMAND
+
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
 char ssid[] = "BUCHLA";        // your network SSID (name)
 char pass[] = "BUCHLA200E";    // your network password (use for WPA, or use as key for WEP)
@@ -11,12 +18,16 @@ int led =  LED_BUILTIN;
 int status = WL_IDLE_STATUS;
 WiFiServer server(80);
 
+bool v2version=false; //used to support pre PRIMO firmware.
+bool triggerRemoteEnable = false;
+bool triggerRemoteDisable = false;
+
 void setup() {
   //Initialize serial and wait for port to open:
   Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
+  //while (!Serial) {
+  //  ; // wait for serial port to connect. Needed for native USB port only
+  //}
 
   Serial.println("Access Point Web Server");
 
@@ -31,7 +42,7 @@ void setup() {
 
   // by default the local IP address of will be 192.168.1.1
   // you can override it with the following:
-  // WiFi.config(IPAddress(10, 0, 0, 1));
+  WiFi.config(IPAddress(192, 168, 0, 1));
 
   // print the network name (SSID);
   Serial.print("Creating access point named: ");
@@ -104,17 +115,17 @@ void loop() {
               digitalWrite(led, LOW);                // GET /L turns the LED off
             } 
             else if (urlString.indexOf("/remoteenable") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain");
               Serial.println("Remote Enable Received"); 
-              //cb(cbArg, 0, 200, "text/plain", nullptr);
+              triggerRemoteEnable = true;
               //switchToMaster();
               //sendRemoteEnable();
               //switchToSlave();
             } 
             else if (urlString.indexOf("/remotedisable") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain");
               Serial.println("Remote Disable Received"); 
-              //cb(cbArg, 0, 200, "text/plain", nullptr);
+              triggerRemoteDisable = true;
               //switchToMaster();
               //sendRemoteDisable();
               //switchToSlave();
@@ -447,6 +458,68 @@ void loop() {
     client.stop();
     Serial.println("client disconnected");
   }
+  if (triggerRemoteEnable) {
+    Serial.println("Remote enable triggered");
+    triggerRemoteEnable = false;
+    switchToMaster();
+    sendRemoteEnable();
+    switchToSlave();
+  } else if (triggerRemoteDisable) {
+    Serial.println("Remote disable triggered");
+    triggerRemoteDisable = false;
+    switchToMaster();
+    sendRemoteDisable();
+    switchToSlave();
+  }
+}
+
+void receiveEvent(int howMany) {
+
+}
+void requestEvent() {
+
+}
+
+void switchToMaster(){
+    Wire.end();
+    Wire.begin();
+}
+
+void switchToSlave(){
+    Wire.end();
+    Wire.begin(0x50 | CARD_ADDRESS);
+    Wire.onReceive(receiveEvent);
+    Wire.onRequest(requestEvent);
+}
+
+void sendRemoteEnable() { 
+    //Remote Enable
+    Wire.beginTransmission(0); 
+    if (v2version) {
+        Wire.write(0x14);
+    } else {
+        Wire.write(0x04);
+        Wire.write(0x00);
+        Wire.write(0x22);
+        Wire.write(0x16);
+        Wire.write(0xFF);
+    }
+    Wire.endTransmission();
+}
+
+void sendRemoteDisable() {
+    //Remote Disable
+    Wire.beginTransmission(0);
+    if (v2version) {
+        Wire.write(0x15);
+    } else {
+        Wire.write(0x04);
+        Wire.write(0x00);
+        Wire.write(0x22);
+        Wire.write(0x17);
+        Wire.write(0xFF);
+    }
+    Wire.endTransmission();
 }
 
 void writeHeader(WiFiClient client, String statusString, String contentString) {
