@@ -71,42 +71,4 @@
 			</div>
 		</div>
 	</body>
-	<script>
-		var baseAddr = 0x02BD80;
-		var rem = true;
-		var req;
-		var c_pset = document.getElementById("current_preset");
-		var r_pset = document.getElementById("recall_preset");
-		var c_name = document.getElementById("current_name");
-		var r_name = document.getElementById("recall_name");
-		var names = [];
-		r_pset.onchange = rOnChange;
-		c_name.onchange = cnameOnChange;
-		document.getElementById("store").onclick = sBOnClick;
-		document.getElementById("recall").onclick = rBOnClick;
-		document.getElementById("last").onclick = lBOnClick;
-		document.getElementById("next").onclick = nBOnClick;
-		document.getElementById("remote").onclick = remBOnClick;
-		document.getElementById("v3").checked = true;
-
-		send("readmemory?addr=" + baseAddr.toString(16) + "&length=6");
-		var data = JSON.parse(req.responseText)[0].data;
-		if (data != "425543484c41") {
-			for (var i=1; i<31; i++){
-				writeName(i,"");
-				names[i]="";
-			}
-			send("writememory?addr=" + baseAddr.toString(16) + "&data=425543484C41");
-			writePreset(1);
-		} else {
-			for (var i=1; i<31; i++){
-				names[i]=readName(i);
-			}
-		}
-
-		c_pset.value = readPreset();
-		cOnChange();
-		r_pset.value = c_pset.value;
-		rOnChange();
-	</script>
 </html>

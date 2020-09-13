@@ -1,0 +1,4 @@
+***/*.DS_Store
+Firmware/**/target/*
+Firmware/min*
+**/.vscode/*
