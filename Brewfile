@@ -1,0 +1,2 @@
+# install node
+brew "nodenv"

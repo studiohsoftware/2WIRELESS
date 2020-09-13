@@ -1,0 +1,6 @@
+#!/bin/sh
+
+echo "linting javascript"
+eslint .
+echo "linting html"
+linthtml .

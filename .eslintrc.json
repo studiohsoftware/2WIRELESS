@@ -1,0 +1,14 @@
+{
+    "env": {
+        "browser": true,
+        "commonjs": true
+    },
+    "extends": "eslint:recommended",
+    "parserOptions": {
+        "ecmaVersion": 6
+    },
+    "rules": {
+        "no-undef": "off",
+        "no-unused-vars": "off"
+    }
+}

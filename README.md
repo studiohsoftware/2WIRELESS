@@ -21,7 +21,7 @@ Use writememory to send presets to on-board non-volatile memory first.
 Example HTML here https://github.com/studiohsoftware/2WIRELESS/blob/master/Firmware/SetPresets.html <br/>
 Example JSON (for 292e) here https://github.com/studiohsoftware/2WIRELESS/blob/master/Firmware/presetData.json <br/>
 - ### http://192.168.0.1/midinoteon?mask=(0x0-0xF)&note=(0-127)&velo=(0-255)
-Send MIDI note ON message.<br/> 
+Send MIDI note ON message.<br/>
 Example (bus A, note G1, half velocity): http://192.168.0.1/midinoteon?mask=0x8&note=31&velo=127
 - ### http://192.168.0.1/midinoteoff?mask=(0x0-0xF)&note=(0-127)&velo=(0-255)
 Send MIDI note OFF message.<br/>
@@ -48,16 +48,16 @@ Example (Address 0x1C, return 32 bytes. Note 0x001C, or 0x00001C also acceptable
 - ### http://192.168.0.1/writememory?addr=(0x0-0x03FFFF)&data=(hex string)
 Write data to on-board non-volatile memory at the specified address.<br/>
 Example (Address 0x1ABCD, five data bytes 0AFF1B0432): http://192.168.0.1/writememory?addr=0x1ABCD&data=0AFF1B0432<br/>
-Note all addresses below 0x02C000 are used as scratch space by preset and firmware transfers. 
+Note all addresses below 0x02C000 are used as scratch space by preset and firmware transfers.
 - ### http://192.168.0.1/writememory
 Write bulk data to on-board non-volatile memory.<br/>
-Note this is an HTTP POST with a JSON formatted body.<br/> 
+Note this is an HTTP POST with a JSON formatted body.<br/>
 Example JSON here https://github.com/studiohsoftware/2WIRELESS/blob/master/Firmware/writeMemoryExample.json<br/>
 Notes:
 - #### 20k byte JSON file limit.
 - #### Addresses are arbitrary locations within 0x0-0x03FFFF.
 - #### Data elements can be up to 256 bytes long each (512 characters).
-- #### All addresses below 0x02C000 are used as scratch space by preset and firmware transfers. 
+- #### All addresses below 0x02C000 are used as scratch space by preset and firmware transfers.
 ## V2 Firmware Support
 Old firmware (pre Primo version) also supported. Simply add a "v2" to the URL path. <br/>
 Example: http://192.168.0.1/v2/remotedisable<br/>

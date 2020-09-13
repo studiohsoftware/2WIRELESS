@@ -6,18 +6,18 @@
 		<script src="assets/scripts/modules.js"></script>
 	</head>
 	<body>
-		<div id="fetch-presets">
-			<p id="title" style="font-family:'Arial';font-size:16px">
+		<div id="fetch_presets">
+			<p id="title">
 					Fetch Presets from Module
 			</p>
 			<button id="button">Fetch Presets</button>
-			<select id="moduleSelect" required>
+			<select id="module_select" required>
 				<option value="Select">Select....</option>
 			</select>
 
-			<p id="result" style="font-family:'Arial';font-size:12px"></p>
-			<div id="saveDiv">
-				<a id="saveLink" href="data:application/xml;charset=utf-8,this is a test?" download="filename.json">Save</a>
+			<p id="result"></p>
+			<div id="save_div">
+				<a id="save_link" href="data:application/xml;charset=utf-8,this is a test?" download="filename.json">Save</a>
 			</div>
 		</div>
 	</body>
@@ -27,9 +27,9 @@
 		var module_address;
 		var module_name;
 		var request;
-		var module_selector = document.getElementById("moduleSelect");
+		var module_selector = document.getElementById("module_select");
 		var select_button = document.getElementById("button");
-		var save_div = document.getElementById("saveDiv");
+		var save_div = document.getElementById("save_div");
 		var result = document.getElementById("result");
 
 		window.onload = (event) => {
@@ -52,8 +52,8 @@
 		//Get preset button.
 		select_button.onclick = function () {
 			save_div.style.visibility = "hidden";
-			module_address = moduleSelect.value;
-			module_name = moduleSelect.options[moduleSelect.selectedIndex].text;
+			module_address = module_select.value;
+			module_name = module_select.options[module_select.selectedIndex].text;
 			result.innerHTML = "Please select a module.<br/>";
 			if (module_address != "Select") {
 				request = new XMLHttpRequest();

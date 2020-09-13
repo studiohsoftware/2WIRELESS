@@ -1,0 +1,23 @@
+{
+  "name": "2wireless",
+  "version": "1.0.0",
+  "description": "A wireless preset manager for the Buchla 200e",
+  "main": "assets/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/studiohsoftware/2WIRELESS.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/studiohsoftware/2WIRELESS/issues"
+  },
+  "homepage": "https://github.com/studiohsoftware/2WIRELESS#readme",
+  "devDependencies": {
+    "@linthtml/linthtml": "^0.5.0",
+    "butternut": "^0.4.6",
+    "css-minify": "^1.0.1",
+    "eslint": "^7.9.0",
+    "html-minifier": "^4.0.0"
+  }
+}

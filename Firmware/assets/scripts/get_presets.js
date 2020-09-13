@@ -8,6 +8,12 @@
 //Each module is different, and the addresses are located using the dataskip[] values below.
 //The dataskip values were found by manual inspection of the raw data!
 
+function dataSkip(max, val) {
+    for (var i = 0; i < max; i++) {
+        dataskip[i] = val;
+    }
+}
+
 function requestOnTimeout(e) {
     // XMLHttpRequest timed out.
     var textValue = result.innerHTML;
@@ -27,13 +33,10 @@ function requestOnLoad() {
     var refinedJson;
     var presetData = [];
     var dataskip = [];
-    var i;
 
     if (module_name.indexOf("206e") == 0) {
         //206e is mostly 40.
-        for (i = 0; i < 38; i++) {
-            dataskip[i] = 40;
-        }
+        dataSkip(38, 40)
         dataskip[3] = 8;
         dataskip[4] = 32;
         dataskip[7] = 16;
@@ -54,9 +57,7 @@ function requestOnLoad() {
 
     else if (module_name.indexOf("210e") == 0) {
         //210e is mostly 128.
-        for (i = 0; i < 60; i++) {
-            dataskip[i] = 128;
-        }
+        dataSkip(60, 128)
         dataskip[1] = 32;
         dataskip[2] = 96;
         dataskip[3] = 64;
@@ -106,9 +107,7 @@ function requestOnLoad() {
 
     else if (module_name.indexOf("223e A") == 0) {
         //223e A is mostly 128.
-        for (i = 0; i < 73; i++) {
-            dataskip[i] = 128;
-        }
+        dataSkip(73, 128)
         dataskip[1] = 58;
         dataskip[2] = 70;
         dataskip[3] = 116;
@@ -173,9 +172,7 @@ function requestOnLoad() {
 
     else if (module_name.indexOf("223e M") == 0) {
         //223e M is mostly 128.
-        for (i = 0; i < 315; i++) {
-            dataskip[i] = 128;
-        }
+        dataSkip(315, 128)
         dataskip[9] = 96;
         dataskip[10] = 32;
         dataskip[20] = 64;
@@ -291,9 +288,7 @@ function requestOnLoad() {
 
     else if (module_name.indexOf("227e") == 0) {
         //227e is mostly 28.
-        for (i = 0; i < 36; i++) {
-            dataskip[i] = 28;
-        }
+        dataSkip(36, 28)
         dataskip[4] = 16;
         dataskip[5] = 12;
         dataskip[10] = 4;
@@ -310,9 +305,7 @@ function requestOnLoad() {
 
     else if (module_name.indexOf("250e") == 0) {
         //250e is mostly 128.
-        for (i = 0; i < 158; i++) {
-            dataskip[i] = 128;
-        }
+        dataSkip(158, 128)
         dataskip[4] = 48;
         dataskip[5] = 80;
         dataskip[9] = 96;
@@ -371,9 +364,7 @@ function requestOnLoad() {
 
     else if (module_name.indexOf("251e") == 0) {
         //251e has 128 characters with some exceptions.
-        for (i = 0; i < 1013; i++) {
-            dataskip[i] = 128;
-        }
+        dataSkip(1013, 128)
         dataskip[32] = 112;
         dataskip[33] = 16;
         dataskip[66] = 96;
@@ -431,9 +422,7 @@ function requestOnLoad() {
 
     else if (module_name.indexOf("254e") > -1) {
         //254e is 32.
-        for (i = 0; i < 30; i++) {
-            dataskip[i] = 32;
-        }
+        dataSkip(30, 32)
     }
 
     else if (module_name.indexOf("255e") > -1) {
@@ -441,9 +430,7 @@ function requestOnLoad() {
         //Note 255e data is packed. Each value is 12 bits, so bytes are shared to save space.
         //Refer to CSR comments below. Same thing here except PRESET_LENGTH=24 and
         //PACKED_PRESET_LENGTH=18.
-        for (i = 0; i < 38; i++) {
-            dataskip[i] = 72;
-        }
+        dataSkip(38, 72)
         dataskip[3] = 40;
         dataskip[4] = 32;
         dataskip[8] = 8;
@@ -464,9 +451,7 @@ function requestOnLoad() {
 
     else if (module_name.indexOf("256e") == 0) {
         //256e is mostly 44.
-        for (i = 0; i < 40; i++) {
-            dataskip[i] = 44;
-        }
+        dataSkip(40, 44)
         dataskip[2] = 40;
         dataskip[3] = 4;
         dataskip[6] = 36;
@@ -491,9 +476,7 @@ function requestOnLoad() {
 
     else if (module_name.indexOf("259e") == 0) {
         //259e has a pattern. Every third line is 66.
-        for (i = 0; i < 45; i++) {
-            dataskip[i] = 66;
-        }
+        dataSkip(45, 66)
         dataskip[1] = 62;
         dataskip[2] = 4;
         dataskip[4] = 58;
@@ -528,9 +511,7 @@ function requestOnLoad() {
 
     else if (module_name.indexOf("261e") == 0) {
         //261e is mostly 62.
-        for (i = 0; i < 44; i++) {
-            dataskip[i] = 62;
-        }
+        dataSkip(44, 62)
         dataskip[2] = 4;
         dataskip[3] = 58;
         dataskip[5] = 8;
@@ -563,9 +544,7 @@ function requestOnLoad() {
 
     else if (module_name.indexOf("266e") == 0) {
         //266e is mostly 14.
-        for (i = 0; i < 33; i++) {
-            dataskip[i] = 14;
-        }
+        dataSkip(33, 14)
         dataskip[9] = 2;
         dataskip[10] = 12;
         dataskip[19] = 4;
@@ -576,9 +555,7 @@ function requestOnLoad() {
 
     else if (module_name.indexOf("281e") == 0) {
         //281e is mostly 14.
-        for (i = 0; i < 33; i++) {
-            dataskip[i] = 14;
-        }
+        dataSkip(33, 14)
         dataskip[9] = 2;
         dataskip[10] = 12;
         dataskip[19] = 4;
@@ -589,9 +566,7 @@ function requestOnLoad() {
 
     else if (module_name.indexOf("285e F") == 0) {
         //285e FM is mostly 14.
-        for (i = 0; i < 33; i++) {
-            dataskip[i] = 14;
-        }
+        dataSkip(33, 14)
         dataskip[9] = 2;
         dataskip[10] = 12;
         dataskip[19] = 4;
@@ -602,9 +577,7 @@ function requestOnLoad() {
 
     else if (module_name.indexOf("285e B") == 0) {
         //285e BM is mostly 22.
-        for (i = 0; i < 35; i++) {
-            dataskip[i] = 22;
-        }
+        dataSkip(35, 22)
         dataskip[5] = 18;
         dataskip[6] = 4;
         dataskip[12] = 14;
@@ -619,9 +592,7 @@ function requestOnLoad() {
 
     else if (module_name.indexOf("291e") == 0) {
         //291e has 128 characters with some exceptions.
-        for (i = 0; i < 140; i++) {
-            dataskip[i] = 128;
-        }
+        dataSkip(140, 128)
         dataskip[3] = 86;
         dataskip[4] = 42;
         dataskip[8] = 44;
@@ -686,16 +657,12 @@ function requestOnLoad() {
     else if (module_name.indexOf("292e") == 0) {
         //292e is easy. First four characters are address, then 16 characters of data,
         //then four more characters of address, another 16 and so on until the end.
-        for (i = 0; i < 30; i++) {
-            dataskip[i] = 16;
-        }
+        dataSkip(30, 16)
     }
 
     else if (module_name.indexOf("296e") == 0) {
         //296e is half 128. Other half is 64.
-        for (i = 0; i < 60; i++) {
-            dataskip[i] = 128;
-        }
+        dataSkip(60, 128)
         dataskip[1] = 64;
         dataskip[2] = 64;
         dataskip[5] = 64;
@@ -850,13 +817,11 @@ function requestOnLoad() {
 
     else if (module_name.indexOf("Studio H DPO") == 0) {
         //DPO is 64 per line.
-        for (i = 0; i < 30; i++) {
-            dataskip[i] = 64;
-        }
+        dataSkip(30, 64)
     }
 
     var rawdata = rawJsonMessage.data;
-    for (i = 0; i < dataskip.length; i++) {
+    for (let i = 0; i < dataskip.length; i++) {
         var memory_address = rawdata.substring(0, 4);
         rawdata = rawdata.substring(4);
         var preset_data = rawdata.substring(0, dataskip[i]);
@@ -870,7 +835,7 @@ function requestOnLoad() {
 
 
     if (presetData.length > 0) {
-        var refinedJson = {
+        refinedJson = {
             module_address: module_address,
             module_name: module_name,
             presets: presetData
@@ -878,7 +843,7 @@ function requestOnLoad() {
         var refinedJsonString = JSON.stringify(refinedJson);
         result.innerHTML = refinedJsonString;
         save_div.visibility = "visible";
-        document.getElementById("saveLink").download = module_name + ".json";
-        document.getElementById("saveLink").href = "data:application/xml;charset=utf-8," + refinedJsonString;
+        document.getElementById("save_link").download = module_name + ".json";
+        document.getElementById("save_link").href = "data:application/xml;charset=utf-8," + refinedJsonString;
     }
 }

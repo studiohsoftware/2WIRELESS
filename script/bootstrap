@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [[ "$(uname -s)" = "Darwin" ]]; then
+    echo "installing brew deps"
+    brew update >/dev/null
+    brew bundle check &>/dev/null || brew bundle
+
+    npm install
+fi

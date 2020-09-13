@@ -19,14 +19,14 @@ document.addEventListener("DOMContentLoaded", function () {
     send("readmemory?addr=" + baseAddr.toString(16) + "&length=6");
     var data = JSON.parse(req.responseText)[0].data;
     if (data != "425543484c41") {
-        for (var i = 1; i < 31; i++) {
+        for (let i = 1; i < 31; i++) {
             writeName(i, "");
             names[i] = "";
         }
         send("writememory?addr=" + baseAddr.toString(16) + "&data=425543484C41");
         writePreset(1);
     } else {
-        for (var i = 1; i < 31; i++) {
+        for (let i = 1; i < 31; i++) {
             names[i] = readName(i);
         }
     }
@@ -143,7 +143,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function textToHex(text) {
         var result = "";
         if (text != "") {
-            var i;
+            let i;
             for (i = 0; i < text.length; i++) {
                 result = result + text[i].charCodeAt(0).toString(16);
             }

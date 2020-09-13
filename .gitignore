@@ -2,3 +2,4 @@
 Firmware/**/target/*
 Firmware/min*
 **/.vscode/*
+node_modules
