@@ -203,7 +203,7 @@
 <text x="23.903940625" y="16.637" size="1.016" layer="21" font="vector" ratio="12" rot="R90">o</text>
 <text x="62.23" y="2.286" size="1.27" layer="25" font="vector" ratio="12" rot="R90">PRIMO</text>
 <text x="62.23" y="10.16" size="1.27" layer="25" font="vector" ratio="12" rot="R90">V2</text>
-<text x="53.848" y="5.842" size="1.27" layer="25" font="vector" ratio="12" rot="R90">AUX</text>
+<text x="53.848" y="2.54" size="1.27" layer="25" font="vector" ratio="12" rot="R90">WPA</text>
 <text x="1.524" y="24.384" size="1.27" layer="25" font="vector" ratio="12">ARDUINO MKR1000</text>
 <circle x="4.826" y="21.844" radius="0.71841875" width="0.3048" layer="21"/>
 <circle x="7.62" y="21.844" radius="0.71841875" width="0.3048" layer="21"/>
@@ -221,6 +221,7 @@
 <wire x1="41.402" y1="27.178" x2="48.514" y2="27.178" width="0.3048" layer="21"/>
 <wire x1="48.514" y1="27.178" x2="48.514" y2="32.512" width="0.3048" layer="21"/>
 <wire x1="48.514" y1="32.512" x2="41.402" y2="32.512" width="0.3048" layer="21"/>
+<text x="53.848" y="8.636" size="1.27" layer="25" font="vector" ratio="12" rot="R90">OPEN</text>
 </plain>
 <libraries>
 <library name="studio_h">
@@ -941,7 +942,7 @@ design rules under a new name.</description>
 <contactref element="S1" pad="1"/>
 <contactref element="S1" pad="2"/>
 <wire x1="33.6804" y1="1.016" x2="33.6804" y2="7.112" width="1.6764" layer="16"/>
-<via x="52.578" y="3.302" extent="1-16" drill="0.7"/>
+<via x="52.832" y="6.858" extent="1-16" drill="0.7"/>
 <via x="33.528" y="23.876" extent="1-16" drill="0.7"/>
 <via x="57.404" y="9.906" extent="1-16" drill="0.7"/>
 <via x="44.958" y="24.13" extent="1-16" drill="0.7"/>
