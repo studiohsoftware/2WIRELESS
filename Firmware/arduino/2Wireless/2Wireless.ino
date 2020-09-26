@@ -10,7 +10,7 @@
 #define FRAM_READ 0x03 //FRAM READ COMMAND
 
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
-char ssid[] = "BUCHLA";        // your network SSID (name)
+char ssid[] = "BUCHLA200E";        // your network SSID (name)
 char pass[] = "BUCHLA200E";    // your network password (use for WPA, or use as key for WEP)
 int keyIndex = 0;                // your network key Index number (needed only for WEP)
 
@@ -19,8 +19,6 @@ int status = WL_IDLE_STATUS;
 WiFiServer server(80);
 
 bool v2version=false; //used to support pre PRIMO firmware.
-bool triggerRemoteEnable = false;
-bool triggerRemoteDisable = false;
 
 void setup() {
   //Initialize serial and wait for port to open:
@@ -65,6 +63,8 @@ void setup() {
 
   // you're connected now, so print out the status
   printWiFiStatus();
+
+  //SERCOM2->I2CS.CTRLA.bit.SPEED = 0x1u; //try fm+ setting
 }
 
 
@@ -117,18 +117,16 @@ void loop() {
             else if (urlString.indexOf("/remoteenable") >= 0) {
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain");
               Serial.println("Remote Enable Received"); 
-              triggerRemoteEnable = true;
-              //switchToMaster();
-              //sendRemoteEnable();
-              //switchToSlave();
+              switchToMaster();
+              sendRemoteEnable();
+              switchToSlave();
             } 
             else if (urlString.indexOf("/remotedisable") >= 0) {
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain");
               Serial.println("Remote Disable Received"); 
-              triggerRemoteDisable = true;
-              //switchToMaster();
-              //sendRemoteDisable();
-              //switchToSlave();
+              switchToMaster();
+              sendRemoteDisable();
+              switchToSlave();
             } 
             else if (urlString.indexOf("/savepreset?preset") >= 0) {
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
@@ -457,19 +455,6 @@ void loop() {
     // close the connection:
     client.stop();
     Serial.println("client disconnected");
-  }
-  if (triggerRemoteEnable) {
-    Serial.println("Remote enable triggered");
-    triggerRemoteEnable = false;
-    switchToMaster();
-    sendRemoteEnable();
-    switchToSlave();
-  } else if (triggerRemoteDisable) {
-    Serial.println("Remote disable triggered");
-    triggerRemoteDisable = false;
-    switchToMaster();
-    sendRemoteDisable();
-    switchToSlave();
   }
 }
 
