@@ -8,6 +8,147 @@
 #define FRAM_WREN 0x06 //FRAM WRITE ENABLE COMMAND
 #define FRAM_WRITE 0x02 //FRAM WRITE COMMAND
 #define FRAM_READ 0x03 //FRAM READ COMMAND
+#define SPI_CS 4 //FRAM Chip Select
+
+class JsonToken {
+    public:
+        JsonToken();
+        int count;
+        int status;
+        String data;
+};
+
+JsonToken::JsonToken() {
+    this->count = 0;
+    this->status = 0;
+    this->data = "";
+}
+
+
+class RingBuffer2 {
+    private:
+        volatile uint8_t buffer[BUFFER_SIZE];
+        volatile uint32_t head;
+        volatile uint32_t tail;  
+    public:
+        RingBuffer2();
+        int bytesFree(void);
+        int bytesQueued(void);
+        uint8_t read(void);
+        void write(uint8_t byte);
+        void flush();
+};
+
+RingBuffer2::RingBuffer2() {
+    this->head = 0;
+    this->tail = 0;
+    this->buffer[0] = 0;
+}
+
+int RingBuffer2::bytesQueued(void) {
+     int result = 0;
+    result = (unsigned int)(BUFFER_SIZE + this->head - this->tail) % BUFFER_SIZE;
+    return result;
+}
+
+int RingBuffer2::bytesFree(void) {
+    return BUFFER_SIZE - this->bytesQueued();
+}
+
+uint8_t RingBuffer2::read(void){
+    uint8_t result = 0x00;
+    if (this->bytesQueued() > 0){
+        result = this->buffer[this->tail];
+        this->tail = (uint32_t)(this->tail+1) % BUFFER_SIZE;
+    }
+    return result; //Note byte returned, so always call bytesQueued() first to check.
+}
+ 
+void RingBuffer2::write(uint8_t byte){
+    if (this->bytesFree()>0) {
+        this->buffer[this->head] = byte;
+        this->head = (uint32_t)(this->head + 1) % BUFFER_SIZE;
+    }
+}
+
+void RingBuffer2::flush() {
+    this->tail = this->head;
+}
+
+RingBuffer2 ringBuffer = RingBuffer2(); //Used to buffer data between HTTP and I2C.
+volatile int read_counter; //Used to auto increment read addresses during I2C READ from master.
+volatile int fram_address=0; //This is global only because it must span OnRequest calls during I2C READ from master. 
+volatile bool startup = true; //Used to free 206e when starting up.
+unsigned long readTime = 0; //used to detect idle to free up 206e at start.
+bool v2version=false; //used to support pre PRIMO firmware.
+SPISettings spiSettings(16000000, MSBFIRST, SPI_MODE0); 
+
+void framEnableWrite(){
+    SPI.beginTransaction(spiSettings);
+    digitalWrite(SPI_CS, LOW); //Set CS low to select chip
+    SPI.transfer(FRAM_WREN); // send write enable OPCODE
+    digitalWrite(SPI_CS, HIGH); //Set CS high to de-select
+    SPI.endTransaction();
+}
+
+void framWrite(int addr, uint8_t value){
+    //Address on the MB85RS2MTA is 18 bits total, requiring 3 bytes. 
+    uint8_t addr_byte_upper = (0x3F0000 & addr) >>16;
+    uint8_t addr_byte_middle = (0x00FF00 & addr) >>8;
+    uint8_t addr_byte_lower = (0x0000FF & addr);
+    framEnableWrite();
+    SPI.beginTransaction(spiSettings);
+    digitalWrite(SPI_CS, LOW); //Set CS low to select chip
+    SPI.transfer(FRAM_WRITE); // send write enable OPCODE
+    SPI.transfer(addr_byte_upper); // send address upper byte
+    SPI.transfer(addr_byte_middle); // send address middle byte
+    SPI.transfer(addr_byte_lower); // send address lower byte
+    SPI.transfer(value); // send value
+    digitalWrite(SPI_CS, HIGH); //Set CS high to de-select
+    SPI.endTransaction();
+}
+
+void framWriteHexString(int addr, String value){
+    //Address on the MB85RS2MTA is 18 bits total, requiring 3 bytes. 
+    uint8_t addr_byte_upper = (0x3F0000 & addr) >>16;
+    uint8_t addr_byte_middle = (0x00FF00 & addr) >>8;
+    uint8_t addr_byte_lower = (0x0000FF & addr);
+    framEnableWrite();
+    SPI.beginTransaction(spiSettings);
+    digitalWrite(SPI_CS, LOW); //Set CS low to select chip
+    SPI.transfer(FRAM_WRITE); // send write enable OPCODE
+    SPI.transfer(addr_byte_upper); // send address upper byte
+    SPI.transfer(addr_byte_middle); // send address middle byte
+    SPI.transfer(addr_byte_lower); // send address lower byte
+    String remainder = value;
+    while (remainder.length() >= 2){
+        uint8_t data = (int)strtol(remainder.substring(0,2).c_str(), nullptr, 16); 
+        Serial.print("transferring... ");
+        Serial.println(data,HEX);
+        SPI.transfer(data); // send value
+        remainder = remainder.substring(2,remainder.length());
+    }
+    digitalWrite(SPI_CS, HIGH); //Set CS high to de-select
+    SPI.endTransaction();
+}
+
+uint8_t framRead(int addr){
+    uint8_t result = 0x00;
+    //Address on the MB85RS2MTA is 18 bits total, requiring 3 bytes. 
+    uint8_t addr_byte_upper = (0x3F0000 & addr) >>16;
+    uint8_t addr_byte_middle = (0x00FF00 & addr) >>8;
+    uint8_t addr_byte_lower = (0x0000FF & addr);
+    SPI.beginTransaction(spiSettings);
+    digitalWrite(SPI_CS, LOW); //Set CS low to select chip
+    SPI.transfer(FRAM_READ); // send write enable OPCODE
+    SPI.transfer(addr_byte_upper); // send address upper byte
+    SPI.transfer(addr_byte_middle); // send address middle byte
+    SPI.transfer(addr_byte_lower); // send address lower byte
+    result = SPI.transfer(0); // read byte
+    digitalWrite(SPI_CS, HIGH); //Set CS high to de-select
+    SPI.endTransaction();
+    return result;
+}
 
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
 char ssid[] = "BUCHLA200E";        // your network SSID (name)
@@ -17,8 +158,6 @@ int keyIndex = 0;                // your network key Index number (needed only f
 int led =  LED_BUILTIN;
 int status = WL_IDLE_STATUS;
 WiFiServer server(80);
-
-bool v2version=false; //used to support pre PRIMO firmware.
 
 void setup() {
   //Initialize serial and wait for port to open:
@@ -63,8 +202,8 @@ void setup() {
 
   // you're connected now, so print out the status
   printWiFiStatus();
-
-  
+  pinMode(SPI_CS, OUTPUT); //SPI CS
+  SPI.begin(); //FRAM communications
 }
 
 
@@ -338,56 +477,54 @@ void loop() {
               //    switchToSlave(); //Switch to slave to receive the read requests.
               //}
             } else if (urlString.indexOf("/readmemory?addr") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json");
               Serial.println("Read Memory Received"); 
               //cb(cbArg, 0, 200, "application/json", nullptr);
-              //int len = urlString.length();
-              //int amploc = urlString.indexOf('&');
-              //if (amploc==-1) amploc=len;
-              //int eqloc = urlString.indexOf('=');
-              //int addr = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
-              //eqloc = urlString.indexOf('=',amploc);
-              //int length = 1; 
-              //if (eqloc > -1) {
-              //    length = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
-              //}
-              //String dataString = "";
-              //String tmp="";
-              //int offset = 0;
-              //result->write("[{\"addr\": \"" + String(addr,HEX) + "\",\"data\": \"");
-              //for (int i = 0; i<length; i++){
-              //    tmp = String(framRead(addr + offset),HEX);
-              //    if (tmp.length() == 1) tmp = "0" + tmp;
-              //    dataString = dataString + tmp;
-              //    offset++; 
-              //    if (i == (length - 1)) {
-              //        result->write(dataString + "\"}]");
-              //    } else if ( offset % 128 == 0 ) {
-              //        addr = addr + offset;
-              //        result->write(dataString + "\"},{\"addr\": \"" + String(addr,HEX) + "\",\"data\": \"");
-              //        offset = 0;
-              //        dataString = "";
-              //    }
-              //}
+              int len = urlString.indexOf(" HTTP");
+              int amploc = urlString.indexOf('&');
+              if (amploc==-1) amploc=len;
+              int eqloc = urlString.indexOf('=');
+              int addr = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+              eqloc = urlString.indexOf('=',amploc);
+              int length = 1; 
+              if (eqloc > -1) {
+                  length = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+              }
+              String dataString = "";
+              String tmp="";
+              int offset = 0;
+              client.print("[{\"addr\": \"" + String(addr,HEX) + "\",\"data\": \"");
+              for (int i = 0; i<length; i++){
+                tmp = String(framRead(addr + offset),HEX);
+                if (tmp.length() == 1) tmp = "0" + tmp;
+                dataString = dataString + tmp;
+                offset++; 
+                if (i == (length - 1)) {
+                  client.print(dataString + "\"}]");
+                } else if ( offset % 128 == 0 ) {
+                  addr = addr + offset;
+                  client.print(dataString + "\"},{\"addr\": \"" + String(addr,HEX) + "\",\"data\": \"");
+                  offset = 0;
+                  dataString = "";
+                }
+              }
             } else if (urlString.indexOf("/writememory?addr") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain");
               Serial.println("Write Memory Received"); 
-              //cb(cbArg, 0, 200, "text/plain", nullptr);
-              //int len = urlString.length();
-              //int amploc = urlString.indexOf('&');
-              //if (amploc==-1) amploc=len;
-              //int eqloc = urlString.indexOf('=');
-              //int addr = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
-              //eqloc = urlString.indexOf('=',amploc);
-              //String data_string = "00"; 
-              //if (eqloc > -1) {
-              //    data_string = urlString.substring(eqloc + 1, len);
-              //}
-              //framWriteHexString(addr,data_string);
+              int len = urlString.indexOf(" HTTP");
+              int amploc = urlString.indexOf('&');
+              if (amploc==-1) amploc=len;
+              int eqloc = urlString.indexOf('=');
+              int addr = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+              eqloc = urlString.indexOf('=',amploc);
+              String data_string = "00"; 
+              if (eqloc > -1) {
+                  data_string = urlString.substring(eqloc + 1, len);
+              }
+              framWriteHexString(addr,data_string);
             } else if (urlString.indexOf("/writememory") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
-              Serial.println("Write Memory Received"); 
-              //cb(cbArg, 0, 200, "text/plain", nullptr);
+              //writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain");
+              //Serial.println("Write Memory Received"); 
               //fram_address = 0;
               //JsonToken* token = new JsonToken();
               //getJsonToken(token, body);
@@ -508,6 +645,239 @@ void sendRemoteDisable() {
     }
     Wire.endTransmission();
 }
+
+void sendSavePreset(byte preset) {
+    //Save Preset
+    //Preset=0-29
+    Wire.beginTransmission(0);
+    if (v2version) {
+        Wire.write(0x01);
+        Wire.write(preset); 
+    } else {
+        Wire.write(0x04);
+        Wire.write(0x00);
+        Wire.write(0x22);
+        Wire.write(0x02);
+        Wire.write(preset);   
+    }
+    Wire.endTransmission();
+}
+
+void sendRecallPreset(byte preset) {
+    //Recall Preset
+    //Preset=0-29
+    Wire.beginTransmission(0);
+    if (v2version) {
+        Wire.write(0x00);
+        Wire.write(preset); 
+    } else {
+        Wire.write(0x04);
+        Wire.write(0x00);
+        Wire.write(0x22);
+        Wire.write(0x01);
+        Wire.write(preset);   
+    }
+    Wire.endTransmission();
+}
+
+void sendBackupPresets(byte address) {
+    //Fetch presets from specified module
+    //Address 0x44=291e.
+    Wire.beginTransmission(0);  
+    if (v2version) {
+        Wire.write(0x2D);
+        Wire.write(address); //Module address
+        Wire.write(0x00); //Card memory address LSB
+        Wire.write(0x00); //Card memory address MSB
+        Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
+    } else {
+        Wire.write(0x07);
+        Wire.write(0x00);
+        Wire.write(0x22);
+        Wire.write(0x04);
+        Wire.write(address); //Module address
+        Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
+        Wire.write(0x00); //Card memory address LSB
+        Wire.write(0x00); //Card memory address MSB
+    }
+    Wire.endTransmission();
+}
+
+void sendRestorePresets(byte address) {
+    //Request specified module to restore presets.
+    //Address 0x44=291e.
+    Wire.beginTransmission(0);
+    if (v2version) {
+        Wire.write(0x2E);
+        Wire.write(address); //Module address
+        Wire.write(0x00); //Card memory address LSB
+        Wire.write(0x00); //Card memory address MSB
+        Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
+    } else {
+        Wire.write(0x07);
+        Wire.write(0x00);
+        Wire.write(0x22);
+        Wire.write(0x05);
+        Wire.write(address); //Module address
+        Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
+        Wire.write(0x00); //Card memory address LSB
+        Wire.write(0x00); //Card memory address MSB    
+    }
+    Wire.endTransmission();
+}
+
+void sendMidiNoteOn(byte mask, byte note, byte velo){
+    //Send MIDI note ON event.
+    //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
+    //Note 0=C-1, 127=G9.
+    //Velo=0-255.
+    Wire.beginTransmission(0);
+    if (v2version) {
+        Wire.write(0x90 | mask);
+        Wire.write(note);
+        Wire.write(velo);
+    } else {
+        Wire.write(0x08);
+        Wire.write(0x00);
+        Wire.write(0x22); //addr
+        Wire.write(0x0F);
+        Wire.write(0x90 | mask);
+        Wire.write(0x00);
+        Wire.write(note);
+        Wire.write(velo);
+        Wire.write(0x00);   
+    }
+    Wire.endTransmission();
+}
+
+void sendMidiNoteOff(byte mask, byte note, byte velo){
+    //Send MIDI note OFF event.
+    //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
+    //Note 0=C-1, 127=G9.
+    //Velo=0-255.
+    Wire.beginTransmission(0);
+    if (v2version) {
+        Wire.write(0x80 | mask);
+        Wire.write(note);
+        Wire.write(velo);
+    } else {
+        Wire.write(0x08);
+        Wire.write(0x00);
+        Wire.write(0x22);//addr
+        Wire.write(0x0F);
+        Wire.write(0x80 | mask);
+        Wire.write(0x00);
+        Wire.write(note);
+        Wire.write(velo);
+        Wire.write(0x00);
+    }
+    Wire.endTransmission();
+}
+
+void sendMidiClockStart(){
+    //Send MIDI clock start event.
+    Wire.beginTransmission(0);
+    if (v2version) {
+
+    } else {
+        Wire.write(0x08);
+        Wire.write(0x00);
+        Wire.write(0x22);//addr
+        Wire.write(0x0F);
+        Wire.write(0xFA);
+        Wire.write(0x00);
+        Wire.write(0x00); //not sure what this is
+        Wire.write(0x00);
+        Wire.write(0x00);      
+    }
+    Wire.endTransmission();
+}
+
+void sendMidiClockStop(){
+    //Send MIDI clock stop event.
+    Wire.beginTransmission(0);
+    if (v2version) {
+
+    } else {
+        Wire.write(0x08);
+        Wire.write(0x00);
+        Wire.write(0x22);//addr
+        Wire.write(0x0F);
+        Wire.write(0xFC);
+        Wire.write(0x00);
+        Wire.write(0x00); //not sure what this is
+        Wire.write(0x00);
+        Wire.write(0x00);   
+    }
+    Wire.endTransmission();
+}
+
+void sendMidiClock(){
+    //Send MIDI clock event. 24 per beat required?
+    Wire.beginTransmission(0);
+    if (v2version) {
+
+    } else {
+        Wire.write(0x08);
+        Wire.write(0x00);
+        Wire.write(0x22);//addr
+        Wire.write(0x0F);
+        Wire.write(0xF8);
+        Wire.write(0x00);
+        Wire.write(0x00); //not sure what this is
+        Wire.write(0x00);
+        Wire.write(0x00);   
+    }
+    Wire.endTransmission();
+}
+
+void sendMidiFineTune(byte mask, byte tune){
+    //Send MIDI Fine Tune event.
+    //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
+    //Tune 0x00=-49, 0x32=An, 0x63=49
+    Wire.beginTransmission(0);
+    if (v2version) {
+        Wire.write(0xB0 | mask);
+        Wire.write(0x1F);
+        Wire.write(tune);
+    } else {
+        Wire.write(0x08);
+        Wire.write(0x00);
+        Wire.write(0x22);//addr
+        Wire.write(0x0F);
+        Wire.write(0xB0 | mask);
+        Wire.write(0x00);
+        Wire.write(0x1F);
+        Wire.write(tune);
+        Wire.write(0x00);    
+    }
+    Wire.endTransmission();
+}
+
+void sendMidiBend(byte mask, byte bend_lsb, byte bend_msb){
+    //Send MIDI Bend.
+    //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
+    //bend_msb 0x00=min bend, 0x40=no bend, 0x7F=max bend.
+    //bend_lsb=0x00-0x7F fine tune of bend.
+    Wire.beginTransmission(0); 
+    if (v2version) {
+        Wire.write(0xE0 | mask);
+        Wire.write(bend_lsb);
+        Wire.write(bend_msb);
+    } else {
+        Wire.write(0x08);
+        Wire.write(0x00);
+        Wire.write(0x22);//addr
+        Wire.write(0x0F);
+        Wire.write(0xE0 | mask);
+        Wire.write(0x00);
+        Wire.write(bend_lsb);
+        Wire.write(bend_msb);
+        Wire.write(0x00);   
+    }
+    Wire.endTransmission();
+}
+
 
 void writeHeader(WiFiClient client, String statusString, String contentString) {
   // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
