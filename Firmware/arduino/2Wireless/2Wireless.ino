@@ -64,7 +64,7 @@ void setup() {
   // you're connected now, so print out the status
   printWiFiStatus();
 
-  //SERCOM2->I2CS.CTRLA.bit.SPEED = 0x1u; //try fm+ setting
+  
 }
 
 
@@ -466,11 +466,13 @@ void requestEvent() {
 }
 
 void switchToMaster(){
-    Wire.end();
-    Wire.begin();
+  delayMicroseconds(10);
+  Wire.end();
+  Wire.begin();
 }
 
 void switchToSlave(){
+    delayMicroseconds(10);
     Wire.end();
     Wire.begin(0x50 | CARD_ADDRESS);
     Wire.onReceive(receiveEvent);
