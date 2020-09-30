@@ -82,6 +82,8 @@ volatile bool startup = true; //Used to free 206e when starting up.
 unsigned long readTime = 0; //used to detect idle to free up 206e at start.
 bool v2version=false; //used to support pre PRIMO firmware.
 SPISettings spiSettings(12000000, MSBFIRST, SPI_MODE0); //MKR1000 max is 12MHz. FRAM chip max is 40MHz.
+String homepageString = "<html> <head> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> <style> .p { display: flex; flex-direction: column; background-color:lightgray; color:darkblue; font-family:Arial; font-weight:bold; letter-spacing: 2px; height: 218px; } .hf { font-size:12px; padding: 10px; border: 1px solid darkblue; } .r { font-style:italic; font-size:20px; padding: 10px; border-left: 1px solid darkblue; border-right: 1px solid darkblue; height: 50px; } .row { display: flex; flex-direction: row; justify-content: space-around; align-items: center; } .col { display: flex; flex-direction: column; justify-content: space-around; align-items: center; font-size:14px; } .screw { display: flex; justify-content: center; align-content: center; flex-direction: column; height: 18px; width: 18px; background-color: #999; border-radius: 50%; color: #444; font-size:30px; border: 1px solid black; } .b { border-radius: 50%; height:40px; width:40px; background-color: #777;  } .d { height: 50px; width: 225px; background-color: white; padding: 0px; margin: 0px; border: 1px solid black; } .dx { height: 50px; width: 200px; background-color: white; padding: 0px; margin: 0px; border: 0px; } .dc { font-family: Courier New; font-weight:bold; background-color: #cfc; height: 50px; border: 0px; } .hole { height: 10px; width: 10px; background-color: #000; border-radius: 50%; display: inline-block; } </style> </head> <body> <div class=\"p\"> <div class=\"hf row\"> <div class=\"screw\">+</div> <div>PRESET &nbsp; MANAGER</div> <div class=\"screw\">+</div> </div> <div class=\"r row\" style=\"border-bottom: 1px solid darkblue;\"> <div class=\"col\"> <button id=\"sB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"1\"></button> <div style=\"height:2\"></div> <div>store</div> </div> <div class=\"d row\"> <div class=\"dx col\" > <input id=\"current_preset\" class=\"dc\" style=\"width:21px;background-color: #afa;\" disabled> <input class=\"dc\" disabled style=\"width:21px;background-color: #afa;\"> </div> <div class=\"dx col\" > <input id=\"current_name\" class=\"dc\" maxlength=\"20\" tabindex=\"2\"> <input id=\"recall_name\" class=\"dc\" disabled style=\"background-color: #afa;\"> </div> <div class=\"dx col\" > <input class=\"dc\" disabled style=\"width:40px;background-color: #afa;\"> <input id=\"recall_preset\" class=\"dc\" style=\"width:40px;\" type=\"number\" min=\"1\" max=\"30\" tabindex=\"3\"> </div> </div> <div class=\"col\"> <button id=\"rB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"4\"></button> <div style=\"height:2\"></div> <div>recall</div> </div> </div> <div class=\"r row\"> <div class=\"row\" style=\"width:200px\"> <div class=\"col\"> <button id=\"lB\" type=\"button\" class=\"b\" tabindex=\"5\"></button> <div style=\"height:2\"></div> <div>last</div> </div> <div class=\"col\"> <button id=\"nB\" type=\"button\" class=\"b\" tabindex=\"6\"></button> <div style=\"height:2\"></div> <div>next</div> </div> </div> <div class=\"col\" style=\"align-items: flex-start;width:33%\"> <div class=\"row\" style=\"align-items: flex-start;\"> <input type=\"radio\" id=\"v3\" name=\"version\" value=\"v3\" tabindex=\"7\" hidden> <label for=\"v3\" hidden>primo</label> </div> <div class=\"row\" style=\"align-items: flex-start;\"> <input type=\"radio\" id=\"v2\" name=\"version\" value=\"v2\" tabindex=\"8\" hidden> <label for=\"v2\" hidden>v2    </label> </div> </div> <div class=\"col\" style=\"width:33%\"> <button id=\"remB\" type=\"button\" class=\"b\" tabindex=\"9\"></button> <div style=\"height:2\"></div> <div>remote</div> </div> </div> <div class=\"hf row\"> <div class=\"hole\"></div> <div>STUDIO H SOFTWARE</div> <div class=\"hole\"></div> </div> </div> </body> <script> var baseAddr = 0x02BD80; var rem = true; var req; var c_pset = document.getElementById(\"current_preset\"); var r_pset = document.getElementById(\"recall_preset\"); var c_name = document.getElementById(\"current_name\"); var r_name = document.getElementById(\"recall_name\"); var names = []; r_pset.onchange = rOnChange; c_name.onchange = cnameOnChange; document.getElementById(\"sB\").onclick = sBOnClick; document.getElementById(\"rB\").onclick = rBOnClick; document.getElementById(\"lB\").onclick = lBOnClick; document.getElementById(\"nB\").onclick = nBOnClick; document.getElementById(\"remB\").onclick = remBOnClick; document.getElementById(\"v3\").checked = true;  send(\"readmemory?addr=\" + baseAddr.toString(16) + \"&length=6\"); var data = JSON.parse(req.responseText)[0].data; if (data != \"425543484c41\") { for (var i=1; i<31; i++){ writeName(i,\"\"); names[i]=\"\"; } send(\"writememory?addr=\" + baseAddr.toString(16) + \"&data=425543484C41\"); writePreset(1); } else { for (var i=1; i<31; i++){ names[i]=readName(i); } }  c_pset.value = readPreset(); cOnChange(); r_pset.value = c_pset.value; rOnChange();   function sBOnClick() { send(\"savepreset?preset=\" + r_pset.value); names[r_pset.value] = names[c_pset.value]; writeName(r_pset.value,names[r_pset.value]); rOnChange(); }  function rBOnClick() { if (c_pset.value != r_pset.value) { c_pset.value = r_pset.value; cOnChange(); } }  function lBOnClick() { var pset = c_pset.value; pset = pset - 1; if (pset < 1) { pset = pset + 30; } pset = pset % 31; c_pset.value = pset; r_pset.value = pset; cOnChange(); rOnChange(); } function nBOnClick() { var pset = c_pset.value; pset = pset % 30 + 1; c_pset.value = pset; r_pset.value = pset; cOnChange(); rOnChange(); } function remBOnClick() { rem = !rem; if (rem){ send(\"remoteenable\"); } else { send(\"remotedisable\"); } }  function cOnChange(){ c_name.value = names[c_pset.value]; send(\"recallpreset?preset=\" + c_pset.value); writePreset(c_pset.value); }  function rOnChange(){ r_name.value = names[r_pset.value]; }  function cnameOnChange(){ names[c_pset.value] = c_name.value; writeName(c_pset.value,names[c_pset.value]); rOnChange(); }  function send(url) { var version = \"\"; if (document.getElementById('v2').checked) { version = \"v2/\"; } req = new XMLHttpRequest(); req.open(\"GET\", \"http://192.168.0.1/\" + version + url,false); req.send(null); }  function writePreset(pset){ var pStr = pset.toString(16); if (pStr.length == 1) pStr = \"0\" + pStr; send(\"writememory?addr=\" + (baseAddr + 6).toString(16) + \"&data=\" + pStr); }  function readPreset(){ send(\"readmemory?addr=\" + (baseAddr + 6).toString(16) + \"&length=1\"); return(parseInt(JSON.parse(req.responseText)[0].data)); }  function readName(pset){ send(\"readmemory?addr=\" + (baseAddr + 7 + ((pset - 1) * 21)).toString(16) + \"&length=21\"); return hexToText(JSON.parse(req.responseText)[0].data); }  function writeName(pset,name){ var addr = baseAddr + 7 + ((pset - 1) * 21); send(\"writememory?addr=\" + addr.toString(16) + \"&data=\" + textToHex(name)); }  function hexToText(hex) { var result = \"\"; if (hex != \"\"){ var code = parseInt(hex.substring(0,2),16); if (code == 0) { return result; } else if (code > 19) { result = String.fromCharCode(code) + hexToText(hex.substring(2,hex.length)); } } return result; }  function textToHex(text) { var result = \"\"; if (text != \"\"){ var i; for (i = 0; i < text.length; i++){ result = result + text[i].charCodeAt(0).toString(16); } } return result + \"00\"; } </script> </html>";
+
 
 void framEnableWrite(){
     SPI.beginTransaction(spiSettings);
@@ -240,18 +242,7 @@ void loop() {
           if (currentLine.length() == 0) {
             Serial.println(""); 
             Serial.println("URL is: " + urlString); 
-            // Check to see if the client request was "GET /H" or "GET /L":
-            if (urlString.startsWith("GET /H")) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
-              writeHomepage(client);
-              digitalWrite(led, HIGH);               // GET /H turns the LED on
-            }
-            else if (urlString.startsWith("GET /L")) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
-              writeHomepage(client);
-              digitalWrite(led, LOW);                // GET /L turns the LED off
-            } 
-            else if (urlString.indexOf("/remoteenable") >= 0) {
+            if (urlString.indexOf("/remoteenable") >= 0) {
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
               Serial.println("Remote Enable Received"); 
               switchToMaster();
@@ -266,34 +257,32 @@ void loop() {
               switchToSlave();
             } 
             else if (urlString.indexOf("/savepreset?preset") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
-              Serial.println("Save Prest Received"); 
-              //cb(cbArg, 0, 200, "text/plain", nullptr);
-              //int len = urlString.length();
-              //int eqloc = urlString.indexOf('=');
-              //int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
-              //if ((preset >=1) && (preset <=30)) {
-              //    preset = preset - 1; //0-29 internally.
-                  //Serial.println(preset);
-              //    switchToMaster();
-              //    sendSavePreset(preset);
-              //    switchToSlave();
-              //}
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
+              Serial.println("Save Preset Received"); 
+              int len = urlString.indexOf(" HTTP");
+              int eqloc = urlString.indexOf('=');
+              int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+              if ((preset >=1) && (preset <=30)) {
+                  preset = preset - 1; //0-29 internally.
+                  Serial.println(preset);
+                  switchToMaster();
+                  sendSavePreset(preset);
+                  switchToSlave();
+              }
             }
             else if (urlString.indexOf("/recallpreset?preset") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
               Serial.println("Recall Preset Received"); 
-              //cb(cbArg, 0, 200, "text/plain", nullptr);
-              //int len = urlString.length();
-              //int eqloc = urlString.indexOf('=');
-              //int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
-              //if ((preset >=1) && (preset <=30)) {
-              //    preset = preset - 1; //0-29 internally.
-                  //Serial.println(preset);
-              //    switchToMaster();
-              //    sendRecallPreset(preset);
-              //    switchToSlave();
-              //}
+              int len = urlString.indexOf(" HTTP");
+              int eqloc = urlString.indexOf('=');
+              int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+              if ((preset >=1) && (preset <=30)) {
+                  preset = preset - 1; //0-29 internally.
+                  Serial.println(preset);
+                  switchToMaster();
+                  sendRecallPreset(preset);
+                  switchToSlave();
+              }
             }
             else if (urlString.indexOf("/midinoteon?mask") >= 0) {
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
@@ -572,16 +561,6 @@ void loop() {
               Serial.println(responseString);
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
               client.println(responseString);
-              //cb(cbArg, 0, 200, "text/plain", nullptr);
-              //Used to determine the max POST size.
-              //static uint8_t s_buffer[1] = {0};
-              //int bread = 0;
-              //do {
-              //    bread = body->read(s_buffer, sizeof(s_buffer));
-              //    if (bread > 0) {
-              //        result->write(s_buffer, bread);
-              //    }
-              //} while(bread > 0);
             } else if (urlString.indexOf("/favicon.ico") >= 0) {
               writeHeader(client,"HTTP/1.1 200 OK","image/x-icon",0);
               Serial.println("Favicon Received"); 
@@ -594,8 +573,17 @@ void loop() {
             }           
             else {
               Serial.println("Returning homepage");
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
-              writeHomepage(client);       
+              Serial.println(homepageString);
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",homepageString.length());
+              //Write page in 1k chunks. 
+              int i = 0;
+              String tmp = homepageString.substring(i,i+1000);
+              while (tmp != ""){
+                client.print(tmp);
+                i = i + 1000;
+                tmp = homepageString.substring(i,i+1000);
+              }
+              client.println();   // The HTTP response ends with another blank line:
             }
             // break out of the while loop:
             break;
@@ -920,14 +908,6 @@ void writeHeader(WiFiClient client, String statusString, String contentType, int
   client.println();
 }
 
-void writeHomepage(WiFiClient client) {
-  // the content of the HTTP response follows the header:
-  client.print("Click <a href=\"/H\">here</a> turn the LED on<br>");
-  client.print("Click <a href=\"/L\">here</a> turn the LED off<br>");
-  
-  // The HTTP response ends with another blank line:
-  client.println();
-}
 
 void printWiFiStatus() {
   // print the SSID of the network you're attached to:
