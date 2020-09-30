@@ -81,7 +81,7 @@ volatile int fram_address=0; //This is global only because it must span OnReques
 volatile bool startup = true; //Used to free 206e when starting up.
 unsigned long readTime = 0; //used to detect idle to free up 206e at start.
 bool v2version=false; //used to support pre PRIMO firmware.
-SPISettings spiSettings(16000000, MSBFIRST, SPI_MODE0); 
+SPISettings spiSettings(12000000, MSBFIRST, SPI_MODE0); //MKR1000 max is 12MHz. FRAM chip max is 40MHz.
 
 void framEnableWrite(){
     SPI.beginTransaction(spiSettings);
@@ -123,8 +123,6 @@ void framWriteHexString(int addr, String value){
     String remainder = value;
     while (remainder.length() >= 2){
         uint8_t data = (int)strtol(remainder.substring(0,2).c_str(), nullptr, 16); 
-        Serial.print("transferring... ");
-        Serial.println(data,HEX);
         SPI.transfer(data); // send value
         remainder = remainder.substring(2,remainder.length());
     }
@@ -244,31 +242,31 @@ void loop() {
             Serial.println("URL is: " + urlString); 
             // Check to see if the client request was "GET /H" or "GET /L":
             if (urlString.startsWith("GET /H")) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
               writeHomepage(client);
               digitalWrite(led, HIGH);               // GET /H turns the LED on
             }
             else if (urlString.startsWith("GET /L")) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
               writeHomepage(client);
               digitalWrite(led, LOW);                // GET /L turns the LED off
             } 
             else if (urlString.indexOf("/remoteenable") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
               Serial.println("Remote Enable Received"); 
               switchToMaster();
               sendRemoteEnable();
               switchToSlave();
             } 
             else if (urlString.indexOf("/remotedisable") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
               Serial.println("Remote Disable Received"); 
               switchToMaster();
               sendRemoteDisable();
               switchToSlave();
             } 
             else if (urlString.indexOf("/savepreset?preset") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
               Serial.println("Save Prest Received"); 
               //cb(cbArg, 0, 200, "text/plain", nullptr);
               //int len = urlString.length();
@@ -283,7 +281,7 @@ void loop() {
               //}
             }
             else if (urlString.indexOf("/recallpreset?preset") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
               Serial.println("Recall Preset Received"); 
               //cb(cbArg, 0, 200, "text/plain", nullptr);
               //int len = urlString.length();
@@ -298,7 +296,7 @@ void loop() {
               //}
             }
             else if (urlString.indexOf("/midinoteon?mask") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
               Serial.println("MIDI Note On Received"); 
               //cb(cbArg, 0, 200, "text/plain", nullptr);
               //int len = urlString.length();
@@ -322,7 +320,7 @@ void loop() {
               //switchToSlave();
             }
             else if (urlString.indexOf("/midinoteoff?mask") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
               Serial.println("MIDI Note Off Received"); 
               //cb(cbArg, 0, 200, "text/plain", nullptr);
               //int len = urlString.length();
@@ -346,7 +344,7 @@ void loop() {
               //switchToSlave();
             }
             else if (urlString.indexOf("/midiclockstart") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
               Serial.println("MIDI Clock Start Received"); 
               //cb(cbArg, 0, 200, "text/plain", nullptr);
               //switchToMaster();
@@ -354,7 +352,7 @@ void loop() {
               //switchToSlave();
             }
             else if (urlString.indexOf("/midiclockstop") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
               Serial.println("MIDI Clock Stop Received"); 
               //cb(cbArg, 0, 200, "text/plain", nullptr);
               //switchToMaster();
@@ -362,7 +360,7 @@ void loop() {
               //switchToSlave();
             }
             else if (urlString.indexOf("/midiclock") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
               Serial.println("MIDI Clock Received"); 
               //cb(cbArg, 0, 200, "text/plain", nullptr);
               //switchToMaster();
@@ -370,7 +368,7 @@ void loop() {
               //switchToSlave();
             }
             else if (urlString.indexOf("/midifinetune?mask") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
               Serial.println("MIDI Fine Tune Received"); 
               //cb(cbArg, 0, 200, "text/plain", nullptr);
               //int len = urlString.length();
@@ -388,7 +386,7 @@ void loop() {
               //switchToSlave();
             }
             else if (urlString.indexOf("/midibend?mask") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
               Serial.println("MIDI Bend Received"); 
               //cb(cbArg, 0, 200, "text/plain", nullptr);
               //int len = urlString.length();
@@ -411,7 +409,7 @@ void loop() {
               //switchToSlave();
             }
             else if (urlString.indexOf("/getpresets?addr") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
               Serial.println("Get Presets Received"); 
               //cb(cbArg, 0, 200, "application/json", nullptr);
               //Parse module address and optional length parameter (number of bytes in each line of the result data).
@@ -463,7 +461,7 @@ void loop() {
               //result->write("\"\r\n");
               //result->write("}\r\n");
             } else if (urlString.indexOf("/setpresets?addr") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
               Serial.println("Set Presets Received"); 
               //cb(cbArg, 0, 200, "text/plain", nullptr);
               //int len = urlString.length();
@@ -477,7 +475,7 @@ void loop() {
               //    switchToSlave(); //Switch to slave to receive the read requests.
               //}
             } else if (urlString.indexOf("/readmemory?addr") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",-1); //-1 means chunked
               Serial.println("Read Memory Received"); 
               //cb(cbArg, 0, 200, "application/json", nullptr);
               int len = urlString.indexOf(" HTTP");
@@ -493,23 +491,29 @@ void loop() {
               String dataString = "";
               String tmp="";
               int offset = 0;
-              client.print("[{\"addr\": \"" + String(addr,HEX) + "\",\"data\": \"");
+              dataString = "[{\"addr\": \"" + String(addr,HEX) + "\",\"data\": \"";
               for (int i = 0; i<length; i++){
                 tmp = String(framRead(addr + offset),HEX);
                 if (tmp.length() == 1) tmp = "0" + tmp;
                 dataString = dataString + tmp;
                 offset++; 
                 if (i == (length - 1)) {
-                  client.print(dataString + "\"}]");
+                  dataString = dataString + "\"}]";
+                  client.println(dataString.length(),HEX);
+                  client.println(dataString);
                 } else if ( offset % 128 == 0 ) {
                   addr = addr + offset;
-                  client.print(dataString + "\"},{\"addr\": \"" + String(addr,HEX) + "\",\"data\": \"");
+                  dataString = dataString + "\"},{\"addr\": \"" + String(addr,HEX) + "\",\"data\": \"";
+                  client.println(dataString.length(),HEX);
+                  client.println(dataString);
                   offset = 0;
                   dataString = "";
                 }
               }
+              client.println("0");
+              client.println();
             } else if (urlString.indexOf("/writememory?addr") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
               Serial.println("Write Memory Received"); 
               int len = urlString.indexOf(" HTTP");
               int amploc = urlString.indexOf('&');
@@ -547,8 +551,27 @@ void loop() {
               //} 
               //delete token;
             } else if (urlString.indexOf("/test") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
               Serial.println("Test Received"); 
+              int charcount=0;
+              bool done = false;
+              unsigned long lastTime = millis();
+              while (!done){ 
+                  if (client.available() > 0) {
+                    char c = client.read(); 
+                    charcount++;
+                    lastTime = millis();
+                  }
+                  //Check to see if bytes are still arriving
+                  unsigned long now = millis();
+                  if ((now - lastTime) >= 1000) {
+                      done = true;
+                  }
+              }
+              
+              String responseString = String(charcount) + " bytes received.";
+              Serial.println(responseString);
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
+              client.println(responseString);
               //cb(cbArg, 0, 200, "text/plain", nullptr);
               //Used to determine the max POST size.
               //static uint8_t s_buffer[1] = {0};
@@ -560,18 +583,18 @@ void loop() {
               //    }
               //} while(bread > 0);
             } else if (urlString.indexOf("/favicon.ico") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","image/x-icon");
+              writeHeader(client,"HTTP/1.1 200 OK","image/x-icon",0);
               Serial.println("Favicon Received"); 
               //cb(cbArg, 0, 200, "image/x-icon", nullptr);
               //return URL icon here, if desired.
             } else if (urlString.indexOf("/generate_204") >= 0) {
-              writeHeader(client,"HTTP/1.1 204 No Content","Content-type:text/plain");
+              writeHeader(client,"HTTP/1.1 204 No Content","Content-type:text/plain",0);
               Serial.println("Generate 204 Received"); 
               //cb(cbArg, 0, 204, "text/plain", nullptr);
             }           
             else {
               Serial.println("Returning homepage");
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
               writeHomepage(client);       
             }
             // break out of the while loop:
@@ -879,11 +902,21 @@ void sendMidiBend(byte mask, byte bend_lsb, byte bend_msb){
 }
 
 
-void writeHeader(WiFiClient client, String statusString, String contentString) {
+void writeHeader(WiFiClient client, String statusString, String contentType, int contentLength) {
   // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
   // and a content-type so the client knows what's coming, then a blank line:
   client.println(statusString);
-  client.println(contentString);
+  client.println(contentType);
+  client.println("Connection: Keep-Alive");
+  client.println("Pragma: no-cache");
+  client.println("Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0");
+  client.println("Access-Control-Allow-Origin: *");
+  if (contentLength>0) {
+    client.print("Content-Length: ");
+    client.println(contentLength);
+  } else if (contentLength < 0) {
+    client.println("Transfer-Encoding: chunked");
+  }
   client.println();
 }
 
