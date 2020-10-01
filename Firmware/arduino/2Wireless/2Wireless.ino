@@ -150,6 +150,8 @@ uint8_t framRead(int addr){
     return result;
 }
 
+
+
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
 char ssid[] = "BUCHLA200E";        // your network SSID (name)
 char pass[] = "BUCHLA200E";    // your network password (use for WPA, or use as key for WEP)
@@ -509,29 +511,29 @@ void loop() {
               }
               framWriteHexString(addr,data_string);
             } else if (urlString.indexOf("/writememory") >= 0) {
-              //writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain");
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
               //Serial.println("Write Memory Received"); 
-              //fram_address = 0;
-              //JsonToken* token = new JsonToken();
-              //getJsonToken(token, body);
-              //while (token->data != "") {
-              //    if (token->data ==  "addr") 
-              //    {
-              //        //This parameter carries the memory address for the data.
-              //        getJsonToken(token, body);
-              //        fram_address = (int)strtol((token->data).c_str(), nullptr, 16);
-              //    } else if (token->data ==  "data") {
-              //        //This parameter carries the data that will be written to fram.
-              //        String data_string = "";
-              //        getJsonToken(token, body);
-              //        data_string = token->data;
-              //        if (data_string.length() > 0) {
-              //            framWriteHexString(fram_address,data_string);
-              //        }
-              //    }
-              //    getJsonToken(token, body);
-              //} 
-              //delete token;
+              fram_address = 0;
+              JsonToken* token = new JsonToken();
+              getJsonToken(token, client);
+              while (token->data != "") {
+                  if (token->data ==  "addr") 
+                  {
+                      //This parameter carries the memory address for the data.
+                      getJsonToken(token, client);
+                      fram_address = (int)strtol((token->data).c_str(), nullptr, 16);
+                  } else if (token->data ==  "data") {
+                      //This parameter carries the data that will be written to fram.
+                      String data_string = "";
+                      getJsonToken(token, client);
+                      data_string = token->data;
+                      if (data_string.length() > 0) {
+                          framWriteHexString(fram_address,data_string);
+                      }
+                  }
+                  getJsonToken(token, client);
+              } 
+              delete token;
             } else if (urlString.indexOf("/test") >= 0) {
               Serial.println("Test Received"); 
               int charcount=0;
@@ -881,6 +883,28 @@ void sendMidiBend(byte mask, byte bend_lsb, byte bend_msb){
     }
     Wire.endTransmission();
 }
+
+void getJsonToken(JsonToken* token, WiFiClient client) {
+    char begin_char = '\"'; 
+    char end_char = '\"';
+    token->data = "";
+    while ((token->status == 0) && (client.available() > 0)) {
+        char s = client.read();
+        if (s == begin_char){
+            token->status = 1;
+        }
+    } 
+
+    while ((token->status == 1) && (client.available() > 0) && ((token->data).length() < 256)) {
+        char s = client.read();
+        if (s == end_char){
+            token->status = 2;
+        } else {
+            token->data = token->data + s;
+        }
+    }
+    token->status = 0; //ready for next time
+};
 
 
 void writeHeader(WiFiClient client, String statusString, String contentType, int contentLength) {
