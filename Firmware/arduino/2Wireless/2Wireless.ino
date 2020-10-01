@@ -240,31 +240,31 @@ void loop() {
           // if the current line is blank, you got two newline characters in a row.
           // that's the end of the client HTTP request, so send a response:
           if (currentLine.length() == 0) {
-            Serial.println(""); 
-            Serial.println("URL is: " + urlString); 
+            //Serial.println(""); 
+            //Serial.println("URL is: " + urlString); 
             if (urlString.indexOf("/remoteenable") >= 0) {
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-              Serial.println("Remote Enable Received"); 
+              //Serial.println("Remote Enable Received"); 
               switchToMaster();
               sendRemoteEnable();
               switchToSlave();
             } 
             else if (urlString.indexOf("/remotedisable") >= 0) {
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-              Serial.println("Remote Disable Received"); 
+              //Serial.println("Remote Disable Received"); 
               switchToMaster();
               sendRemoteDisable();
               switchToSlave();
             } 
             else if (urlString.indexOf("/savepreset?preset") >= 0) {
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-              Serial.println("Save Preset Received"); 
+              //Serial.println("Save Preset Received"); 
               int len = urlString.indexOf(" HTTP");
               int eqloc = urlString.indexOf('=');
               int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
               if ((preset >=1) && (preset <=30)) {
                   preset = preset - 1; //0-29 internally.
-                  Serial.println(preset);
+                  //Serial.println(preset);
                   switchToMaster();
                   sendSavePreset(preset);
                   switchToSlave();
@@ -272,130 +272,123 @@ void loop() {
             }
             else if (urlString.indexOf("/recallpreset?preset") >= 0) {
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-              Serial.println("Recall Preset Received"); 
+              //Serial.println("Recall Preset Received"); 
               int len = urlString.indexOf(" HTTP");
               int eqloc = urlString.indexOf('=');
               int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
               if ((preset >=1) && (preset <=30)) {
                   preset = preset - 1; //0-29 internally.
-                  Serial.println(preset);
+                  //Serial.println(preset);
                   switchToMaster();
                   sendRecallPreset(preset);
                   switchToSlave();
               }
             }
             else if (urlString.indexOf("/midinoteon?mask") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
-              Serial.println("MIDI Note On Received"); 
-              //cb(cbArg, 0, 200, "text/plain", nullptr);
-              //int len = urlString.length();
-              //int eqloc = urlString.indexOf('=');
-              //int amploc = urlString.indexOf('&');
-              //int mask = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
-              //mask = mask & 0x0F;
-              //eqloc = urlString.indexOf('=',amploc);
-              //amploc = urlString.indexOf('&',eqloc);
-              //int note = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
-              //eqloc = urlString.indexOf('=',amploc);
-              //int velo = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
-              //mask = mask & 0x0F;
-              //note = note & 0x7F;
-              //velo = velo & 0xFF;
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
+              //Serial.println("MIDI Note On Received"); 
+              int len = urlString.indexOf(" HTTP");
+              int eqloc = urlString.indexOf('=');
+              int amploc = urlString.indexOf('&');
+              int mask = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+              mask = mask & 0x0F;
+              eqloc = urlString.indexOf('=',amploc);
+              amploc = urlString.indexOf('&',eqloc);
+              int note = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
+              eqloc = urlString.indexOf('=',amploc);
+              int velo = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+              mask = mask & 0x0F;
+              note = note & 0x7F;
+              velo = velo & 0xFF;
               //Serial.println(mask);
               //Serial.println(note);
               //Serial.println(velo);
-              //switchToMaster();
-              //sendMidiNoteOn(mask,note,velo);
-              //switchToSlave();
+              switchToMaster();
+              sendMidiNoteOn(mask,note,velo);
+              switchToSlave();
             }
             else if (urlString.indexOf("/midinoteoff?mask") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
-              Serial.println("MIDI Note Off Received"); 
-              //cb(cbArg, 0, 200, "text/plain", nullptr);
-              //int len = urlString.length();
-              //int eqloc = urlString.indexOf('=');
-              //int amploc = urlString.indexOf('&');
-              //int mask = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
-              //mask = mask & 0x0F;
-              //eqloc = urlString.indexOf('=',amploc);
-              //amploc = urlString.indexOf('&',eqloc);
-              //int note = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
-              //eqloc = urlString.indexOf('=',amploc);
-              //int velo = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
-              //mask = mask & 0x0F;
-              //note = note & 0x7F;
-              //velo = velo & 0xFF;
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
+              //Serial.println("MIDI Note Off Received");         
+              int len = urlString.indexOf(" HTTP");
+              int eqloc = urlString.indexOf('=');
+              int amploc = urlString.indexOf('&');
+              int mask = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+              mask = mask & 0x0F;
+              eqloc = urlString.indexOf('=',amploc);
+              amploc = urlString.indexOf('&',eqloc);
+              int note = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
+              eqloc = urlString.indexOf('=',amploc);
+              int velo = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+              mask = mask & 0x0F;
+              note = note & 0x7F;
+              velo = velo & 0xFF;
               //Serial.println(mask);
               //Serial.println(note);
               //Serial.println(velo);
-              //switchToMaster();
-              //sendMidiNoteOff(mask,note,velo);
-              //switchToSlave();
+              switchToMaster();
+              sendMidiNoteOff(mask,note,velo);
+              switchToSlave();
             }
             else if (urlString.indexOf("/midiclockstart") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
-              Serial.println("MIDI Clock Start Received"); 
-              //cb(cbArg, 0, 200, "text/plain", nullptr);
-              //switchToMaster();
-              //sendMidiClockStart();
-              //switchToSlave();
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
+              //Serial.println("MIDI Clock Start Received"); 
+              switchToMaster();
+              sendMidiClockStart();
+              switchToSlave();
             }
             else if (urlString.indexOf("/midiclockstop") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
-              Serial.println("MIDI Clock Stop Received"); 
-              //cb(cbArg, 0, 200, "text/plain", nullptr);
-              //switchToMaster();
-              //sendMidiClockStop();
-              //switchToSlave();
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
+              //Serial.println("MIDI Clock Stop Received");              
+              switchToMaster();
+              sendMidiClockStop();
+              switchToSlave();
             }
             else if (urlString.indexOf("/midiclock") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
-              Serial.println("MIDI Clock Received"); 
-              //cb(cbArg, 0, 200, "text/plain", nullptr);
-              //switchToMaster();
-              //sendMidiClock();
-              //switchToSlave();
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
+              //Serial.println("MIDI Clock Received"); 
+              switchToMaster();
+              sendMidiClock();
+              switchToSlave();
             }
             else if (urlString.indexOf("/midifinetune?mask") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
-              Serial.println("MIDI Fine Tune Received"); 
-              //cb(cbArg, 0, 200, "text/plain", nullptr);
-              //int len = urlString.length();
-              //int eqloc = urlString.indexOf('=');
-              //int amploc = urlString.indexOf('&');
-              //int mask = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
-              //eqloc = urlString.indexOf('=',amploc);
-              //int tune = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
-              //mask = mask & 0x0F;
-              //tune = tune & 0x3F; //max value is 63 decimal.
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
+              //Serial.println("MIDI Fine Tune Received"); 
+              int len = urlString.indexOf(" HTTP");
+              int eqloc = urlString.indexOf('=');
+              int amploc = urlString.indexOf('&');
+              int mask = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+              eqloc = urlString.indexOf('=',amploc);
+              int tune = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+              mask = mask & 0x0F;
+              tune = tune & 0x3F; //max value is 63 decimal.
               //Serial.println(mask);
               //Serial.println(tune);
-              //switchToMaster();
-              //sendMidiFineTune(mask,tune);
-              //switchToSlave();
+              switchToMaster();
+              sendMidiFineTune(mask,tune);
+              switchToSlave();
             }
             else if (urlString.indexOf("/midibend?mask") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
-              Serial.println("MIDI Bend Received"); 
-              //cb(cbArg, 0, 200, "text/plain", nullptr);
-              //int len = urlString.length();
-              //int eqloc = urlString.indexOf('=');
-              //int amploc = urlString.indexOf('&');
-              //int mask = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
-              //eqloc = urlString.indexOf('=',amploc);
-              //amploc = urlString.indexOf('&',eqloc);
-              //int bend_lsb = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
-              //eqloc = urlString.indexOf('=',amploc);
-              //int bend_msb = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
-              //mask = mask & 0x0F;
-              //bend_lsb = bend_lsb & 0x7F; //max value is 7F.
-              //bend_msb = bend_msb & 0x7F; //max value is 7F.
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
+              //Serial.println("MIDI Bend Received"); 
+              int len = urlString.indexOf(" HTTP");
+              int eqloc = urlString.indexOf('=');
+              int amploc = urlString.indexOf('&');
+              int mask = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+              eqloc = urlString.indexOf('=',amploc);
+              amploc = urlString.indexOf('&',eqloc);
+              int bend_lsb = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+              eqloc = urlString.indexOf('=',amploc);
+              int bend_msb = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
+              mask = mask & 0x0F;
+              bend_lsb = bend_lsb & 0x7F; //max value is 7F.
+              bend_msb = bend_msb & 0x7F; //max value is 7F.
               //Serial.println(mask);
               //Serial.println(bend_lsb);
               //Serial.println(bend_msb);
-              //switchToMaster();
-              //sendMidiBend(mask,bend_lsb,bend_msb);
-              //switchToSlave();
+              switchToMaster();
+              sendMidiBend(mask,bend_lsb,bend_msb);
+              switchToSlave();
             }
             else if (urlString.indexOf("/getpresets?addr") >= 0) {
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
