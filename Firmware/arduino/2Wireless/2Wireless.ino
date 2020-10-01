@@ -4,11 +4,13 @@
 //#include "arduino_secrets.h"
 
 #define CARD_ADDRESS 0x00
-#define BUFFER_SIZE 4800
+#define BUFFER_SIZE 9600
 #define FRAM_WREN 0x06 //FRAM WRITE ENABLE COMMAND
 #define FRAM_WRITE 0x02 //FRAM WRITE COMMAND
 #define FRAM_READ 0x03 //FRAM READ COMMAND
 #define SPI_CS 4 //FRAM Chip Select
+#define WIFI_OPEN_PIN 3
+#define V2VERSION_PIN 2
 
 class JsonToken {
     public:
@@ -170,6 +172,9 @@ void setup() {
 
   Serial.println("Access Point Web Server");
 
+  pinMode(WIFI_OPEN_PIN,INPUT);
+  pinMode(V2VERSION_PIN,INPUT);
+
   pinMode(led, OUTPUT);      // set the LED pin mode
 
   // check for the presence of the shield:
@@ -189,7 +194,12 @@ void setup() {
 
   // Create open network. Change this line if you want to create an WEP network:
   //2WIRELESS added pass
-  status = WiFi.beginAP(ssid,pass);
+  if (digitalRead(WIFI_OPEN_PIN)) {
+    status = WiFi.beginAP(ssid);
+  } else {
+    status = WiFi.beginAP(ssid,pass);
+  }
+  
   if (status != WL_AP_LISTENING) {
     Serial.println("Creating access point failed");
     // don't continue
@@ -204,8 +214,13 @@ void setup() {
 
   // you're connected now, so print out the status
   printWiFiStatus();
+
   pinMode(SPI_CS, OUTPUT); //SPI CS
   SPI.begin(); //FRAM communications
+
+  if (digitalRead(V2VERSION_PIN)) {
+    v2version = true;
+  }
 }
 
 
@@ -393,57 +408,63 @@ void loop() {
               switchToSlave();
             }
             else if (urlString.indexOf("/getpresets?addr") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
-              Serial.println("Get Presets Received"); 
-              //cb(cbArg, 0, 200, "application/json", nullptr);
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/json",-1); //-1 is chunked encoding
+              //Serial.println("Get Presets Received"); 
               //Parse module address and optional length parameter (number of bytes in each line of the result data).
-              //int len = urlString.length();
-              //int amploc = urlString.indexOf('&');
-              //if (amploc==-1) amploc=len;
-              //int address = (int)strtol(urlString.substring(amploc - 2, amploc).c_str(), nullptr, 16);
-              //int eqloc = urlString.indexOf('=',amploc);
-              //int line_length = 0; 
-              //if (eqloc > -1) {
-              //    line_length = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
-              //}
-               //Serial.println(address,HEX);
+              int len = urlString.indexOf(" HTTP");
+              int amploc = urlString.indexOf('&');
+              if (amploc==-1) amploc=len;
+              int address = (int)strtol(urlString.substring(amploc - 2, amploc).c_str(), nullptr, 16);
+              int eqloc = urlString.indexOf('=',amploc);
+              int line_length = 256; 
+              if (eqloc > -1) {
+                  line_length = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+              }
+              //Serial.println(address,HEX);
+              ringBuffer.flush();
+              switchToMaster(); //Send preset backup request to module
+              sendBackupPresets(address); 
+              switchToSlave();
+              bool done = false;
+              unsigned long lastTime = millis();
+              String tmp;
               //Begin the message
-              //result->write("{\r\n"); 
-              //result->write("\"module_address\": \"0x" + String(address,HEX) + "\",\r\n"); 
-              //result->write("\"data\": \""); 
-              //ringBuffer.flush();
-              //switchToMaster(); //Send preset backup request to module
-              //sendBackupPresets(address); 
-              //switchToSlave();
-              //bool done = false;
-              //int bytes_written = 0;
-              //unsigned long lastTime = millis();
-              //String tmp;
-              //while (!done){ 
-              //    tmp = "";     
-              //    int bytesQueued = ringBuffer.bytesQueued(); 
-              //    if (bytesQueued > 0) {
-              //        tmp = String(ringBuffer.read(),HEX);
-              //    }
-              //    if (tmp.length() == 1) tmp = "0" + tmp;
-              //    if (tmp.length() > 0) {
-              //        result->write(tmp);
-              //        bytes_written++;
-              //        if ((line_length != 0) && ((bytes_written % line_length) == 0) && (bytes_written != 0)){
-              //            result->write("\r\n");
-              //        }
-              //        lastTime = millis();
-              //    }
+              String resultString = "{\r\n";
+              resultString = resultString + "\"module_address\": \"0x" + String(address,HEX) + "\",\r\n";
+              resultString = resultString + "\"data\": \"";
+              while (!done){ 
+                  tmp = "";     
+                  int bytesQueued = ringBuffer.bytesQueued(); 
+                  if (bytesQueued > 0) {
+                      tmp = String(ringBuffer.read(),HEX);
+                  }
+                  if (tmp.length() == 1) tmp = "0" + tmp;
+                  if (tmp.length() > 0) {
+                      resultString = resultString + tmp;
+                      if (resultString.length() >= line_length){
+                          client.println(resultString.length(),HEX);
+                          client.println(resultString);
+                          resultString = "";
+                      }
+                      lastTime = millis();
+                  }
                   //Check to see if bytes are still arriving
-              //    unsigned long now = millis();
-              //    if ((now - lastTime) >= 1000) {
-              //        //Serial.printlnf("%lu", now);
-              //        done = true;
-              //    }
-              //}
+                  unsigned long now = millis();
+                  if ((now - lastTime) >= 1000) {
+                      //Serial.printlnf("%lu", now);
+                      done = true;
+                  }
+              }
               //Finish the message.
-              //result->write("\"\r\n");
-              //result->write("}\r\n");
+              if (resultString.length() > 0) {
+                client.println(resultString.length(),HEX);
+                client.println(resultString);
+              }
+              resultString = "\"\r\n}";
+              client.println(resultString.length(),HEX);
+              client.println(resultString);
+              client.println("0");
+              client.println();
             } else if (urlString.indexOf("/setpresets?addr") >= 0) {
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
               Serial.println("Set Presets Received"); 
@@ -602,7 +623,10 @@ void loop() {
 }
 
 void receiveEvent(int howMany) {
-
+    while (Wire.available() > 0) {   
+        //Just assume room in buffer to avoid blocking.
+        ringBuffer.write(Wire.read()); //Save into ring buffer to support I2C WRITE from master.
+    }
 }
 void requestEvent() {
 
