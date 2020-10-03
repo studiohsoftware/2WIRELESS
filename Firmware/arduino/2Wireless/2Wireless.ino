@@ -4,7 +4,7 @@
 //#include "arduino_secrets.h"
 
 #define CARD_ADDRESS 0x00
-#define BUFFER_SIZE 9600
+#define BUFFER_SIZE 2000 //Ring buffer size for incoming I2C. 
 #define FRAM_WREN 0x06 //FRAM WRITE ENABLE COMMAND
 #define FRAM_WRITE 0x02 //FRAM WRITE COMMAND
 #define FRAM_READ 0x03 //FRAM READ COMMAND
@@ -82,6 +82,7 @@ volatile int read_counter=0; //Used to auto increment read addresses during I2C 
 volatile int write_counter=0; //USed to auto increment write addresses during I2C WRITE from master.
 volatile int fram_address=0; //This is global only because it must span OnRequest calls during I2C READ from master. 
 volatile bool startup = true; //Used to free 206e when starting up.
+volatile bool write_i2c_to_fram = false; //Cache incoming i2c to FRAM.
 unsigned long readTime = 0; //used to detect idle to free up 206e at start.
 bool v2version=false; //used to support pre PRIMO firmware.
 SPISettings spiSettings(12000000, MSBFIRST, SPI_MODE0); //MKR1000 max is 12MHz. FRAM chip max is 40MHz.
@@ -215,12 +216,11 @@ void setup() {
   // you're connected now, so print out the status
   printWiFiStatus();
 
+  pinMode(LED_BUILTIN,OUTPUT); //built in LED on MKR1000
   pinMode(SPI_CS, OUTPUT); //SPI CS
   SPI.begin(); //FRAM communications
 
-  if (digitalRead(V2VERSION_PIN)) {
-    v2version = true;
-  }
+
 }
 
 
@@ -259,6 +259,16 @@ void loop() {
           if (currentLine.length() == 0) {
             //Serial.println(""); 
             //Serial.println("URL is: " + urlString); 
+            //Default to PRIMO
+            v2version = false;
+            //Look at version switch
+            if (digitalRead(V2VERSION_PIN)){
+                v2version = true;
+            }
+            //Just look for v2 anywhere in the URL
+            if (urlString.indexOf("/v2") >= 0) {
+                v2version = true;
+            } 
             if (urlString.indexOf("/remoteenable") >= 0) {
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
               //Serial.println("Remote Enable Received"); 
@@ -422,6 +432,7 @@ void loop() {
               }
               //Serial.println(address,HEX);
               ringBuffer.flush();
+              write_i2c_to_fram = true; //Cache incoming i2c to FRAM 
               switchToMaster(); //Send preset backup request to module
               sendBackupPresets(address); 
               switchToSlave();
@@ -467,20 +478,22 @@ void loop() {
               client.println(resultString);
               client.println("0");
               client.println();
+              write_i2c_to_fram = false; //Stop Caching incoming i2c to FRAM 
             } else if (urlString.indexOf("/setpresets?addr") >= 0) {
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",0);
-              Serial.println("Set Presets Received"); 
-              //cb(cbArg, 0, 200, "text/plain", nullptr);
-              //int len = urlString.length();
-              //int eqloc = urlString.indexOf('=');
-              //int module_address = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
-              //module_address = module_address & 0x7F;
-              //if (module_address != 0x00) {
-              //    read_counter = 0; //Initialize counter for subsequent I2C READs from master.
-              //    switchToMaster(); //Send preset restore request to module
-              //    sendRestorePresets(module_address); 
-              //    switchToSlave(); //Switch to slave to receive the read requests.
-              //}
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
+              //Serial.println("Set Presets Received"); 
+              int len = urlString.indexOf(" HTTP");
+              int eqloc = urlString.indexOf('=');
+              int module_address = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
+              module_address = module_address & 0x7F;
+              ringBuffer.flush();
+              write_i2c_to_fram = false;
+              if (module_address != 0x00) {
+                  read_counter = 0; //Initialize counter for subsequent I2C READs from master.
+                  switchToMaster(); //Send preset restore request to module
+                  sendRestorePresets(module_address); 
+                  switchToSlave(); //Switch to slave to receive the read requests.
+              }
             } else if (urlString.indexOf("/readmemory?addr") >= 0) {
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",-1); //-1 means chunked
               Serial.println("Read Memory Received"); 
@@ -551,6 +564,7 @@ void loop() {
                       getJsonToken(token, client);
                       data_string = token->data;
                       if (data_string.length() > 0) {
+                          Serial.print(fram_address,HEX); Serial.print(" "); Serial.println(data_string);
                           framWriteHexString(fram_address,data_string);
                       }
                   }
@@ -621,21 +635,61 @@ void loop() {
     // close the connection:
     client.stop();
     Serial.println("client disconnected");
+    digitalWrite(LED_BUILTIN, LOW); //used to show i2c activity
   }
 }
 
 void receiveEvent(int howMany) {
     
-    Serial.print(Wire.available()); Serial.print(" "); Serial.println(ringBuffer.bytesFree());
-    while (Wire.available() > 0) {   
-        //Cache to FRAM because MKR1000 is too slow to process data using a ring buffer.
+    //Serial.print(Wire.available()); Serial.print(" "); Serial.println(ringBuffer.bytesFree());
+    while (Wire.available() > 0) {       
         uint8_t data = Wire.read();
-        framWrite(write_counter,data);
-        write_counter++;
+        if (write_i2c_to_fram) {
+          //Cache to FRAM because MKR1000 is too slow to process data using a ring buffer.
+          framWrite(write_counter,data);
+          write_counter++;
+        } else {
+          //Assume room in buffer to avoid blocking.
+          ringBuffer.write(data); //Save into ring buffer.
+        }   
     }
 }
 void requestEvent() {
+    if (ringBuffer.bytesQueued() > 0){
+        //This is the first read following address write from the module.
+        //The master wrote two or three bytes for the memory address, and we now retrieve it
+        //from the rxBuffer. MSB is sent first, LSB second.
+        //Typically this happens once at the beginning of each preset.
+        read_counter = 0;
+        uint8_t addr_byte_upper = 0x00;
+        uint8_t addr_byte_middle = 0x00;
+        uint8_t addr_byte_lower = 0x00;
 
+        while (ringBuffer.bytesQueued() > 3) {
+            ringBuffer.read(); //Only three bytes supported. If buffer has more, clear it out.
+        }
+        if (ringBuffer.bytesQueued() == 1){
+            addr_byte_lower = ringBuffer.read();
+        } else if (ringBuffer.bytesQueued() == 2) {
+            addr_byte_middle = ringBuffer.read();
+            addr_byte_lower = ringBuffer.read();
+        } else if (ringBuffer.bytesQueued() == 3) {
+            addr_byte_upper = ringBuffer.read();
+            addr_byte_middle = ringBuffer.read();
+            addr_byte_lower = ringBuffer.read();
+        } 
+        fram_address = 0;
+        fram_address = (addr_byte_upper) << 16;
+        fram_address = fram_address | (addr_byte_middle) << 8;
+        fram_address = fram_address | addr_byte_lower;
+
+        Serial.println(fram_address,HEX);
+    } 
+    sercom2.sendDataSlaveWIRE(framRead(fram_address + read_counter));
+    //Wire.write(framRead(fram_address + read_counter));
+    read_counter++;
+    readTime = millis(); 
+    digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void switchToMaster(){
