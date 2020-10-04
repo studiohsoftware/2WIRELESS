@@ -1,3 +1,15 @@
+ /*
+ * Pin             |  PORT  | Label
+ * ----------------+--------+-------
+ *   2       D2    |  PA10  | "V2VERSION_PIN"
+ *   3       D3    |  PA11  | "WIFI_OPEN_PIN"
+ *   4       D4    |  PB10  | "SPI_CS"
+ *   8       D8    |  PA16  | "MOSI"   
+ *   9       D9    |  PA17  | "SCK"   
+ *   10      D10   |  PA19  | "MISO"  
+ *   11      D11   |  PA08  | "SDA"
+ *   12      D12   |  PA09  | "SCL"
+*/
 #include <Wire.h>
 #include <WiFi101.h>
 #include <SPI.h>
@@ -564,7 +576,6 @@ void loop() {
                       getJsonToken(token, client);
                       data_string = token->data;
                       if (data_string.length() > 0) {
-                          Serial.print(fram_address,HEX); Serial.print(" "); Serial.println(data_string);
                           framWriteHexString(fram_address,data_string);
                       }
                   }
@@ -655,6 +666,13 @@ void receiveEvent(int howMany) {
     }
 }
 void requestEvent() {
+    //Wire.cpp modified so that this handler is called on every byte requested.
+    //Module reads presets here during preset restore. The module first sends an EEPROM memory
+    //address, then issues a (maybe large) number of byte read requests. 
+    //The number of bytes requested varies by module. 292e requests 8 bytes per preset, and 291e
+    //requests 253 bytes per preset. 251e is over 2k. When the module is done reading, it issues
+    //a STOP and this handler will not be called until the next time a restore is requested.
+
     if (ringBuffer.bytesQueued() > 0){
         //This is the first read following address write from the module.
         //The master wrote two or three bytes for the memory address, and we now retrieve it
@@ -682,9 +700,8 @@ void requestEvent() {
         fram_address = (addr_byte_upper) << 16;
         fram_address = fram_address | (addr_byte_middle) << 8;
         fram_address = fram_address | addr_byte_lower;
-
-        Serial.println(fram_address,HEX);
     } 
+    //Bypass Wire buffer and write byte directly to I2C.
     sercom2.sendDataSlaveWIRE(framRead(fram_address + read_counter));
     //Wire.write(framRead(fram_address + read_counter));
     read_counter++;
@@ -975,28 +992,36 @@ void getJsonToken(JsonToken* token, WiFiClient client) {
     token->data = "";
     unsigned long lastTime = millis();
     while ((token->status == 0) && (!done)) {
+      if (client.available()){
         char s = client.read();
         if (s == begin_char){
             token->status = 1;
         }
+        lastTime = millis();
+      }
+      //Check to see if bytes are still arriving
+      unsigned long now = millis();
+      if ((now - lastTime) >= 100) {
+          done = true;
+      }
     } 
   
     while ((token->status == 1) && (!done) && ((token->data).length() < 256)) {
-        if (client.available()){
-          char s = client.read();
-          if (s == end_char){
-              token->status = 2;
-          } else {
-              token->data = token->data + s;
-          }
-          lastTime = millis();
+      if (client.available()){
+        char s = client.read();
+        if (s == end_char){
+            token->status = 2;
+        } else {
+            token->data = token->data + s;
         }
+        lastTime = millis();
+      }
 
-        //Check to see if bytes are still arriving
-        unsigned long now = millis();
-        if ((now - lastTime) >= 100) {
-            done = true;
-        }
+      //Check to see if bytes are still arriving
+      unsigned long now = millis();
+      if ((now - lastTime) >= 100) {
+          done = true;
+      }
     }
     token->status = 0; //ready for next time
 };
