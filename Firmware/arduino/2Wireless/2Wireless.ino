@@ -548,7 +548,7 @@ void loop() {
               framWriteHexString(addr,data_string);
             } else if (urlString.indexOf("/writememory") >= 0) {
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-              //Serial.println("Write Memory Received"); 
+              //Serial.println("Write Memory Received");              
               fram_address = 0;
               JsonToken* token = new JsonToken();
               getJsonToken(token, client);
@@ -635,8 +635,8 @@ void loop() {
     // close the connection:
     client.stop();
     Serial.println("client disconnected");
-    digitalWrite(LED_BUILTIN, LOW); //used to show i2c activity
   }
+  digitalWrite(LED_BUILTIN, LOW); //used to show i2c activity
 }
 
 void receiveEvent(int howMany) {
@@ -969,22 +969,33 @@ void sendMidiBend(byte mask, byte bend_lsb, byte bend_msb){
 }
 
 void getJsonToken(JsonToken* token, WiFiClient client) {
+    bool done = false;
     char begin_char = '\"'; 
     char end_char = '\"';
     token->data = "";
-    while ((token->status == 0) && (client.available() > 0)) {
+    unsigned long lastTime = millis();
+    while ((token->status == 0) && (!done)) {
         char s = client.read();
         if (s == begin_char){
             token->status = 1;
         }
     } 
+  
+    while ((token->status == 1) && (!done) && ((token->data).length() < 256)) {
+        if (client.available()){
+          char s = client.read();
+          if (s == end_char){
+              token->status = 2;
+          } else {
+              token->data = token->data + s;
+          }
+          lastTime = millis();
+        }
 
-    while ((token->status == 1) && (client.available() > 0) && ((token->data).length() < 256)) {
-        char s = client.read();
-        if (s == end_char){
-            token->status = 2;
-        } else {
-            token->data = token->data + s;
+        //Check to see if bytes are still arriving
+        unsigned long now = millis();
+        if ((now - lastTime) >= 100) {
+            done = true;
         }
     }
     token->status = 0; //ready for next time
