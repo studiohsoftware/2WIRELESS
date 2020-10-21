@@ -173,14 +173,22 @@ char ssid[] = "BUCHLA200E";        // your network SSID (name)
 char pass[] = "BUCHLA200E";    // your network password (use for WPA, or use as key for WEP)
 int keyIndex = 0;                // your network key Index number (needed only for WEP)
 
-int led =  LED_BUILTIN;
 int status = WL_IDLE_STATUS;
 WiFiServer server(80);
 
 void setup() {
+  //Set this stuff up first so we are ready for firmware requests from modules.
+  pinMode(WIFI_OPEN_PIN,INPUT);
+  pinMode(V2VERSION_PIN,INPUT);
+  pinMode(LED_BUILTIN, OUTPUT);      // set the LED pin mode
+  pinMode(LED_BUILTIN,OUTPUT); //built in LED on MKR1000
+  pinMode(SPI_CS, OUTPUT); //SPI CS
+  SPI.begin(); //FRAM communications
   Wire.begin(0x50 | CARD_ADDRESS);
   Wire.onReceive(receiveEvent);
   Wire.onRequest(requestEvent);
+
+  
   //Initialize serial and wait for port to open:
   Serial.begin(9600);
   //while (!Serial) {
@@ -190,10 +198,6 @@ void setup() {
 
   Serial.println("Access Point Web Server");
 
-  pinMode(WIFI_OPEN_PIN,INPUT);
-  pinMode(V2VERSION_PIN,INPUT);
-
-  pinMode(led, OUTPUT);      // set the LED pin mode
 
   // check for the presence of the shield:
   if (WiFi.status() == WL_NO_SHIELD) {
@@ -225,17 +229,13 @@ void setup() {
   }
 
   // wait 10 seconds for connection:
-  delay(10000);
+  //delay(10000);
 
   // start the web server on port 80
   server.begin();
 
   // you're connected now, so print out the status
   printWiFiStatus();
-
-  pinMode(LED_BUILTIN,OUTPUT); //built in LED on MKR1000
-  pinMode(SPI_CS, OUTPUT); //SPI CS
-  SPI.begin(); //FRAM communications
 
 }
 
@@ -666,19 +666,15 @@ void loop() {
 }
 
 void receiveEvent(int howMany) {
-    
+    //Serial.println("receiveEvent");
     //Serial.print(Wire.available()); Serial.print(" "); Serial.println(ringBuffer.bytesFree());
-    while (Wire.available() > 0) {       
+    if (write_i2c_to_fram) {
+      while (Wire.available() > 0) { 
         uint8_t data = Wire.read();
-        Serial.println(data,HEX);
-        if (write_i2c_to_fram) {
-          //Cache to FRAM because MKR1000 is too slow to process data using a ring buffer.
-          framWrite(write_counter,data);
-          write_counter++;
-        } else {
-          //Assume room in buffer to avoid blocking.
-          ringBuffer.write(data); //Save into ring buffer.
-        }   
+        //Cache to FRAM because MKR1000 is too slow to process data using a ring buffer.
+        framWrite(write_counter,data);
+        write_counter++;
+      }
     }
 }
 void requestEvent() {
@@ -688,8 +684,8 @@ void requestEvent() {
     //The number of bytes requested varies by module. 292e requests 8 bytes per preset, and 291e
     //requests 253 bytes per preset. 251e is over 2k. When the module is done reading, it issues
     //a STOP and this handler will not be called until the next time a restore is requested.
-
-    if (ringBuffer.bytesQueued() > 0){
+    //Serial.println("requestEvent");
+    if (Wire.available() > 0){
         //This is the first read following address write from the module.
         //The master wrote two or three bytes for the memory address, and we now retrieve it
         //from the rxBuffer. MSB is sent first, LSB second.
@@ -698,19 +694,20 @@ void requestEvent() {
         uint8_t addr_byte_upper = 0x00;
         uint8_t addr_byte_middle = 0x00;
         uint8_t addr_byte_lower = 0x00;
+        
 
-        while (ringBuffer.bytesQueued() > 3) {
-            ringBuffer.read(); //Only three bytes supported. If buffer has more, clear it out.
+        while (Wire.available() > 3) {
+            Wire.read(); //Only three bytes supported. If buffer has more, clear it out.
         }
-        if (ringBuffer.bytesQueued() == 1){
-            addr_byte_lower = ringBuffer.read();
-        } else if (ringBuffer.bytesQueued() == 2) {
-            addr_byte_middle = ringBuffer.read();
-            addr_byte_lower = ringBuffer.read();
-        } else if (ringBuffer.bytesQueued() == 3) {
-            addr_byte_upper = ringBuffer.read();
-            addr_byte_middle = ringBuffer.read();
-            addr_byte_lower = ringBuffer.read();
+        if (Wire.available() == 1){
+            addr_byte_lower = Wire.read();
+        } else if (Wire.available() == 2) {
+            addr_byte_middle = Wire.read();
+            addr_byte_lower = Wire.read();
+        } else if (Wire.available() == 3) {
+            addr_byte_upper = Wire.read();
+            addr_byte_middle = Wire.read();
+            addr_byte_lower = Wire.read();
         } 
         fram_address = 0;
         fram_address = (addr_byte_upper) << 16;
@@ -718,8 +715,8 @@ void requestEvent() {
         fram_address = fram_address | addr_byte_lower;
     } 
     //Bypass Wire buffer and write byte directly to I2C.
-    sercom2.sendDataSlaveWIRE(framRead(fram_address + read_counter));
-    //Wire.write(framRead(fram_address + read_counter));
+    int data = framRead(fram_address + read_counter);
+    sercom2.sendDataSlaveWIRE(data);
     read_counter++;
     readTime = millis(); 
     digitalWrite(LED_BUILTIN, HIGH);
