@@ -178,11 +178,15 @@ int status = WL_IDLE_STATUS;
 WiFiServer server(80);
 
 void setup() {
+  Wire.begin(0x50 | CARD_ADDRESS);
+  Wire.onReceive(receiveEvent);
+  Wire.onRequest(requestEvent);
   //Initialize serial and wait for port to open:
   Serial.begin(9600);
   //while (!Serial) {
   //  ; // wait for serial port to connect. Needed for native USB port only
   //}
+
 
   Serial.println("Access Point Web Server");
 
@@ -232,7 +236,6 @@ void setup() {
   pinMode(LED_BUILTIN,OUTPUT); //built in LED on MKR1000
   pinMode(SPI_CS, OUTPUT); //SPI CS
   SPI.begin(); //FRAM communications
-
 
 }
 
@@ -667,6 +670,7 @@ void receiveEvent(int howMany) {
     //Serial.print(Wire.available()); Serial.print(" "); Serial.println(ringBuffer.bytesFree());
     while (Wire.available() > 0) {       
         uint8_t data = Wire.read();
+        Serial.println(data,HEX);
         if (write_i2c_to_fram) {
           //Cache to FRAM because MKR1000 is too slow to process data using a ring buffer.
           framWrite(write_counter,data);

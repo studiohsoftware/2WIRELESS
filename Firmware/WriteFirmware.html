@@ -12,7 +12,7 @@
 	<script>
 		//This script sends the selected firmware HEX file to the preset manager. Once sent, the target module firmware is updated
 		//in the usual way: reboot system with remote enable button held. The module will read the firmware from the preset manager.
-		const MAX_JSON_PART_LENGTH = 18000; //Max bytes per POST to writememory.
+		const MAX_JSON_PART_LENGTH = 15000; //Max bytes per POST to writememory.
 		const JSON_DATA_ELEMENT_OVERHEAD = 26; //bytes used up for each data element by tag names, colons, and other formatting.
 		const HTTP_REQUEST_TIMEOUT = 5000; 
 		const DATA_TRANSFER_WAIT = 500; //Wait this long between sending data parts to preset manager. Too short gives timeouts.
