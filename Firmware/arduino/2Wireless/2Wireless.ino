@@ -39,57 +39,6 @@ JsonToken::JsonToken() {
 }
 
 
-class RingBuffer2 {
-    private:
-        volatile uint8_t buffer[BUFFER_SIZE];
-        volatile uint32_t head;
-        volatile uint32_t tail;  
-    public:
-        RingBuffer2();
-        int bytesFree(void);
-        int bytesQueued(void);
-        uint8_t read(void);
-        void write(uint8_t byte);
-        void flush();
-};
-
-RingBuffer2::RingBuffer2() {
-    this->head = 0;
-    this->tail = 0;
-    this->buffer[0] = 0;
-}
-
-int RingBuffer2::bytesQueued(void) {
-     int result = 0;
-    result = (unsigned int)(BUFFER_SIZE + this->head - this->tail) % BUFFER_SIZE;
-    return result;
-}
-
-int RingBuffer2::bytesFree(void) {
-    return BUFFER_SIZE - this->bytesQueued();
-}
-
-uint8_t RingBuffer2::read(void){
-    uint8_t result = 0x00;
-    if (this->bytesQueued() > 0){
-        result = this->buffer[this->tail];
-        this->tail = (uint32_t)(this->tail+1) % BUFFER_SIZE;
-    }
-    return result; //Note byte returned, so always call bytesQueued() first to check.
-}
- 
-void RingBuffer2::write(uint8_t byte){
-    if (this->bytesFree()>0) {
-        this->buffer[this->head] = byte;
-        this->head = (uint32_t)(this->head + 1) % BUFFER_SIZE;
-    }
-}
-
-void RingBuffer2::flush() {
-    this->tail = this->head;
-}
-
-RingBuffer2 ringBuffer = RingBuffer2(); //Used to buffer data between HTTP and I2C. 
 volatile int read_counter=0; //Used to auto increment read addresses during I2C READ from master.
 volatile int write_counter=0; //USed to auto increment write addresses during I2C WRITE from master.
 volatile int fram_address=0; //This is global only because it must span OnRequest calls during I2C READ from master. 
@@ -447,7 +396,6 @@ void loop() {
                   line_length = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
               }
               //Serial.println(address,HEX);
-              ringBuffer.flush();
               write_i2c_to_fram = true; //Cache incoming i2c to FRAM 
               switchToMaster(); //Send preset backup request to module
               sendBackupPresets(address); 
@@ -502,7 +450,6 @@ void loop() {
               int eqloc = urlString.indexOf('=');
               int module_address = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
               module_address = module_address & 0x7F;
-              ringBuffer.flush();
               write_i2c_to_fram = false;
               if (module_address != 0x00) {
                   read_counter = 0; //Initialize counter for subsequent I2C READs from master.
@@ -667,7 +614,6 @@ void loop() {
 
 void receiveEvent(int howMany) {
     //Serial.println("receiveEvent");
-    //Serial.print(Wire.available()); Serial.print(" "); Serial.println(ringBuffer.bytesFree());
     if (write_i2c_to_fram) {
       while (Wire.available() > 0) { 
         uint8_t data = Wire.read();
