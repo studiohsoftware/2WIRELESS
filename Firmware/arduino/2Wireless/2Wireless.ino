@@ -23,6 +23,9 @@
 #define SPI_CS 4 //FRAM Chip Select
 #define WIFI_OPEN_PIN 3
 #define V2VERSION_PIN 2
+#define SSID_ADDR 0x02BD39 //32 byte locaton for SSID string
+#define PASS_ADDR 0x02BD7A //64 byte location for WPA password string.
+#define SSID_DEFAULT "BUCHLA200E"
 
 class JsonToken {
     public:
@@ -118,7 +121,7 @@ uint8_t framRead(int addr){
 
 
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
-char ssid[] = "BUCHLA200E";        // your network SSID (name)
+char ssid[33];        // your network SSID (name) max 32 characters plus termination
 char pass[] = "BUCHLA200E";    // your network password (use for WPA, or use as key for WEP)
 int keyIndex = 0;                // your network key Index number (needed only for WEP)
 
@@ -158,6 +161,9 @@ void setup() {
   // by default the local IP address of will be 192.168.1.1
   // you can override it with the following:
   WiFi.config(IPAddress(192, 168, 0, 1));
+
+  //Read SSID from FRAM
+  strcpy(ssid,getSSID().c_str());
 
   // print the network name (SSID);
   Serial.print("Creating access point named: ");
@@ -533,6 +539,19 @@ void loop() {
                   getJsonToken(token, client);
               } 
               delete token;
+            } else if (urlString.indexOf("/getSSID") >= 0) {
+              Serial.println("getSSID Received"); 
+              String ssid = getSSID();
+              String result = "{\"ssid\": \"" + ssid + "\"}";
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
+              client.println(result);
+            } else if (urlString.indexOf("/setSSID") >= 0) {
+              Serial.println("setSSID Received"); 
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
+              int len = urlString.indexOf(" HTTP");
+              int eqloc = urlString.indexOf('=');
+              String ssid = urlString.substring(eqloc + 1, len);
+              setSSID(ssid);
             } else if (urlString.indexOf("/test") >= 0) {
               Serial.println("Test Received"); 
               int charcount=0;
@@ -550,7 +569,6 @@ void loop() {
                       done = true;
                   }
               }
-              
               String responseString = String(charcount) + " bytes received.";
               Serial.println(responseString);
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
@@ -610,6 +628,32 @@ void loop() {
     Serial.println("client disconnected");
   }
   digitalWrite(LED_BUILTIN, LOW); //used to show i2c activity
+}
+
+String getSSID(){
+  String result = "";
+  int tmp = framRead(SSID_ADDR);
+  int offset = 0;
+  while (tmp != 0x00) {
+    result = result + char(tmp);
+    offset++;
+    tmp = framRead(SSID_ADDR + offset); 
+  }
+  if (offset == 0) {
+    result = SSID_DEFAULT;
+  }
+  return result;
+}
+
+void setSSID(String ssid){
+  int max_ssid_length = 32;
+  int i = 0;
+  while ((i < (ssid.length()) && (i < max_ssid_length))){
+    char value = ssid.charAt(i);
+    framWrite(SSID_ADDR + i,value);
+    i++;
+  } 
+  framWrite(SSID_ADDR + i,0);
 }
 
 void receiveEvent(int howMany) {

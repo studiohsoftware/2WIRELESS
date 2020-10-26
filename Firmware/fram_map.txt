@@ -1,5 +1,8 @@
 DEFINED BY 2WIRELESS.INO (firmware)
-0x000000 - 0x02BD7A Scratch area for preset and firmware transfers (179579 bytes)
+0x000000 - 0x02BD18 Scratch area for preset and firmware transfers (179481 bytes)
+
+0x02BD19 - 0x02BD39 32 byte SSID (33 locations allocated to accommodate null termination)
+0x02BD3A - 0x02BD7A 63 byte WPA password (8 bytes minumum)
 0x02BD7B - 0x02BD7D Optional three byte homepage starting address (please use space above 0x02C000).
 0x02BD7E - 0x02BD7F Optional two byte homepage length (defaults to 0 to use default homepage).
 
