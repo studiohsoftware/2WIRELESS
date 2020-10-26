@@ -58,6 +58,12 @@ Notes:
 - #### Addresses are arbitrary locations within 0x0-0x03FFFF.
 - #### Data elements can be up to 256 bytes long each (512 characters).
 - #### All addresses below 0x02C000 are used as scratch space by preset and firmware transfers. 
+- ### http://192.168.0.1/getSSID
+Get wireless SSID<br/>
+- ### http://192.168.0.1/setSSID?ssid=(SSID string)
+Set wireless SSID<br/>
+Example: http://192.168.0.1/setSSID?ssid=TEST
+Note restart required. Returns BUCHLA200E by default. 
 ## V2 Firmware Support
 Old firmware (pre Primo version) also supported. Simply add a "v2" to the URL path. <br/>
 Example: http://192.168.0.1/v2/remotedisable<br/>
