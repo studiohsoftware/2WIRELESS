@@ -26,6 +26,7 @@
 #define SSID_ADDR 0x02BD39 //32 byte locaton for SSID string
 #define PASS_ADDR 0x02BD7A //64 byte location for WPA password string.
 #define SSID_DEFAULT "BUCHLA200E"
+#define PASS_DEFAULT "BUCHLA200E"
 
 class JsonToken {
     public:
@@ -122,7 +123,7 @@ uint8_t framRead(int addr){
 
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
 char ssid[33];        // your network SSID (name) max 32 characters plus termination
-char pass[] = "BUCHLA200E";    // your network password (use for WPA, or use as key for WEP)
+char pass[64];    // your network password for WPA. Max is 63 plus termination
 int keyIndex = 0;                // your network key Index number (needed only for WEP)
 
 int status = WL_IDLE_STATUS;
@@ -164,6 +165,9 @@ void setup() {
 
   //Read SSID from FRAM
   strcpy(ssid,getSSID().c_str());
+
+  //Read Password from FRAM
+  strcpy(pass,getPassword().c_str());
 
   // print the network name (SSID);
   Serial.print("Creating access point named: ");
@@ -539,19 +543,32 @@ void loop() {
                   getJsonToken(token, client);
               } 
               delete token;
-            } else if (urlString.indexOf("/getSSID") >= 0) {
-              Serial.println("getSSID Received"); 
-              String ssid = getSSID();
-              String result = "{\"ssid\": \"" + ssid + "\"}";
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
-              client.println(result);
-            } else if (urlString.indexOf("/setSSID") >= 0) {
+            } else if (urlString.indexOf("/ssid=") >= 0) {
               Serial.println("setSSID Received"); 
               writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
               int len = urlString.indexOf(" HTTP");
               int eqloc = urlString.indexOf('=');
               String ssid = urlString.substring(eqloc + 1, len);
               setSSID(ssid);
+            } else if (urlString.indexOf("/ssid") >= 0) {
+              Serial.println("getSSID Received"); 
+              String ssid = getSSID();
+              String result = "{\"ssid\": \"" + ssid + "\"}";
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
+              client.println(result);
+            } else if (urlString.indexOf("/password=") >= 0) {
+              Serial.println("setPassword Received"); 
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
+              int len = urlString.indexOf(" HTTP");
+              int eqloc = urlString.indexOf('=');
+              String password = urlString.substring(eqloc + 1, len);
+              setPassword(password);
+            } else if (urlString.indexOf("/password") >= 0) {
+              Serial.println("getPassword Received"); 
+              String password = getPassword();
+              String result = "{\"password\": \"" + password + "\"}";
+              writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
+              client.println(result);
             } else if (urlString.indexOf("/test") >= 0) {
               Serial.println("Test Received"); 
               int charcount=0;
@@ -654,6 +671,39 @@ void setSSID(String ssid){
     i++;
   } 
   framWrite(SSID_ADDR + i,0);
+}
+
+
+String getPassword(){
+  String result = "";
+  int tmp = framRead(PASS_ADDR);
+  int offset = 0;
+  while (tmp != 0x00) {
+    result = result + char(tmp);
+    offset++;
+    tmp = framRead(PASS_ADDR + offset); 
+  }
+  if (offset == 0) {
+    result = PASS_DEFAULT;
+  }
+  return result;
+}
+
+void setPassword(String password){
+  int max_password_length = 63;
+  if (password.length() < 8) {
+    //Null out to force PASS_DEFAULT
+    framWrite(PASS_ADDR,0);
+  } else {
+    int i = 0;
+    while ((i < (password.length()) && (i < max_password_length))){
+      char value = password.charAt(i);
+      framWrite(PASS_ADDR + i,value);
+      i++;
+    } 
+    //Add null termination
+    framWrite(PASS_ADDR + i,0);
+  }
 }
 
 void receiveEvent(int howMany) {
