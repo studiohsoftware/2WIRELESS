@@ -2,5 +2,55 @@
 	<head> 
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	</head>
-	Hello Setup Page
+	<body>
+		<label style="font-weight:bold;font-size:24px;">Setup Page</label></br></br>
+		<label for="ssid">SSID:</label></br>
+		<input type="text" id="ssid" name="ssid" maxlength="32" style="width:250;"><br><br>
+		<label for="pass">Password (eight characters minimum):</label></br>
+		<input type="text" id="pass" name="pass" maxlength="63" style="width:250;"><br>
+		<label for="pass2">Re-enter Password:</label></br>
+		<input type="text" id="pass2" name="pass2" maxlength="63" style="width:250;"><br><br>
+		<label for="submit" id="errortext" style="color:red;"></label></br>
+		<input type="button" id="submit" value="Submit">
+	</body>
+	<script>
+		var ssid = document.getElementById("ssid");
+		var pass = document.getElementById("pass");
+		var pass2 = document.getElementById("pass2");
+		var submit = document.getElementById("submit");
+		var errortext = document.getElementById("errortext");
+		
+		submit.onclick = submitOnClick;
+		
+		ssid.value = getSSID();
+		pass.value = getPass();
+		pass2.value = pass.value;
+		
+		function getSSID(){
+			send("ssid");
+			return(JSON.parse(req.responseText).ssid);
+		}
+		function getPass(){
+			send("password");
+			return(JSON.parse(req.responseText).password);
+		}
+		function send(url) {
+			req = new XMLHttpRequest();
+			req.open("GET", "http://192.168.0.1/" + url,false); 
+			req.send(null);
+		}
+		
+		function submitOnClick(){
+			if (pass.value != pass2.value) {
+				errortext.innerHTML = "Passwords do not match.";
+			} else if ((pass.value.length < 8) || (pass2.value.length < 8)){
+				errortext.innerHTML = "Password too short.";
+			} else {
+				errortext.innerHTML = "";
+				send("ssid=" + ssid.value);
+				send("password=" + pass.value);
+			} 	
+		}
+	</script>
 </html>
+
