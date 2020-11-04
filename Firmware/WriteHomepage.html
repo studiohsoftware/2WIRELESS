@@ -1,0 +1,182 @@
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+	</head>
+	<body>
+		<p id="title" style="font-family:'Arial';font-size:16px">
+				Send Homepage HTML to Preset Manager		
+		</p>
+		<button onclick="input.click()">Browse for html file.</button>
+		<p id="text" style="font-family:'Arial';font-size:12px" ></p>
+	</body>
+	<script>
+		//This script sends the selected homepage html file to the preset manager. Once sent, the preset manager will use the new homepage
+		//instead of the default PresetManager.html. Reboot of preset manager required.
+		const MAX_JSON_PART_LENGTH = 15000; //Max bytes per POST to writememory.
+		const JSON_DATA_ELEMENT_OVERHEAD = 26; //bytes used up for each data element by tag names, colons, and other formatting.
+		const HTTP_REQUEST_TIMEOUT = 5000; 
+		const DATA_TRANSFER_WAIT = 500; //Wait this long between sending data parts to preset manager. Too short gives timeouts.
+		
+		var input = document.createElement('input');
+		input.type = 'file';
+		input.accept = ".html";
+		input.click();
+		
+		var request;
+		var url = "";
+		var requestTimeout;
+		
+		var homepageImage = [];
+		var partsSent; //Number of array elements sent.
+		var textValue; //Used for text display only.
+		var filename = "";
+		
+		input.onchange = e => { 
+			var file = e.target.files[0]; 		
+			var reader = new FileReader();
+			textValue = "";
+			reader.readAsText(file,'UTF-8');
+			reader.onload = readerEvent => {
+				filename = input.value.replace(/^.*\\/, ""); //strip path from filename
+				var content = readerEvent.target.result; //html file contents as string
+				textValue = "";
+				document.getElementById("text").innerHTML = textValue;
+
+				var homepageImagePart = [];
+				homepageImage.push(homepageImagePart);
+				textValue = textValue + "Processing file " + filename + "...<br/>";
+				textValue = textValue + "Preparing output for sending...<br/>";
+				document.getElementById("text").innerHTML = textValue;
+				
+				setTimeout(()=>{ //Use of timeout here with timeout of 0 lets the script update the text on the page.	
+				
+					var lines = [];
+					var line = content.substring(0,127);
+					var i = 0;
+					while (line.length > 0){
+						lines.push(line);
+						i = i + 128;
+						line = content.substring(i,i + 128);	
+					}
+				
+					var address = 0x02C000; //Starts at 0x02C000.
+					var datacount = 0;
+					for(var i = 0;i < lines.length;i++){ 
+						homepageImagePart.push(getJsonFromLine(address,lines[i]));
+						textValue = textValue + homepageImagePart[homepageImagePart.length - 1].data + "<br/>";
+						address = address + lines[i].length - 1;
+						datacount = datacount + homepageImagePart[homepageImagePart.length - 1].data.length;
+						if ((datacount + JSON_DATA_ELEMENT_OVERHEAD  * homepageImagePart.length)> MAX_JSON_PART_LENGTH){
+						//POST data size is limited. Split into parts.
+							homepageImagePart = [];
+							homepageImage.push(homepageImagePart);
+							datacount = 0;
+						}
+					}
+
+					var total_elements = 0;
+					for(var i = 0;i < homepageImage.length;i++){
+						total_elements = total_elements + homepageImage[i].length;
+					}
+					
+					var first_part = homepageImage[0];
+					var last_part = homepageImage[homepageImage.length - 1];
+					
+					textValue = textValue + "Number of data elements: " + total_elements + ".<br/>";
+					textValue = textValue + "First element address: " + first_part[0].addr + ".<br/>";
+					textValue = textValue + "Last element address: " + last_part[0].addr + ".<br/>";
+					textValue = textValue + "Writing new homepage...<br/>";
+					document.getElementById("text").innerHTML = textValue;
+					
+					request = new XMLHttpRequest();
+					url = "http://192.168.0.1/writememory";
+					request.onreadystatechange = requestHandler;
+					request.ontimeout = requestOnTimeout;
+					request.timeout = HTTP_REQUEST_TIMEOUT;
+					partsSent = 0;
+					requestTimeout = false;		
+					//Trigger HTTP requests. Note that requestHandler() case 4 is in control from here on out.				
+					sendPart();
+				}, 0)	
+			}
+		}
+		
+		function requestHandler () {
+			var stateString = "";
+			switch(request.readyState) {
+				case 0:
+					//stateString = "UNSENT	Client has been created. open() not called yet.";
+					//textValue = textValue + url + ": " + stateString + "<br/>";
+					//document.getElementById("text").innerHTML = textValue;
+					break;
+				case 1:
+					//stateString = "OPENED	open() has been called.";
+					//textValue = textValue + url + ": " + stateString + "<br/>";
+					//document.getElementById("text").innerHTML = textValue;
+					break;
+				case 2:
+					//stateString = "HEADERS_RECEIVED	send() has been called, and headers and status are available.";
+					//textValue = textValue + url + ": " + stateString + "<br/>";
+					//document.getElementById("text").innerHTML = textValue;
+					break;
+				case 3:
+					//stateString = "LOADING	Downloading; responseText holds partial data.";
+					//textValue = textValue + url + ": " + stateString + "<br/>";
+					//document.getElementById("text").innerHTML = textValue;
+					break;
+				case 4:
+					//stateString = "DONE	The operation is complete.";
+					//textValue = textValue + url + ": " + stateString + "<br/>";
+					//document.getElementById("text").innerHTML = textValue;
+					if (partsSent < (homepageImage.length - 1)) {	
+						setTimeout(()=>{
+							if (!requestTimeout) {							
+								partsSent++;
+								sendPart();
+							}
+						}, DATA_TRANSFER_WAIT)
+					} else {
+						if (!requestTimeout) {
+							textValue = textValue + "Done.<br/>";
+							document.getElementById("text").innerHTML = textValue;
+						}
+					}
+					break;
+			}
+
+		}
+		
+		function requestOnTimeout(e) {
+			// XMLHttpRequest timed out. 
+			requestTimeout = true;
+			textValue = textValue + "Request timed out.<br/>";
+			document.getElementById("text").innerHTML = textValue;
+		}
+		
+		function sendPart(){
+			var homepageImagePartString = JSON.stringify(homepageImage[partsSent],undefined,2);
+			textValue = textValue + "Sending part " + (partsSent + 1) + " of " + homepageImage.length + "...<br/>";
+			document.getElementById("text").innerHTML = textValue;
+			request.open("POST", url); 
+			request.setRequestHeader("Content-Length", homepageImagePartString.length);
+			request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+			request.send(homepageImagePartString);
+		}
+		
+		function getJsonFromLine(address,line){
+			var tmp = "";
+			//line = line.replace(/^\s+|\s+$/gm,'');
+			for(var i = 0;i < line.length;i++){
+				var code = line.charCodeAt(i);
+				if (code > 31) {
+					tmp = tmp + code.toString(16);
+				}
+			}
+			var result = {
+				addr : address.toString(16),
+				data : tmp 
+			}
+			return result;
+		}		
+	</script>
+</html>
