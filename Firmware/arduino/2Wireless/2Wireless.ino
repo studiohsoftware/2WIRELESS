@@ -1055,7 +1055,7 @@ void getJsonToken(JsonToken* token, WiFiClient client) {
       }
       //Check to see if bytes are still arriving
       unsigned long now = millis();
-      if ((now - lastTime) >= 100) {
+      if ((now - lastTime) >= 200) {
           done = true;
       }
     } 
@@ -1073,7 +1073,7 @@ void getJsonToken(JsonToken* token, WiFiClient client) {
 
       //Check to see if bytes are still arriving
       unsigned long now = millis();
-      if ((now - lastTime) >= 100) {
+      if ((now - lastTime) >= 200) {
           done = true;
       }
     }
