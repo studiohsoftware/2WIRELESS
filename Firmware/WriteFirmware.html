@@ -205,10 +205,14 @@
 					
 					var first_part = firmwareImage[0];
 					var last_part = firmwareImage[firmwareImage.length - 1];
+					var last_element = last_part[last_part.length - 1];
+					var data_length = parseInt("0x" + last_element.addr) + last_element.data.length/2;
+					var last_address = (data_length - 1).toString(16);
 					
 					textValue = textValue + "Number of data elements: " + total_elements + ".<br/>";
-					textValue = textValue + "First element address: " + first_part[0].addr + ".<br/>";
-					textValue = textValue + "Last element address: " + last_part[0].addr + ".<br/>";
+					textValue = textValue + "First address: " + first_part[0].addr + ".<br/>";
+					textValue = textValue + "Last address: " + last_address + ".<br/>";
+					textValue = textValue + "Total length: " + data_length + ".<br/>";
 					textValue = textValue + "Flashing new firmware...<br/>";
 					document.getElementById("text").innerHTML = textValue;
 					

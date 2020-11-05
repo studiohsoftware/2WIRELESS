@@ -4,21 +4,21 @@
 	</head>
 	<body>
 		<p id="title" style="font-family:'Arial';font-size:16px">
-				Send Homepage HTML to Preset Manager		
+				Send Custom HTML to Preset Manager		
 		</p>
 		<button onclick="input.click()">Browse for html file.</button>
 		<p id="text" style="font-family:'Arial';font-size:12px" ></p>
 	</body>
 	<script>
-		//This script sends the selected userPage html file to the preset manager. Once sent, the preset manager will use the new userPage
-		//instead of the default PresetManager.html. Reboot of preset manager required.
+		//This script sends the selected custom html file to the preset manager. 
+		//Once sent, the page can be found here http://192.168.0.1/custom. 
 		const MAX_JSON_PART_LENGTH = 15000; //Max bytes per POST to writememory.
 		const JSON_DATA_ELEMENT_OVERHEAD = 26; //bytes used up for each data element by tag names, colons, and other formatting.
 		const HTTP_REQUEST_TIMEOUT = 5000; 
 		const DATA_TRANSFER_WAIT = 500; //Wait this long between sending data parts to preset manager. Too short gives timeouts.
-		const USERPAGE_START_ADDRESS = 0x02C000; //Homepage is stored here in FRAM 
+		const USERPAGE_START_ADDRESS = 0x02C000; //custom page is stored here in FRAM 
 		const USERPAGE_START_POINTER = 0x02BD7B; //This three byte location holds the value 0x02C000 so preset manager knows where to look.
-		const USERPAGE_LENGTH_ADDRESS = 0x02BD7E; //This two byte location holds the userPage length in bytes.
+		const USERPAGE_LENGTH_ADDRESS = 0x02BD7E; //This two byte location holds the  custom Page length in bytes.
 		
 		var input = document.createElement('input');
 		input.type = 'file';
@@ -53,13 +53,14 @@
 				
 				setTimeout(()=>{ //Use of timeout here with timeout of 0 lets the script update the text on the page.	
 				
+					content = content.replace(/[^ -~]+/g, "");
 					var lines = [];
-					var line = content.substring(0,127);
+					var line = content.substring(0,64);
 					var i = 0;
 					while (line.length > 0){
 						lines.push(line);
-						i = i + 128;
-						line = content.substring(i,i + 128);	
+						i = i + 63;
+						line = content.substring(i, i + 64);	
 					}
 				
 					var address = USERPAGE_START_ADDRESS; //Starts at 0x02C000.
@@ -84,29 +85,33 @@
 					var first_part = userPageImage[0];
 					var last_part = userPageImage[userPageImage.length - 1];
 					var last_element = last_part[last_part.length - 1];
-					var data_length = parseInt("0x" + last_element.addr) + last_element.data.length/2 - USERPAGE_START_ADDRESS - 1;
-					var last_address = (data_length + USERPAGE_START_ADDRESS).toString(16);
+					var data_length = parseInt("0x" + last_element.addr) + last_element.data.length/2 - USERPAGE_START_ADDRESS;
+					var last_address = (data_length + USERPAGE_START_ADDRESS - 1).toString(16);
 					
 					textValue = textValue + "Number of data elements: " + total_elements + ".<br/>";
 					textValue = textValue + "First address: " + first_part[0].addr + ".<br/>";
 					textValue = textValue + "Last address: " + last_address + ".<br/>";
 					textValue = textValue + "Total length: " + data_length + ".<br/>";
-					textValue = textValue + "Writing new userPage...<br/>";
+					textValue = textValue + "Writing new custom page...<br/>";
 					document.getElementById("text").innerHTML = textValue;
 					
+					userPageImagePart = [];
 					//Write total data length to USERPAGE_LENGTH_ADDRESS
 					var total_length = {
 						addr : USERPAGE_LENGTH_ADDRESS.toString(16),
 						data : pad(data_length.toString(16),4)
 					}
-					last_part.push(total_length);
+					userPageImagePart.push(total_length);
 					
 					//Write page start address to USERPAGE_START_POINTER
 					var start_address = {
 						addr : USERPAGE_START_POINTER.toString(16),
 						data : pad(USERPAGE_START_ADDRESS.toString(16),6)
 					}
-					last_part.push(start_address);
+
+					userPageImagePart.push(start_address);
+					userPageImage.push(userPageImagePart);
+					
 					
 					request = new XMLHttpRequest();
 					url = "http://192.168.0.1/writememory";
@@ -196,6 +201,7 @@
 				addr : address.toString(16),
 				data : tmp 
 			}
+			textValue = textValue + tmp + "</br>";
 			return result;
 		}	
 
