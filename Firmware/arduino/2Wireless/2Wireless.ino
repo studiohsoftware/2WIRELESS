@@ -27,9 +27,6 @@
 #define PASS_ADDR 0x02BD3A //64 byte location for WPA password string.
 #define SSID_DEFAULT "BUCHLA200E"
 #define PASS_DEFAULT "BUCHLA200E"
-#define USERPAGE_START_POINTER 0x02BD7B //This three byte location holds the custom page start address.
-#define USERPAGE_LENGTH_ADDRESS 0x02BD7E
-#define USER_BASE_ADDRESS 0x02C000 //Starting address for user area.
 
 class JsonToken {
     public:
@@ -619,19 +616,6 @@ void loop() {
                 tmp = setupPageString.substring(i,i+1000);
               }
               client.println();   // The HTTP response ends with another blank line:
-            } else if (urlString.indexOf("/custom") >= 0) {
-              //Note this had to be abandoned because only 6k avail after PresetManager.html
-              writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",customPageString.length());
-              //Serial.println("Returning custom page"); 
-              //Write page in 1k chunks. 
-              int i = 0;
-              String tmp = customPageString.substring(i,i+1000);
-              while (tmp != ""){
-                client.print(tmp);
-                i = i + 1000;
-                tmp = customPageString.substring(i,i+1000);
-              }
-              client.println();   // The HTTP response ends with another blank line:
             } else {
               //Serial.println("Returning homepage");
               //Serial.println(homepageString);
@@ -727,28 +711,6 @@ void setPassword(String password){
   }
 }
 
-//This is working, but severely limited due to available memory. 
-//Currently not called anywhere.
-void getCustomPage(){
-  int start_address = 0;
-  start_address = framRead(USERPAGE_START_POINTER) << 16;
-  start_address = start_address | framRead(USERPAGE_START_POINTER + 1) << 8;
-  start_address = start_address | framRead(USERPAGE_START_POINTER + 2);
-  int custom_page_length = framRead(USERPAGE_LENGTH_ADDRESS) << 8;
-  custom_page_length = custom_page_length | framRead(USERPAGE_LENGTH_ADDRESS + 1);
-  if ((start_address >= USER_BASE_ADDRESS) && (custom_page_length > 0)) {
-    int offset = 0;
-    customPageString = "";
-    while (offset < custom_page_length) {
-      int tmp = framRead(start_address + offset);
-      if (tmp > 31) {
-        customPageString = customPageString + char(tmp);
-      }
-      offset++;
-    }
-  }
-}
-
 void receiveEvent(int howMany) {
     //Serial.println("receiveEvent");
     if (write_i2c_to_fram) {
@@ -760,6 +722,7 @@ void receiveEvent(int howMany) {
       }
     }
 }
+
 void requestEvent() {
     //Wire.cpp modified so that this handler is called on every byte requested.
     //Module reads presets here during preset restore. The module first sends an EEPROM memory
