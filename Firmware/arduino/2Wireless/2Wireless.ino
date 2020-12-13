@@ -13,6 +13,9 @@
 #include <Wire.h>
 #include <WiFi101.h>
 #include <SPI.h>
+#include <usbh_midi.h>
+#include <usbhub.h>
+#include <MIDIUSB.h>
 //#include "arduino_secrets.h"
 
 #define CARD_ADDRESS 0x00
@@ -27,6 +30,7 @@
 #define PASS_ADDR 0x02BD3A //64 byte location for WPA password string.
 #define SSID_DEFAULT "BUCHLA200E"
 #define PASS_DEFAULT "BUCHLA200E"
+#define _MIDI_SERIAL_PORT Serial1
 
 class JsonToken {
     public:
@@ -53,7 +57,6 @@ bool v2version=false; //used to support pre PRIMO firmware.
 SPISettings spiSettings(12000000, MSBFIRST, SPI_MODE0); //MKR1000 max is 12MHz. FRAM chip max is 40MHz.
 String homepageString = "<html> <head> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> <style> .p { display: flex; flex-direction: column; background-color:lightgray; color:darkblue; font-family:Arial; font-weight:bold; letter-spacing: 2px; height: 218px; } .hf { font-size:12px; padding: 10px; border: 1px solid darkblue; } .r { font-style:italic; font-size:20px; padding: 10px; border-left: 1px solid darkblue; border-right: 1px solid darkblue; height: 50px; } .row { display: flex; flex-direction: row; justify-content: space-around; align-items: center; } .col { display: flex; flex-direction: column; justify-content: space-around; align-items: center; font-size:14px; } .screw { display: flex; justify-content: center; align-content: center; flex-direction: column; height: 18px; width: 18px; background-color: #999; border-radius: 50%; color: #444; font-size:30px; border: 1px solid black; } .b { border-radius: 50%; height:40px; width:40px; background-color: #777;  } .d { height: 50px; width: 225px; background-color: white; padding: 0px; margin: 0px; border: 1px solid black; } .dx { height: 50px; width: 200px; background-color: white; padding: 0px; margin: 0px; border: 0px; } .dc { font-family: Courier New; font-weight:bold; background-color: #cfc; height: 50px; border: 0px; } .hole { height: 10px; width: 10px; background-color: #000; border-radius: 50%; display: inline-block; } </style> </head> <body> <div class=\"p\"> <div class=\"hf row\"> <div class=\"screw\">+</div> <div>PRESET &nbsp; MANAGER</div> <div class=\"screw\">+</div> </div> <div class=\"r row\" style=\"border-bottom: 1px solid darkblue;\"> <div class=\"col\"> <button id=\"sB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"1\"></button> <div style=\"height:2\"></div> <div>store</div> </div> <div class=\"d row\"> <div class=\"dx col\" > <input id=\"current_preset\" class=\"dc\" style=\"width:21px;background-color: #afa;\" disabled> <input class=\"dc\" disabled style=\"width:21px;background-color: #afa;\"> </div> <div class=\"dx col\" > <input id=\"current_name\" class=\"dc\" maxlength=\"20\" tabindex=\"2\"> <input id=\"recall_name\" class=\"dc\" disabled style=\"background-color: #afa;\"> </div> <div class=\"dx col\" > <input class=\"dc\" disabled style=\"width:40px;background-color: #afa;\"> <input id=\"recall_preset\" class=\"dc\" style=\"width:40px;\" type=\"number\" min=\"1\" max=\"30\" tabindex=\"3\"> </div> </div> <div class=\"col\"> <button id=\"rB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"4\"></button> <div style=\"height:2\"></div> <div>recall</div> </div> </div> <div class=\"r row\"> <div class=\"row\" style=\"width:200px\"> <div class=\"col\"> <button id=\"lB\" type=\"button\" class=\"b\" tabindex=\"5\"></button> <div style=\"height:2\"></div> <div>last</div> </div> <div class=\"col\"> <button id=\"nB\" type=\"button\" class=\"b\" tabindex=\"6\"></button> <div style=\"height:2\"></div> <div>next</div> </div> </div> <div class=\"col\" style=\"align-items: flex-start;width:33%\"> <div class=\"row\" style=\"align-items: flex-start;\"> <input type=\"radio\" id=\"v3\" name=\"version\" value=\"v3\" tabindex=\"7\" hidden> <label for=\"v3\" hidden>primo</label> </div> <div class=\"row\" style=\"align-items: flex-start;\"> <input type=\"radio\" id=\"v2\" name=\"version\" value=\"v2\" tabindex=\"8\" hidden> <label for=\"v2\" hidden>v2    </label> </div> </div> <div class=\"col\" style=\"width:33%\"> <button id=\"remB\" type=\"button\" class=\"b\" tabindex=\"9\"></button> <div style=\"height:2\"></div> <div>remote</div> </div> </div> <div class=\"hf row\"> <div class=\"hole\"></div> <div>STUDIO H SOFTWARE</div> <div class=\"hole\"></div> </div> </div> </body> <script> var baseAddr = 0x02BD80; var rem = true; var req; var c_pset = document.getElementById(\"current_preset\"); var r_pset = document.getElementById(\"recall_preset\"); var c_name = document.getElementById(\"current_name\"); var r_name = document.getElementById(\"recall_name\"); var names = []; r_pset.onchange = rOnChange; c_name.onchange = cnameOnChange; document.getElementById(\"sB\").onclick = sBOnClick; document.getElementById(\"rB\").onclick = rBOnClick; document.getElementById(\"lB\").onclick = lBOnClick; document.getElementById(\"nB\").onclick = nBOnClick; document.getElementById(\"remB\").onclick = remBOnClick; document.getElementById(\"v3\").checked = true;  send(\"readmemory?addr=\" + baseAddr.toString(16) + \"&length=6\"); var data = JSON.parse(req.responseText)[0].data; if (data != \"425543484c41\") { for (var i=1; i<31; i++){ writeName(i,\"\"); names[i]=\"\"; } send(\"writememory?addr=\" + baseAddr.toString(16) + \"&data=425543484C41\"); writePreset(1); } else { for (var i=1; i<31; i++){ names[i]=readName(i); } }  c_pset.value = readPreset(); cOnChange(); r_pset.value = c_pset.value; rOnChange();   function sBOnClick() { send(\"savepreset?preset=\" + r_pset.value); names[r_pset.value] = names[c_pset.value]; writeName(r_pset.value,names[r_pset.value]); rOnChange(); }  function rBOnClick() { if (c_pset.value != r_pset.value) { c_pset.value = r_pset.value; cOnChange(); } }  function lBOnClick() { var pset = c_pset.value; pset = pset - 1; if (pset < 1) { pset = pset + 30; } pset = pset % 31; c_pset.value = pset; r_pset.value = pset; cOnChange(); rOnChange(); } function nBOnClick() { var pset = c_pset.value; pset = pset % 30 + 1; c_pset.value = pset; r_pset.value = pset; cOnChange(); rOnChange(); } function remBOnClick() { rem = !rem; if (rem){ send(\"remoteenable\"); } else { send(\"remotedisable\"); } }  function cOnChange(){ c_name.value = names[c_pset.value]; send(\"recallpreset?preset=\" + c_pset.value); writePreset(c_pset.value); }  function rOnChange(){ r_name.value = names[r_pset.value]; }  function cnameOnChange(){ names[c_pset.value] = c_name.value; writeName(c_pset.value,names[c_pset.value]); rOnChange(); }  function send(url) { var version = \"\"; if (document.getElementById('v2').checked) { version = \"v2/\"; } req = new XMLHttpRequest(); req.open(\"GET\", \"http://192.168.0.1/\" + version + url,false); req.send(null); }  function writePreset(pset){ var pStr = pset.toString(16); if (pStr.length == 1) pStr = \"0\" + pStr; send(\"writememory?addr=\" + (baseAddr + 6).toString(16) + \"&data=\" + pStr); }  function readPreset(){ send(\"readmemory?addr=\" + (baseAddr + 6).toString(16) + \"&length=1\"); return(parseInt(JSON.parse(req.responseText)[0].data)); }  function readName(pset){ send(\"readmemory?addr=\" + (baseAddr + 7 + ((pset - 1) * 21)).toString(16) + \"&length=21\"); return hexToText(JSON.parse(req.responseText)[0].data); }  function writeName(pset,name){ var addr = baseAddr + 7 + ((pset - 1) * 21); send(\"writememory?addr=\" + addr.toString(16) + \"&data=\" + textToHex(name)); }  function hexToText(hex) { var result = \"\"; if (hex != \"\"){ var code = parseInt(hex.substring(0,2),16); if (code == 0) { return result; } else if (code > 19) { result = String.fromCharCode(code) + hexToText(hex.substring(2,hex.length)); } } return result; }  function textToHex(text) { var result = \"\"; if (text != \"\"){ var i; for (i = 0; i < text.length; i++){ result = result + text[i].charCodeAt(0).toString(16); } } return result + \"00\"; } </script> </html>";
 String setupPageString = "<html> <head> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> </head> <body> <label style=\"font-weight:bold;font-size:24px;\">Setup Page</label></br></br> <label for=\"ssid\">SSID:</label></br> <input type=\"text\" id=\"ssid\" name=\"ssid\" maxlength=\"32\" style=\"width:250;\"><br><br> <label for=\"pass\">Password (eight characters minimum):</label></br> <input type=\"text\" id=\"pass\" name=\"pass\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"pass2\">Re-enter Password:</label></br> <input type=\"text\" id=\"pass2\" name=\"pass2\" maxlength=\"63\" style=\"width:250;\"><br><br> <label for=\"submit\" id=\"errortext\" style=\"color:red;\"></label></br> <input type=\"button\" id=\"submit\" value=\"Submit\"> </body> <script> var ssid = document.getElementById(\"ssid\"); var pass = document.getElementById(\"pass\"); var pass2 = document.getElementById(\"pass2\"); var submit = document.getElementById(\"submit\"); var errortext = document.getElementById(\"errortext\");  submit.onclick = submitOnClick;  ssid.value = getSSID(); pass.value = getPass(); pass2.value = pass.value;  function getSSID(){ send(\"ssid\"); return(JSON.parse(req.responseText).ssid); } function getPass(){ send(\"password\"); return(JSON.parse(req.responseText).password); } function send(url) { req = new XMLHttpRequest(); req.open(\"GET\", \"http://192.168.0.1/\" + url,false); req.send(null); }  function submitOnClick(){ if (pass.value != pass2.value) { errortext.innerHTML = \"Passwords do not match.\"; } else if ((pass.value.length < 8) || (pass2.value.length < 8)){ errortext.innerHTML = \"Password too short.\"; } else { errortext.innerHTML = \"\"; send(\"ssid=\" + ssid.value); send(\"password=\" + pass.value); } } </script> </html>";
-
 
 void framEnableWrite(){
     SPI.beginTransaction(spiSettings);
@@ -148,7 +151,7 @@ void setup() {
   //while (!Serial) {
   //  ; // wait for serial port to connect. Needed for native USB port only
   //}
-
+  _MIDI_SERIAL_PORT.begin(115200);
 
   Serial.println("Access Point Web Server");
 
@@ -196,7 +199,7 @@ void setup() {
 
   // you're connected now, so print out the status
   printWiFiStatus();
-
+  MidiUSB.attachInterrupt(onMidiUsbDeviceEvent);
 }
 
 
@@ -222,13 +225,13 @@ void loop() {
   WiFiClient client = server.available();   // listen for incoming clients
 
   if (client) {                             // if you get a client,
-    Serial.println("new client");           // print a message out the serial port
+    Serial1.println("new client");           // print a message out the serial port
     String currentLine = "";                // make a String to hold incoming data from the client
     String urlString = "";                  // string to hold the request URL
     while (client.connected()) {            // loop while the client's connected
       if (client.available()) {             // if there's bytes to read from the client,
         char c = client.read();             // read a byte, then
-        Serial.write(c);                    // print it out the serial monitor
+        Serial1.write(c);                    // print it out the serial monitor
         if (c == '\n') {                    // if the byte is a newline character
           // if the current line is blank, you got two newline characters in a row.
           // that's the end of the client HTTP request, so send a response:
@@ -639,11 +642,11 @@ void loop() {
         if ((currentLine.startsWith("GET") || (currentLine.startsWith("POST"))) && (c == '\r')){
           urlString = currentLine;
         }
-      }
+      } 
     }
     // close the connection:
     client.stop();
-    Serial.println("client disconnected");
+    Serial1.println("client disconnected");
   }
   digitalWrite(LED_BUILTIN, LOW); //used to show i2c activity
 }
@@ -1132,4 +1135,22 @@ void printMacAddress(byte mac[]) {
     }
   }
   Serial.println();
+}
+
+void onMidiUsbDeviceEvent(int ep) {
+    USB->DEVICE.INTENCLR.reg = 0xFF; //SAMD interrupts continuously without this.
+    midiEventPacket_t rx;
+    do {
+      rx = MidiUSB.read();
+      if (rx.header != 0) {
+        Serial1.print("Received: ");
+        Serial1.print(rx.header, HEX);
+        Serial1.print("-");
+        Serial1.print(rx.byte1, HEX);
+        Serial1.print("-");
+        Serial1.print(rx.byte2, HEX);
+        Serial1.print("-");
+        Serial1.println(rx.byte3, HEX);
+      }
+    } while (rx.header != 0);
 }
