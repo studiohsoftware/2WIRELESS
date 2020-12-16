@@ -20,12 +20,12 @@ Example (259A): http://192.168.0.1/setpresets?addr=(0x28) <br/> </br>
 Use writememory to send presets to on-board non-volatile memory first.
 Example HTML here https://github.com/studiohsoftware/2WIRELESS/blob/master/Firmware/SetPresets.html <br/>
 Example JSON (for 292e) here https://github.com/studiohsoftware/2WIRELESS/blob/master/Firmware/presetData.json <br/>
-- ### http://192.168.0.1/midinoteon?mask=(0x0-0xF)&note=(0-127)&velo=(0-255)
+- ### http://192.168.0.1/midinoteon?mask=(0x0-0xF)&note=(0x0-0x7F)&velo=(0x0-0x7F)
 Send MIDI note ON message.<br/> 
-Example (bus A, note G1, half velocity): http://192.168.0.1/midinoteon?mask=0x8&note=31&velo=127
-- ### http://192.168.0.1/midinoteoff?mask=(0x0-0xF)&note=(0-127)&velo=(0-255)
+Example (bus A, note G1, half velocity): http://192.168.0.1/midinoteon?mask=0x8&note=0x1F&velo=0x40
+- ### http://192.168.0.1/midinoteoff?mask=(0x0-0xF)&note=(0x0-0x7F)&velo=(0x0-0x7F)
 Send MIDI note OFF message.<br/>
-Example (All buses, note F3, max velocity) http://192.168.0.1/midinoteoff?mask=0xF&note=63&velo=255
+Example (All buses, note F3, max velocity) http://192.168.0.1/midinoteoff?mask=0xF&note=0x35&velo=0x7F
 - ### http://192.168.0.1/midifinetune?mask=(0x0-0xF)&tune=(0x00-0x3F)
 Send MIDI fine tune message. <br/>
 Example (Bus B, lowest fine tune -49): http://192.168.0.1/midifinetune?mask=0x4&tune=0x00<br/>

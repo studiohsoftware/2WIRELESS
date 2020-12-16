@@ -68,7 +68,7 @@ unsigned long readTime = 0; //used to detect idle to free up 206e at start.
 
 bool isUsbDevice = false; //Select between USB Device and USB Host
 midiEventPacket_t usbMidiMessage;
-volatile RingBuffer usbHostBuffer;
+RingBuffer usbHostBuffer;
 USBHost UsbH;
 USBHub Hub(&UsbH);
 USBH_MIDI  Midi(&UsbH);
@@ -1233,6 +1233,14 @@ void pollUsbMidi(bool isUsbDevice) {
           SerialDebug.print(USB->HOST.HostPipe[epAddr].PINTFLAG.reg,HEX);
           SerialDebug.print(":");
           SerialDebug.println(USB->HOST.HostPipe[epAddr].PSTATUS.reg,HEX);
+        } else {
+          while(usbHostBuffer.available()>3) {
+            usbMidiMessage.header = usbHostBuffer.read_char();
+            usbMidiMessage.byte1 = usbHostBuffer.read_char();
+            usbMidiMessage.byte2 = usbHostBuffer.read_char();
+            usbMidiMessage.byte3 = usbHostBuffer.read_char();
+            processUsbMidiMessage(usbMidiMessage);
+          }
         }
       }
     } else {
@@ -1322,46 +1330,34 @@ void CUSTOM_UHD_Handler(void)
 
 void handleBank0(uint32_t epAddr){
   int rcvd = uhd_byte_count0(epAddr);
-  String dataString = "";
   for (int i = 0; i < rcvd; i++) {
-    if (bufBk0[i] > 0) {
-      dataString = String(bufBk0[i],HEX);
+    if ((bufBk0[i] > 0) && (usbHostBuffer.availableForStore() > 3)) {
+      usbHostBuffer.store_char(bufBk0[i]);
       i++;
-      dataString = dataString + String(bufBk0[i],HEX);
+      usbHostBuffer.store_char(bufBk0[i]);
       i++;
-      dataString = dataString + String(bufBk0[i],HEX);
+      usbHostBuffer.store_char(bufBk0[i]);
       i++;
-      dataString = dataString + String(bufBk0[i],HEX);
-      SerialDebug.print(dataString);
-      SerialDebug.print("|");
+      usbHostBuffer.store_char(bufBk0[i]);
     }
   }      
-  if (dataString != "") {
-    SerialDebug.println("");
-  }
   uhd_ack_in_received0(epAddr);
   uhd_ack_in_ready0(epAddr);
 }
 
 void handleBank1(uint32_t epAddr){
   int rcvd = uhd_byte_count1(epAddr);
-  String dataString = "";
   for (int i = 0; i < rcvd; i++) {
-    if (bufBk1[i] > 0) {
-      dataString = String(bufBk1[0],HEX);
+    if ((bufBk1[i] > 0) && (usbHostBuffer.availableForStore() > 3)) {
+      usbHostBuffer.store_char(bufBk1[i]);
       i++;
-      dataString = dataString + String(bufBk1[i],HEX);
+      usbHostBuffer.store_char(bufBk1[i]);
       i++;
-      dataString = dataString + String(bufBk1[i],HEX);
+      usbHostBuffer.store_char(bufBk1[i]);
       i++;
-      dataString = dataString + String(bufBk1[i],HEX);
-      SerialDebug.print(dataString);
-      SerialDebug.print("|");
+      usbHostBuffer.store_char(bufBk1[i]);
     }
   } 
-  if (dataString != "") {
-    SerialDebug.println("");
-  }
   uhd_ack_in_received1(epAddr);
   uhd_ack_in_ready1(epAddr);
 }
