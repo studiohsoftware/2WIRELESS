@@ -17,14 +17,14 @@
 #include <usbhub.h>
 #include <MIDIUSB.h>
 
-#define CARD_ADDRESS 0x00
+#define CARD_ADDRESS 0x00 //This ends up meaning that our I2C address is 0x50.
 #define BUFFER_SIZE 2000 //Ring buffer size for incoming I2C. 
 #define FRAM_WREN 0x06 //FRAM WRITE ENABLE COMMAND
 #define FRAM_WRITE 0x02 //FRAM WRITE COMMAND
 #define FRAM_READ 0x03 //FRAM READ COMMAND
 #define SPI_CS 4 //FRAM Chip Select
-#define WIFI_OPEN_PIN 3
-#define V2VERSION_PIN 2
+#define WIFI_OPEN_PIN 3 //Choose WPA or Open
+#define V2VERSION_PIN 2 //Choose PRIMO or V2
 #define SSID_ADDR 0x02BD19 //32 byte locaton for SSID string
 #define PASS_ADDR 0x02BD3A //64 byte location for WPA password string.
 #define SSID_DEFAULT "BUCHLA200E"
@@ -67,17 +67,19 @@ volatile bool write_i2c_to_fram = false; //Cache incoming i2c to FRAM.
 unsigned long readTime = 0; //used to detect idle to free up 206e at start.
 
 bool isUsbDevice = false; //Select between USB Device and USB Host
-midiEventPacket_t usbMidiMessage;
-RingBuffer usbHostBuffer;
-USBHost UsbH;
-USBHub Hub(&UsbH);
-USBH_MIDI  Midi(&UsbH);
+midiEventPacket_t midiMessage; //Convenience structure for carrying MIDI data
+RingBuffer usbHostBuffer; //USB Host uses this to decouple interrupt from loop().
+USBHost UsbH; //Host object in case we are running as USB Host
+USBHub Hub(&UsbH); //Host object
+USBH_MIDI  Midi(&UsbH); //Host object
 //SAMD21 datasheet pg 836. ADDR location needs to be aligned. 
-uint8_t bufBk0[64] __attribute__ ((aligned (4))); //Bank0
-uint8_t bufBk1[64] __attribute__ ((aligned (4))); //Bank1
-bool doPipeConfig = false;
-bool usbConnected = false;
+uint8_t bufBk0[64] __attribute__ ((aligned (4))); //Bank0 used by USB Host
+uint8_t bufBk1[64] __attribute__ ((aligned (4))); //Bank1 used by USB Host
+bool doPipeConfig = false; //Used to config USB Host pipe after enumeration.
+bool usbConnected = false; //Used to throttle activity on USB Host.
 
+uint8_t mask[16] = {0xF,0xF,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+bool sendVelocity[16] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
 
 bool v2version=false; //used to support pre PRIMO firmware.
 SPISettings spiSettings(12000000, MSBFIRST, SPI_MODE0); //MKR1000 max is 12MHz. FRAM chip max is 40MHz.
@@ -158,6 +160,7 @@ void setup() {
 
   // you're connected now, so print out the status
   printWiFiStatus();
+  
 
   if (isUsbDevice) {
     MidiUSB.attachInterrupt(onMidiUsbDeviceEvent);
@@ -167,7 +170,7 @@ void setup() {
       while (1); //halt
     }
     //USB_SetHandler(&CUSTOM_UHD_Handler);
-    delay( 200 );
+    delay( 1000 );
   }
 }
 
@@ -424,8 +427,9 @@ void switchToSlave(){
     Wire.onRequest(requestEvent);
 }
 
-void sendRemoteEnable() { 
+void sendRemoteEnable() {    
     //Remote Enable
+    switchToMaster();
     Wire.beginTransmission(0); 
     if (v2version) {
         Wire.write(0x14);
@@ -437,10 +441,12 @@ void sendRemoteEnable() {
         Wire.write(0xFF);
     }
     Wire.endTransmission();
+    switchToSlave();
 }
 
 void sendRemoteDisable() {
     //Remote Disable
+    switchToMaster();
     Wire.beginTransmission(0);
     if (v2version) {
         Wire.write(0x15);
@@ -452,11 +458,13 @@ void sendRemoteDisable() {
         Wire.write(0xFF);
     }
     Wire.endTransmission();
+    switchToSlave();
 }
 
 void sendSavePreset(byte preset) {
     //Save Preset
     //Preset=0-29
+    switchToMaster();
     Wire.beginTransmission(0);
     if (v2version) {
         Wire.write(0x01);
@@ -469,11 +477,13 @@ void sendSavePreset(byte preset) {
         Wire.write(preset);   
     }
     Wire.endTransmission();
+    switchToSlave();
 }
 
 void sendRecallPreset(byte preset) {
     //Recall Preset
     //Preset=0-29
+    switchToMaster();
     Wire.beginTransmission(0);
     if (v2version) {
         Wire.write(0x00);
@@ -486,11 +496,13 @@ void sendRecallPreset(byte preset) {
         Wire.write(preset);   
     }
     Wire.endTransmission();
+    switchToSlave();
 }
 
 void sendBackupPresets(byte address) {
     //Fetch presets from specified module
     //Address 0x44=291e.
+    switchToMaster();
     Wire.beginTransmission(0);  
     if (v2version) {
         Wire.write(0x2D);
@@ -509,11 +521,13 @@ void sendBackupPresets(byte address) {
         Wire.write(0x00); //Card memory address MSB
     }
     Wire.endTransmission();
+    switchToSlave();
 }
 
 void sendRestorePresets(byte address) {
     //Request specified module to restore presets.
     //Address 0x44=291e.
+    switchToMaster();
     Wire.beginTransmission(0);
     if (v2version) {
         Wire.write(0x2E);
@@ -532,6 +546,7 @@ void sendRestorePresets(byte address) {
         Wire.write(0x00); //Card memory address MSB    
     }
     Wire.endTransmission();
+    switchToSlave();
 }
 
 void sendMidiNoteOn(byte mask, byte note, byte velo){
@@ -539,6 +554,9 @@ void sendMidiNoteOn(byte mask, byte note, byte velo){
     //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
     //Note 0=C-1, 127=G9.
     //Velo=0-255.
+    mask = mask & 0xf;
+    if (mask == 0) return;
+    switchToMaster();
     Wire.beginTransmission(0);
     if (v2version) {
         Wire.write(0x90 | mask);
@@ -556,6 +574,7 @@ void sendMidiNoteOn(byte mask, byte note, byte velo){
         Wire.write(0x00);   
     }
     Wire.endTransmission();
+    switchToSlave();
 }
 
 void sendMidiNoteOff(byte mask, byte note, byte velo){
@@ -563,6 +582,9 @@ void sendMidiNoteOff(byte mask, byte note, byte velo){
     //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
     //Note 0=C-1, 127=G9.
     //Velo=0-255.
+    mask = mask & 0xf;
+    if (mask == 0) return;
+    switchToMaster();
     Wire.beginTransmission(0);
     if (v2version) {
         Wire.write(0x80 | mask);
@@ -580,10 +602,12 @@ void sendMidiNoteOff(byte mask, byte note, byte velo){
         Wire.write(0x00);
     }
     Wire.endTransmission();
+    switchToSlave();
 }
 
 void sendMidiClockStart(){
     //Send MIDI clock start event.
+    switchToMaster();
     Wire.beginTransmission(0);
     if (v2version) {
 
@@ -599,10 +623,12 @@ void sendMidiClockStart(){
         Wire.write(0x00);      
     }
     Wire.endTransmission();
+    switchToSlave();
 }
 
 void sendMidiClockStop(){
     //Send MIDI clock stop event.
+    switchToMaster();
     Wire.beginTransmission(0);
     if (v2version) {
 
@@ -618,10 +644,12 @@ void sendMidiClockStop(){
         Wire.write(0x00);   
     }
     Wire.endTransmission();
+    switchToSlave();
 }
 
 void sendMidiClock(){
     //Send MIDI clock event. 24 per beat required?
+    switchToMaster();
     Wire.beginTransmission(0);
     if (v2version) {
 
@@ -637,12 +665,16 @@ void sendMidiClock(){
         Wire.write(0x00);   
     }
     Wire.endTransmission();
+    switchToSlave();
 }
 
 void sendMidiFineTune(byte mask, byte tune){
     //Send MIDI Fine Tune event.
     //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
     //Tune 0x00=-49, 0x32=An, 0x63=49
+    mask = mask & 0xf;
+    if (mask == 0) return;
+    switchToMaster();
     Wire.beginTransmission(0);
     if (v2version) {
         Wire.write(0xB0 | mask);
@@ -660,6 +692,7 @@ void sendMidiFineTune(byte mask, byte tune){
         Wire.write(0x00);    
     }
     Wire.endTransmission();
+    switchToSlave();
 }
 
 void sendMidiBend(byte mask, byte bend_lsb, byte bend_msb){
@@ -667,6 +700,9 @@ void sendMidiBend(byte mask, byte bend_lsb, byte bend_msb){
     //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
     //bend_msb 0x00=min bend, 0x40=no bend, 0x7F=max bend.
     //bend_lsb=0x00-0x7F fine tune of bend.
+    mask = mask & 0xf;
+    if (mask == 0) return;
+    switchToMaster();
     Wire.beginTransmission(0); 
     if (v2version) {
         Wire.write(0xE0 | mask);
@@ -684,6 +720,7 @@ void sendMidiBend(byte mask, byte bend_lsb, byte bend_msb){
         Wire.write(0x00);   
     }
     Wire.endTransmission();
+    switchToSlave();
 }
 
 void getJsonToken(JsonToken* token, WiFiClient client) {
@@ -795,16 +832,12 @@ void handleWifiRequest(WiFiClient client, String urlString){
   if (urlString.indexOf("/remoteenable") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
     //SerialDebug.println("Remote Enable Received"); 
-    switchToMaster();
     sendRemoteEnable();
-    switchToSlave();
   } 
   else if (urlString.indexOf("/remotedisable") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
     //SerialDebug.println("Remote Disable Received"); 
-    switchToMaster();
     sendRemoteDisable();
-    switchToSlave();
   } 
   else if (urlString.indexOf("/savepreset?preset") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
@@ -815,9 +848,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     if ((preset >=1) && (preset <=30)) {
         preset = preset - 1; //0-29 internally.
         //SerialDebug.println(preset);
-        switchToMaster();
         sendSavePreset(preset);
-        switchToSlave();
     }
   }
   else if (urlString.indexOf("/recallpreset?preset") >= 0) {
@@ -829,9 +860,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     if ((preset >=1) && (preset <=30)) {
         preset = preset - 1; //0-29 internally.
         //SerialDebug.println(preset);
-        switchToMaster();
         sendRecallPreset(preset);
-        switchToSlave();
     }
   }
   else if (urlString.indexOf("/midinoteon?mask") >= 0) {
@@ -850,12 +879,10 @@ void handleWifiRequest(WiFiClient client, String urlString){
     mask = mask & 0x0F;
     note = note & 0x7F;
     velo = velo & 0x7F;
-    //SerialDebug.println(mask);
-    //SerialDebug.println(note);
-    //SerialDebug.println(velo);
-    switchToMaster();
+    //SerialDebug.println(mask,HEX);
+    //SerialDebug.println(note,HEX);
+    //SerialDebug.println(velo,HEX);
     sendMidiNoteOn(mask,note,velo);
-    switchToSlave();
   }
   else if (urlString.indexOf("/midinoteoff?mask") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
@@ -876,30 +903,22 @@ void handleWifiRequest(WiFiClient client, String urlString){
     //SerialDebug.println(mask);
     //SerialDebug.println(note);
     //SerialDebug.println(velo);
-    switchToMaster();
     sendMidiNoteOff(mask,note,velo);
-    switchToSlave();
   }
   else if (urlString.indexOf("/midiclockstart") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
     //SerialDebug.println("MIDI Clock Start Received"); 
-    switchToMaster();
     sendMidiClockStart();
-    switchToSlave();
   }
   else if (urlString.indexOf("/midiclockstop") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
     //SerialDebug.println("MIDI Clock Stop Received");              
-    switchToMaster();
     sendMidiClockStop();
-    switchToSlave();
   }
   else if (urlString.indexOf("/midiclock") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
     //SerialDebug.println("MIDI Clock Received"); 
-    switchToMaster();
     sendMidiClock();
-    switchToSlave();
   }
   else if (urlString.indexOf("/midifinetune?mask") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
@@ -914,9 +933,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     tune = tune & 0x3F; //max value is 63 decimal.
     //SerialDebug.println(mask);
     //SerialDebug.println(tune);
-    switchToMaster();
     sendMidiFineTune(mask,tune);
-    switchToSlave();
   }
   else if (urlString.indexOf("/midibend?mask") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
@@ -936,9 +953,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     //SerialDebug.println(mask);
     //SerialDebug.println(bend_lsb);
     //SerialDebug.println(bend_msb);
-    switchToMaster();
     sendMidiBend(mask,bend_lsb,bend_msb);
-    switchToSlave();
   }
   else if (urlString.indexOf("/getpresets?addr") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/json",-1); //-1 is chunked encoding
@@ -955,9 +970,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     }
     //SerialDebug.println(address,HEX);
     write_i2c_to_fram = true; //Cache incoming i2c to FRAM 
-    switchToMaster(); //Send preset backup request to module
     sendBackupPresets(address); 
-    switchToSlave();
     bool done = false;
     unsigned long lastTime = millis();
     write_counter=0; //initialize fram write locations
@@ -1011,9 +1024,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     write_i2c_to_fram = false;
     if (module_address != 0x00) {
         read_counter = 0; //Initialize counter for subsequent I2C READs from master.
-        switchToMaster(); //Send preset restore request to module
         sendRestorePresets(module_address); 
-        switchToSlave(); //Switch to slave to receive the read requests.
     }
   } else if (urlString.indexOf("/readmemory?addr") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",-1); //-1 means chunked
@@ -1183,11 +1194,11 @@ void onMidiUsbDeviceEvent(int ep) {
 void pollUsbMidi(bool isUsbDevice) {
   if (isUsbDevice && (USB->DEVICE.DADD.bit.DADD != 0)) {
     do {
-      usbMidiMessage = MidiUSB.read();
-      if (usbMidiMessage.header != 0) {
-        processUsbMidiMessage(usbMidiMessage);
+      midiMessage = MidiUSB.read();
+      if (midiMessage.header != 0) {
+        processMidiMessage(midiMessage);
       }
-    } while (usbMidiMessage.header != 0);
+    } while (midiMessage.header != 0);
   } else if (!isUsbDevice) {
     //Note that Task() polls a hub if present, and we want to avoid polling.
     //So these conditions carry out enumeration only, and then stop running.
@@ -1235,11 +1246,11 @@ void pollUsbMidi(bool isUsbDevice) {
           SerialDebug.println(USB->HOST.HostPipe[epAddr].PSTATUS.reg,HEX);
         } else {
           while(usbHostBuffer.available()>3) {
-            usbMidiMessage.header = usbHostBuffer.read_char();
-            usbMidiMessage.byte1 = usbHostBuffer.read_char();
-            usbMidiMessage.byte2 = usbHostBuffer.read_char();
-            usbMidiMessage.byte3 = usbHostBuffer.read_char();
-            processUsbMidiMessage(usbMidiMessage);
+            midiMessage.header = usbHostBuffer.read_char();
+            midiMessage.byte1 = usbHostBuffer.read_char();
+            midiMessage.byte2 = usbHostBuffer.read_char();
+            midiMessage.byte3 = usbHostBuffer.read_char();
+            processMidiMessage(midiMessage);
           }
         }
       }
@@ -1248,14 +1259,6 @@ void pollUsbMidi(bool isUsbDevice) {
       USB->HOST.HostPipe[Midi.GetEpAddress()].PINTENCLR.reg = 0xFF; //Disable pipe interrupts
     }
   }
-}
-
-void processUsbMidiMessage(midiEventPacket_t usbMidiMessage){
-  SerialDebug.print("Received: ");
-  SerialDebug.print(usbMidiMessage.header, HEX);
-  SerialDebug.print(usbMidiMessage.byte1, HEX);
-  SerialDebug.print(usbMidiMessage.byte2, HEX);
-  SerialDebug.println(usbMidiMessage.byte3, HEX);
 }
 
 void CUSTOM_UHD_Handler(void)
@@ -1360,4 +1363,59 @@ void handleBank1(uint32_t epAddr){
   } 
   uhd_ack_in_received1(epAddr);
   uhd_ack_in_ready1(epAddr);
+}
+
+void processMidiMessage(midiEventPacket_t midiMessage){
+  //SerialDebug.print("Received: ");
+  //SerialDebug.print(midiMessage.header, HEX);
+  uint8_t chan = midiMessage.byte1 & 0x0F;
+  switch (midiMessage.byte1 & 0xF0) {
+    case 0x90 : {sendMidiNoteOn(getMask(chan), midiMessage.byte2, getVelocity(chan,midiMessage.byte3));break;}
+    case 0x80 : {sendMidiNoteOff(getMask(chan), midiMessage.byte2, getVelocity(chan,midiMessage.byte3));break;}
+    case 0xF0 : {processClockMessage(midiMessage.byte1);break;}
+    case 0xE0 : {sendMidiBend(getMask(chan), midiMessage.byte2, midiMessage.byte3);break;}
+    case 0xB0 : {processControlChange(chan, midiMessage.byte2, midiMessage.byte3);break;}
+    case 0xC0 : {processProgramChange(midiMessage.byte2);break;}
+    default   : {SerialDebug.print("Received Unknown:");break;}
+  }
+  //SerialDebug.print(midiMessage.byte1, HEX);
+  //SerialDebug.print(midiMessage.byte2, HEX);
+  //SerialDebug.println(midiMessage.byte3, HEX);
+}
+
+uint8_t getMask(uint8_t midiChannel){
+  return mask[midiChannel];
+}
+
+uint8_t getVelocity(uint8_t midiChannel,uint8_t velocity) {
+  if (sendVelocity[midiChannel]) {
+    return velocity;
+  } else {
+    return 0x7F;//ignore velocity and play note at full volume
+  }
+}
+
+void processClockMessage(uint8_t clockMessage){
+  switch(clockMessage){
+    case 0xF8: {sendMidiClock();break;}
+    case 0xFA: {sendMidiClockStart();break;}
+    case 0xFC: {sendMidiClockStop();break;}
+  }
+}
+
+void processControlChange(uint8_t midiChannel, uint8_t byte1, uint8_t byte2){
+  switch(byte1){
+    case 0x1F: {sendMidiFineTune(getMask(midiChannel), byte2);break;}
+  }
+}
+
+void processProgramChange(uint8_t preset){
+  //presets are 0-29, but display as 1-30. 
+  //User may send either way.
+  //Program change is 0-7F.
+  preset = preset & 0x1F; //Knock down to 31 max with wrap around
+  if (preset <= 0) preset = 1; //Map minimum to 1.
+  else if (preset >= 30) preset = 30; //Map maximum to 30.
+  preset = preset - 1; //Map to 0-29.
+  sendRecallPreset(preset);
 }
