@@ -30,6 +30,7 @@
 #define SSID_DEFAULT "BUCHLA200E"
 #define PASS_DEFAULT "BUCHLA200E"
 #define SerialDebug Serial1
+#define CURRENT_PRESET_ADDR 0x02BD86 //Byte in FRAM memory to track current preset number
 
 //USB Host Convenience Functions
 #define Is_uhd_in_received0(p)                    ((USB->HOST.HostPipe[p].PINTFLAG.reg&USB_HOST_PINTFLAG_TRCPT0) == USB_HOST_PINTFLAG_TRCPT0)
@@ -481,8 +482,11 @@ void sendSavePreset(byte preset) {
 }
 
 void sendRecallPreset(byte preset) {
+    //SerialDebug.print("Recall preset:");
+    //SerialDebug.println(preset,HEX);
     //Recall Preset
     //Preset=0-29
+    framWrite(CURRENT_PRESET_ADDR,preset + 1); //Track current preset number (1-30)
     switchToMaster();
     Wire.beginTransmission(0);
     if (v2version) {
@@ -942,7 +946,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
   }
   else if (urlString.indexOf("/midibend?chan") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-    //SerialDebug.println("MIDI Bend Received"); 
+    SerialDebug.println("MIDI Bend Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int amploc = urlString.indexOf('&');
@@ -974,9 +978,12 @@ void handleWifiRequest(WiFiClient client, String urlString){
     int byte3 = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
     midiEventPacket_t midiMessage;
     midiMessage.header =0x00; //not used
-    midiMessage.byte1 = byte1 & 0x7F;
+    midiMessage.byte1 = byte1 & 0xFF;
     midiMessage.byte2 = byte2 & 0x7F;
     midiMessage.byte3 = byte3 & 0x7F;
+    //SerialDebug.println(midiMessage.byte1,HEX);
+    //SerialDebug.println(midiMessage.byte2,HEX);
+    //SerialDebug.println(midiMessage.byte3,HEX);
     processMidiMessage(midiMessage);
   }
   else if (urlString.indexOf("/getpresets?addr") >= 0) {
@@ -1433,13 +1440,11 @@ void processControlChange(uint8_t midiChannel, uint8_t byte1, uint8_t byte2){
   }
 }
 
-void processProgramChange(uint8_t preset){
+void processProgramChange(int preset){
   //presets are 0-29, but display as 1-30. 
-  //User may send either way.
-  //Program change is 0-7F.
-  preset = preset & 0x1F; //Knock down to 31 max with wrap around
-  if (preset <= 0) preset = 1; //Map minimum to 1.
-  else if (preset >= 30) preset = 30; //Map maximum to 30.
-  preset = preset - 1; //Map to 0-29.
+  //Let's have program change use 1-30.
+  preset = preset - 1;
+  if (preset < 0) preset = 0; //Map minimum to 0.
+  else if (preset > 29) preset = 29; //Map maximum to 29.
   sendRecallPreset(preset);
 }
