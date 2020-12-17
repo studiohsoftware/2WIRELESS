@@ -863,14 +863,15 @@ void handleWifiRequest(WiFiClient client, String urlString){
         sendRecallPreset(preset);
     }
   }
-  else if (urlString.indexOf("/midinoteon?mask") >= 0) {
+  else if (urlString.indexOf("/midinoteon?chan") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
     //SerialDebug.println("MIDI Note On Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int amploc = urlString.indexOf('&');
-    int mask = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
-    mask = mask & 0x0F;
+    int chan = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
+    chan = chan & 0x0F;
+    int mask = getMask(chan);
     eqloc = urlString.indexOf('=',amploc);
     amploc = urlString.indexOf('&',eqloc);
     int note = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
@@ -879,19 +880,21 @@ void handleWifiRequest(WiFiClient client, String urlString){
     mask = mask & 0x0F;
     note = note & 0x7F;
     velo = velo & 0x7F;
+    velo = getVelocity(chan,velo);
     //SerialDebug.println(mask,HEX);
     //SerialDebug.println(note,HEX);
     //SerialDebug.println(velo,HEX);
     sendMidiNoteOn(mask,note,velo);
   }
-  else if (urlString.indexOf("/midinoteoff?mask") >= 0) {
+  else if (urlString.indexOf("/midinoteoff?chan") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
     //SerialDebug.println("MIDI Note Off Received");         
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int amploc = urlString.indexOf('&');
-    int mask = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
-    mask = mask & 0x0F;
+    int chan = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
+    chan = chan & 0x0F;
+    int mask = getMask(chan);
     eqloc = urlString.indexOf('=',amploc);
     amploc = urlString.indexOf('&',eqloc);
     int note = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
@@ -900,6 +903,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     mask = mask & 0x0F;
     note = note & 0x7F;
     velo = velo & 0x7F;
+    velo = getVelocity(chan,velo);
     //SerialDebug.println(mask);
     //SerialDebug.println(note);
     //SerialDebug.println(velo);
@@ -920,40 +924,60 @@ void handleWifiRequest(WiFiClient client, String urlString){
     //SerialDebug.println("MIDI Clock Received"); 
     sendMidiClock();
   }
-  else if (urlString.indexOf("/midifinetune?mask") >= 0) {
+  else if (urlString.indexOf("/midifinetune?chan") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
     //SerialDebug.println("MIDI Fine Tune Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int amploc = urlString.indexOf('&');
-    int mask = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+    int chan = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
     eqloc = urlString.indexOf('=',amploc);
-    int tune = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
-    mask = mask & 0x0F;
+    int tune = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
+    chan = chan & 0x0F;
+    int mask = getMask(chan);
     tune = tune & 0x3F; //max value is 63 decimal.
     //SerialDebug.println(mask);
     //SerialDebug.println(tune);
     sendMidiFineTune(mask,tune);
   }
-  else if (urlString.indexOf("/midibend?mask") >= 0) {
+  else if (urlString.indexOf("/midibend?chan") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
     //SerialDebug.println("MIDI Bend Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int amploc = urlString.indexOf('&');
-    int mask = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+    int chan = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
     eqloc = urlString.indexOf('=',amploc);
     amploc = urlString.indexOf('&',eqloc);
     int bend_lsb = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
     eqloc = urlString.indexOf('=',amploc);
     int bend_msb = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
-    mask = mask & 0x0F;
+    chan = chan & 0x0F;
+    int mask = getMask(chan);
     bend_lsb = bend_lsb & 0x7F; //max value is 7F.
     bend_msb = bend_msb & 0x7F; //max value is 7F.
     //SerialDebug.println(mask);
     //SerialDebug.println(bend_lsb);
     //SerialDebug.println(bend_msb);
     sendMidiBend(mask,bend_lsb,bend_msb);
+  } else if (urlString.indexOf("/midibytes") >= 0) {
+    writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
+    //SerialDebug.println("MIDI Bytes Received"); 
+    int len = urlString.indexOf(" HTTP");
+    int eqloc = urlString.indexOf('=');
+    int amploc = urlString.indexOf('&');
+    int byte1 = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+    eqloc = urlString.indexOf('=',amploc);
+    amploc = urlString.indexOf('&',eqloc);
+    int byte2 = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+    eqloc = urlString.indexOf('=',amploc);
+    int byte3 = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
+    midiEventPacket_t midiMessage;
+    midiMessage.header =0x00; //not used
+    midiMessage.byte1 = byte1 & 0x7F;
+    midiMessage.byte2 = byte2 & 0x7F;
+    midiMessage.byte3 = byte3 & 0x7F;
+    processMidiMessage(midiMessage);
   }
   else if (urlString.indexOf("/getpresets?addr") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/json",-1); //-1 is chunked encoding
