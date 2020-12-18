@@ -25,12 +25,21 @@
 #define SPI_CS 4 //FRAM Chip Select
 #define WIFI_OPEN_PIN 3 //Choose WPA or Open
 #define V2VERSION_PIN 2 //Choose PRIMO or V2
-#define SSID_ADDR 0x02BD19 //32 byte locaton for SSID string
-#define PASS_ADDR 0x02BD3A //64 byte location for WPA password string.
 #define SSID_DEFAULT "BUCHLA200E"
 #define PASS_DEFAULT "BUCHLA200E"
+//RESERVED FRAM ADDRESSES 0x02BD19-0x2C0FF
+#define SSID_ADDR 0x02BD19 //32 byte locaton for SSID string
+#define PASS_ADDR 0x02BD3A //64 byte location for WPA password string.
+#define CURRENT_PRESET_ADDR 0x02BE86 //Byte in FRAM memory to track current preset number
+#define PRESET_NAME_ADDR 0x02BE87 //Thirty 21 character preset names
+#define MIDI_CFG_MASK_ADDR 0x02BE00 //16 bytes for bus masks
+#define MIDI_CFG_POLY_ADDR 0x02BE10 //16 bytes for poly 
+#define MIDI_CFG_FINE_ADDR 0x02BE20 //16 bytes for fine tune
+#define MIDI_CFG_TRAN_ADDR 0x02BE30 //16 bytes for transpose
+#define MIDI_CFG_VELO_ADDR 0x02BE40 //2 bytes for 16 bools velo y/n.
+#define INIT_ADDR 0x02BE43 //six bytes set to DONALD once 1st config is done.
+//END RESERVED FRAM ADDRESSES
 #define SerialDebug Serial1
-#define CURRENT_PRESET_ADDR 0x02BD86 //Byte in FRAM memory to track current preset number
 
 //USB Host Convenience Functions
 #define Is_uhd_in_received0(p)                    ((USB->HOST.HostPipe[p].PINTFLAG.reg&USB_HOST_PINTFLAG_TRCPT0) == USB_HOST_PINTFLAG_TRCPT0)
@@ -67,7 +76,7 @@ volatile bool startup = true; //Used to free 206e when starting up.
 volatile bool write_i2c_to_fram = false; //Cache incoming i2c to FRAM.
 unsigned long readTime = 0; //used to detect idle to free up 206e at start.
 
-bool isUsbDevice = false; //Select between USB Device and USB Host
+bool isUsbDevice = true; //Select between USB Device and USB Host
 midiEventPacket_t midiMessage; //Convenience structure for carrying MIDI data
 RingBuffer usbHostBuffer; //USB Host uses this to decouple interrupt from loop().
 USBHost UsbH; //Host object in case we are running as USB Host
@@ -80,6 +89,9 @@ bool doPipeConfig = false; //Used to config USB Host pipe after enumeration.
 bool usbConnected = false; //Used to throttle activity on USB Host.
 
 uint8_t mask[16] = {0xF,0xF,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+uint8_t tran[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+uint8_t fine[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+uint8_t poly[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 bool sendVelocity[16] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
 
 bool v2version=false; //used to support pre PRIMO firmware.
@@ -325,6 +337,50 @@ void setSSID(String ssid){
   framWrite(SSID_ADDR + i,0);
 }
 
+uint8_t getCurrentPreset() {
+  uint8_t result = 1;
+  result = framRead(CURRENT_PRESET_ADDR);
+  if (result < 1) result = 1;
+  if (result > 30) result = 30;
+}
+
+void setCurrentPreset(uint8_t preset) {
+  //preset is 1-30.
+  if (preset < 1) preset = 1;
+  if (preset > 30) preset = 30;
+  framWrite(CURRENT_PRESET_ADDR,preset);
+}
+
+String getPresetName(uint8_t preset) {
+  //preset is 1-30.
+  if (preset < 1) preset = 1;
+  if (preset > 30) preset = 30;
+  String result = "";
+  int addr = PRESET_NAME_ADDR + (21 * (preset - 1));
+  int tmp = framRead(addr); 
+  int offset = 0;
+  while ((tmp > 31) && (tmp < 0x7F) && (offset < 21)) {
+    result = result + char(tmp);
+    offset++;
+    tmp = framRead(addr + offset);  
+  } 
+  return result;
+}
+
+void setPresetName(uint8_t preset, String presetname){
+  //preset is 1-30.
+  if (preset < 1) preset = 1;
+  if (preset > 30) preset = 30;
+  int max_name_length = 21;
+  int i = 0;
+  int addr = PRESET_NAME_ADDR + (21 * (preset - 1));
+  while ((i < (presetname.length()) && (i < max_name_length))){
+    char value = presetname.charAt(i);
+    framWrite(addr + i,value);
+    i++;
+  } 
+}
+
 
 String getPassword(){
   String result = "";
@@ -485,8 +541,8 @@ void sendRecallPreset(byte preset) {
     //SerialDebug.print("Recall preset:");
     //SerialDebug.println(preset,HEX);
     //Recall Preset
-    //Preset=0-29
-    framWrite(CURRENT_PRESET_ADDR,preset + 1); //Track current preset number (1-30)
+    //Preset sent on bus as 0-29
+    setCurrentPreset(preset + 1); //Track current preset number (1-30)
     switchToMaster();
     Wire.beginTransmission(0);
     if (v2version) {
@@ -1415,7 +1471,20 @@ void processMidiMessage(midiEventPacket_t midiMessage){
 }
 
 uint8_t getMask(uint8_t midiChannel){
-  return mask[midiChannel];
+  uint8_t result = 0;
+  if ((poly[midiChannel]>0) && (mask[midiChannel]>0)) {
+    //Shift poly bit to next bus and return as mask.
+    poly[midiChannel] = (poly[midiChannel] <<1) & 0xF;
+    if (poly[midiChannel] == 0) poly[midiChannel] = 1; //wrap
+    while ((poly[midiChannel] & mask[midiChannel]) == 0) {
+      poly[midiChannel] = (poly[midiChannel] <<1) & 0xF;
+      if (poly[midiChannel] == 0) poly[midiChannel] = 1; //wrap
+    }
+    result = poly[midiChannel];  
+  } else {
+    result = mask[midiChannel];
+  }
+  return result;
 }
 
 uint8_t getVelocity(uint8_t midiChannel,uint8_t velocity) {

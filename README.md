@@ -63,7 +63,7 @@ Notes:
 - #### 20k byte JSON file limit.
 - #### Addresses are arbitrary locations within 0x0-0x03FFFF.
 - #### Data elements can be up to 256 bytes long each (512 characters).
-- #### All addresses below 0x02C000 are used as scratch space by preset and firmware transfers. 
+- #### All addresses below 0x02C100 are used as scratch space by preset and firmware transfers. 
 - ### http://192.168.0.1/ssid
 Get wireless SSID<br/>
 Returns BUCHLA200E by default.
