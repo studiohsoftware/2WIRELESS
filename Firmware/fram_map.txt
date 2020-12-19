@@ -10,7 +10,7 @@ DEFINED BY 2WIRELESS.INO (firmware)
 0x02BE30 - 0x02BE3F sixteen MIDI channel transpose value
 0x02BE40 - 0x02BE41 sixteen MIDI channel velocity enable y/n
 0x02BE42 			USB MODE 1=DEVICE 0=HOST
-0x02BE43 - 0x02BE48 "DONALD" identifier used for MIDI initialization.
+0x02BE43 - 0x02BE48 "DONALD" identifier used for initialization.
 0x02BE49 - 0x02BE7F Reserved
 
 DEFINED BY PRESETMANAGER.HTML (default homepage scratch area) 0x02BE80 - 0x02C0FF

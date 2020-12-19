@@ -27,6 +27,8 @@
 #define V2VERSION_PIN 2 //Choose PRIMO or V2
 #define SSID_DEFAULT "BUCHLA200E"
 #define PASS_DEFAULT "BUCHLA200E"
+#define USB_MODE_DEVICE 1
+#define USB_MODE_HOST 0
 //RESERVED FRAM ADDRESSES 0x02BD19-0x2C0FF
 #define SSID_ADDR 0x02BD19 //32 byte locaton for SSID string
 #define PASS_ADDR 0x02BD3A //64 byte location for WPA password string.
@@ -34,9 +36,10 @@
 #define PRESET_NAME_ADDR 0x02BE87 //Thirty 21 character preset names
 #define MIDI_CFG_MASK_ADDR 0x02BE00 //16 bytes for bus masks
 #define MIDI_CFG_POLY_ADDR 0x02BE10 //16 bytes for poly 
-#define MIDI_CFG_FINE_ADDR 0x02BE20 //16 bytes for fine tune
-#define MIDI_CFG_TRAN_ADDR 0x02BE30 //16 bytes for transpose
+#define MIDI_CFG_FINE_ADDR 0x02BE20 //16 bytes for fine tune (0x32=An)
+#define MIDI_CFG_TRAN_ADDR 0x02BE30 //16 bytes for transpose (0x32=No transpose)
 #define MIDI_CFG_VELO_ADDR 0x02BE40 //2 bytes for 16 bools velo y/n.
+#define USB_MODE_ADDR 0x02BE42 //1 byte for USB MODE 1=DEVICE 0=HOST
 #define INIT_ADDR 0x02BE43 //six bytes set to DONALD once 1st config is done.
 //END RESERVED FRAM ADDRESSES
 #define SerialDebug Serial1
@@ -88,11 +91,12 @@ uint8_t bufBk1[64] __attribute__ ((aligned (4))); //Bank1 used by USB Host
 bool doPipeConfig = false; //Used to config USB Host pipe after enumeration.
 bool usbConnected = false; //Used to throttle activity on USB Host.
 
-uint8_t mask[16] = {0xF,0xF,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-uint8_t tran[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-uint8_t fine[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-uint8_t poly[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-bool sendVelocity[16] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+uint8_t mask[16] = {0xF,0xF,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //Channels 1 and 2 all buses by default
+uint8_t tran[16] = {0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32}; //No tran default
+uint8_t fine[16] = {0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32}; //An default
+uint8_t poly[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //no poly by default
+uint32_t polyNotes[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //stores poly notes for note off events
+bool velo[16] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}; //use velocity by default
 
 bool v2version=false; //used to support pre PRIMO firmware.
 SPISettings spiSettings(12000000, MSBFIRST, SPI_MODE0); //MKR1000 max is 12MHz. FRAM chip max is 40MHz.
@@ -141,6 +145,8 @@ void setup() {
   // you can override it with the following:
   WiFi.config(IPAddress(192, 168, 0, 1));
 
+  initializeFram(); //Store or retrieve MIDI (and other) configuration via FRAM.
+
   //Read SSID from FRAM
   strcpy(ssid,getSSID().c_str());
 
@@ -173,7 +179,8 @@ void setup() {
 
   // you're connected now, so print out the status
   printWiFiStatus();
-  
+
+  isUsbDevice = (getUsbMode() && USB_MODE_DEVICE);
 
   if (isUsbDevice) {
     MidiUSB.attachInterrupt(onMidiUsbDeviceEvent);
@@ -311,6 +318,101 @@ uint8_t framRead(int addr){
     return result;
 }
 
+String getFramString(int addr, int len) {
+  String result = "";
+  int offset = 0;
+  int tmp = framRead(addr + offset); 
+  while ((tmp > 31) && (tmp < 0x7F) && (offset < len)) {
+    result = result + char(tmp);
+    offset++;
+    tmp = framRead(addr + offset);
+  }
+  return result;
+}
+
+void setFramString(String value, int addr){
+  for (int i=0;i<value.length();i++){
+    char c = value.charAt(i);
+    framWrite(addr + i,c);
+  } 
+}
+
+void initializeFram() {
+  //Check if already initialized.
+  if (getFramString(INIT_ADDR,6) == "DONALD") {
+    //Read values from FRAM
+    for (int i=0;i<16;i++){
+      mask[i] = framRead(MIDI_CFG_MASK_ADDR + i);
+      poly[i] = framRead(MIDI_CFG_POLY_ADDR + i);
+      fine[i] = framRead(MIDI_CFG_FINE_ADDR + i);
+      tran[i] = framRead(MIDI_CFG_TRAN_ADDR + i);
+      velo[i] = getVelo[i]; //array of bool
+    }  
+  } else {
+    //Write default values to fram.
+    uint16_t velocity = 0x0;
+    for (int i=0;i<16;i++){
+      framWrite(MIDI_CFG_MASK_ADDR + i,mask[i]);
+      framWrite(MIDI_CFG_POLY_ADDR + i,poly[i]);
+      framWrite(MIDI_CFG_FINE_ADDR + i,fine[i]);
+      framWrite(MIDI_CFG_TRAN_ADDR + i,tran[i]);
+      setVelo(i,velo[i]);
+    }
+    setUsbMode(USB_MODE_DEVICE);
+    //Mark as initialized for next time.
+    setFramString("DONALD", INIT_ADDR);
+  } 
+}
+
+void setMask(uint8_t chan, uint8_t val){
+  //Channel is 0-15
+  mask[chan] = val;
+  framWrite(MIDI_CFG_MASK_ADDR + chan,mask[chan]); 
+}
+
+void setPoly(uint8_t chan, uint8_t val){
+  //Channel is 0-15
+  poly[chan] = val;
+  framWrite(MIDI_CFG_POLY_ADDR + chan,poly[chan]); 
+}
+
+void setFine(uint8_t chan, uint8_t val){
+  //Channel is 0-15
+  fine[chan] = val;
+  framWrite(MIDI_CFG_FINE_ADDR + chan,fine[chan]); 
+}
+
+void setTran(uint8_t chan, uint8_t val){
+  //Channel is 0-15
+  tran[chan] = val;
+  framWrite(MIDI_CFG_TRAN_ADDR + chan,tran[chan]); 
+}
+
+bool getVelo(uint8_t chan){
+  uint16_t velocity = framRead(MIDI_CFG_VELO_ADDR) & 0x00FF;
+  velocity = velocity | (framRead(MIDI_CFG_VELO_ADDR + 1) << 8); 
+  return velocity & (1<<chan);
+}
+
+void setVelo(uint8_t chan, bool val) {
+  velo[chan] = val;
+  uint16_t velocity = framRead(MIDI_CFG_VELO_ADDR) & 0x00FF;
+  velocity = velocity | (framRead(MIDI_CFG_VELO_ADDR + 1) << 8);
+  uint16_t shifter = 1 << chan;
+  velocity = velocity & ~shifter; //clear the current bit.
+  velocity = velocity | (val << chan); //Save the desired bit.
+  framWrite(MIDI_CFG_VELO_ADDR,velocity & 0x00FF);
+  framWrite(MIDI_CFG_VELO_ADDR + 1,(velocity & 0xFF00)>>8);
+}
+
+bool getUsbMode() {
+  return (framRead(USB_MODE_ADDR) > 0);
+}
+
+void setUsbMode(bool mode){
+  framWrite(USB_MODE_ADDR,mode);
+}
+
 String getSSID(){
   String result = "";
   int tmp = framRead(SSID_ADDR);
@@ -380,7 +482,6 @@ void setPresetName(uint8_t preset, String presetname){
     i++;
   } 
 }
-
 
 String getPassword(){
   String result = "";
@@ -930,21 +1031,19 @@ void handleWifiRequest(WiFiClient client, String urlString){
     int eqloc = urlString.indexOf('=');
     int amploc = urlString.indexOf('&');
     int chan = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
-    chan = chan & 0x0F;
-    int mask = getMask(chan);
     eqloc = urlString.indexOf('=',amploc);
     amploc = urlString.indexOf('&',eqloc);
     int note = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
     eqloc = urlString.indexOf('=',amploc);
     int velo = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
-    mask = mask & 0x0F;
+    chan = (chan - 1) & 0x0F;
+    if (chan < 0) chan = 0;
+    if (chan > 15) chan = 15;
     note = note & 0x7F;
     velo = velo & 0x7F;
-    velo = getVelocity(chan,velo);
-    //SerialDebug.println(mask,HEX);
     //SerialDebug.println(note,HEX);
     //SerialDebug.println(velo,HEX);
-    sendMidiNoteOn(mask,note,velo);
+    processMidiNoteOn(chan, note, velo);
   }
   else if (urlString.indexOf("/midinoteoff?chan") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
@@ -953,21 +1052,19 @@ void handleWifiRequest(WiFiClient client, String urlString){
     int eqloc = urlString.indexOf('=');
     int amploc = urlString.indexOf('&');
     int chan = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
-    chan = chan & 0x0F;
-    int mask = getMask(chan);
     eqloc = urlString.indexOf('=',amploc);
     amploc = urlString.indexOf('&',eqloc);
     int note = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
     eqloc = urlString.indexOf('=',amploc);
     int velo = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
-    mask = mask & 0x0F;
+    chan = (chan - 1) & 0x0F;
+    if (chan < 0) chan = 0;
+    if (chan > 15) chan = 15;
     note = note & 0x7F;
     velo = velo & 0x7F;
-    velo = getVelocity(chan,velo);
-    //SerialDebug.println(mask);
     //SerialDebug.println(note);
     //SerialDebug.println(velo);
-    sendMidiNoteOff(mask,note,velo);
+    processMidiNoteOff(chan, note, velo);
   }
   else if (urlString.indexOf("/midiclockstart") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
@@ -994,11 +1091,12 @@ void handleWifiRequest(WiFiClient client, String urlString){
     eqloc = urlString.indexOf('=',amploc);
     int tune = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
     chan = chan & 0x0F;
-    int mask = getMask(chan);
+    if (chan < 1) chan = 1;
+    int m = mask[chan - 1];
     tune = tune & 0x3F; //max value is 63 decimal.
     //SerialDebug.println(mask);
     //SerialDebug.println(tune);
-    sendMidiFineTune(mask,tune);
+    sendMidiFineTune(m,tune);
   }
   else if (urlString.indexOf("/midibend?chan") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
@@ -1013,13 +1111,14 @@ void handleWifiRequest(WiFiClient client, String urlString){
     eqloc = urlString.indexOf('=',amploc);
     int bend_msb = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
     chan = chan & 0x0F;
-    int mask = getMask(chan);
+    if (chan < 1) chan = 1;
+    int m = mask[chan - 1];
     bend_lsb = bend_lsb & 0x7F; //max value is 7F.
     bend_msb = bend_msb & 0x7F; //max value is 7F.
     //SerialDebug.println(mask);
     //SerialDebug.println(bend_lsb);
     //SerialDebug.println(bend_msb);
-    sendMidiBend(mask,bend_lsb,bend_msb);
+    sendMidiBend(m,bend_lsb,bend_msb);
   } else if (urlString.indexOf("/midibytes") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
     //SerialDebug.println("MIDI Bytes Received"); 
@@ -1457,10 +1556,10 @@ void processMidiMessage(midiEventPacket_t midiMessage){
   //SerialDebug.print(midiMessage.header, HEX);
   uint8_t chan = midiMessage.byte1 & 0x0F;
   switch (midiMessage.byte1 & 0xF0) {
-    case 0x90 : {sendMidiNoteOn(getMask(chan), midiMessage.byte2, getVelocity(chan,midiMessage.byte3));break;}
-    case 0x80 : {sendMidiNoteOff(getMask(chan), midiMessage.byte2, getVelocity(chan,midiMessage.byte3));break;}
+    case 0x90 : {processMidiNoteOn(chan, midiMessage.byte2, midiMessage.byte3);break;}
+    case 0x80 : {processMidiNoteOff(chan, midiMessage.byte2, midiMessage.byte3);break;}
     case 0xF0 : {processClockMessage(midiMessage.byte1);break;}
-    case 0xE0 : {sendMidiBend(getMask(chan), midiMessage.byte2, midiMessage.byte3);break;}
+    case 0xE0 : {sendMidiBend(mask[chan], midiMessage.byte2, midiMessage.byte3);break;}
     case 0xB0 : {processControlChange(chan, midiMessage.byte2, midiMessage.byte3);break;}
     case 0xC0 : {processProgramChange(midiMessage.byte2);break;}
     default   : {SerialDebug.print("Received Unknown:");break;}
@@ -1470,25 +1569,71 @@ void processMidiMessage(midiEventPacket_t midiMessage){
   //SerialDebug.println(midiMessage.byte3, HEX);
 }
 
-uint8_t getMask(uint8_t midiChannel){
-  uint8_t result = 0;
-  if ((poly[midiChannel]>0) && (mask[midiChannel]>0)) {
-    //Shift poly bit to next bus and return as mask.
-    poly[midiChannel] = (poly[midiChannel] <<1) & 0xF;
-    if (poly[midiChannel] == 0) poly[midiChannel] = 1; //wrap
-    while ((poly[midiChannel] & mask[midiChannel]) == 0) {
-      poly[midiChannel] = (poly[midiChannel] <<1) & 0xF;
-      if (poly[midiChannel] == 0) poly[midiChannel] = 1; //wrap
+void processMidiNoteOn(uint8_t chan, uint8_t note, uint8_t velo){
+  //channel is 0-15
+  uint8_t m = mask[chan]; //unison (non poly) mask
+  note = note + (tran[chan] - 0x32); //transpose
+  if (note < 0) note = 0;
+  if (note > 0x7F) note = 0x7F;
+  if ((poly[chan]>0) && (mask[chan]>0)) {
+    //Shift poly bit to next bus in mask and return as mask.
+    poly[chan] = (poly[chan] <<1) & 0xF;
+    if (poly[chan] == 0) poly[chan] = 1; //wrap
+    while ((poly[chan] & mask[chan]) == 0) {
+      poly[chan] = (poly[chan] <<1) & 0xF;
+      if (poly[chan] == 0) poly[chan] = 1; //wrap
     }
-    result = poly[midiChannel];  
-  } else {
-    result = mask[midiChannel];
+    m = poly[chan]; //One of 0001/0010/0100/1000
+    savePolyNote(chan,m,note); //save note and mask for note OFF
   }
-  return result;
+  sendMidiNoteOn(m, note, getVelocity(chan,velo));
 }
 
-uint8_t getVelocity(uint8_t midiChannel,uint8_t velocity) {
-  if (sendVelocity[midiChannel]) {
+void processMidiNoteOff(uint8_t chan, uint8_t note, uint8_t velo) {
+  //Channel is 0-15
+  uint8_t m = mask[chan]; //unison (non poly) mask
+  note = note + (tran[chan] - 0x32); //transpose
+  if (note < 0) note = 0;
+  if (note > 0x7F) note = 0x7F;
+  if ((poly[chan]>0) && (mask[chan]>0)){
+    //Poly mode.
+    m = getPolyMaskFromNote(chan,note); //retrieve associated mask for this note
+  }
+  sendMidiNoteOff(m, note, getVelocity(chan,velo));
+}
+
+
+void savePolyNote(uint8_t chan,uint8_t mask, uint8_t note){
+  //save current note ON value to match with note OFF event later.
+  if (mask == 0) return; //This channel has no buses
+  uint32_t shifter;
+  uint32_t shiftedNote;
+  switch (mask) {
+    case 1: {shifter = 0xFFFFFF00; shiftedNote = note; break;}
+    case 2: {shifter = 0xFFFF00FF; shiftedNote = note<<8; break;}
+    case 4: {shifter = 0xFF00FFFF; shiftedNote = note<<16; break;}
+    case 8: {shifter = 0x00FFFFFF; shiftedNote = note<<24; break;}
+    default: return; //not a poly mask
+  }
+  polyNotes[chan] = polyNotes[chan] | ~shifter;
+  polyNotes[chan] = polyNotes[chan] & (shiftedNote | shifter);
+}
+
+uint8_t getPolyMaskFromNote(uint8_t chan, uint8_t note){
+  //See if the note was saved by note ON into polyNotes
+  //and if found, return the corresponding mask.
+  //Chan is 0-15
+  uint8_t result = 0;
+  if (note == (polyNotes[chan] && 0xFF)) result = 1;
+  else if (note == (polyNotes[chan] & (0xFF << 8))>>8) result = 2;
+  else if (note == (polyNotes[chan] & (0xFF << 16))>>16) result = 4;
+  else if (note == (polyNotes[chan] & (0xFF << 24))>>24) result = 8;
+  return result;  
+}
+
+uint8_t getVelocity(uint8_t chan,uint8_t velocity) {
+  //Channel is 0-15
+  if (velo[chan]) {
     return velocity;
   } else {
     return 0x7F;//ignore velocity and play note at full volume
@@ -1503,9 +1648,9 @@ void processClockMessage(uint8_t clockMessage){
   }
 }
 
-void processControlChange(uint8_t midiChannel, uint8_t byte1, uint8_t byte2){
+void processControlChange(uint8_t chan, uint8_t byte1, uint8_t byte2){
   switch(byte1){
-    case 0x1F: {sendMidiFineTune(getMask(midiChannel), byte2);break;}
+    case 0x1F: {sendMidiFineTune(mask[chan], byte2);break;}
   }
 }
 
