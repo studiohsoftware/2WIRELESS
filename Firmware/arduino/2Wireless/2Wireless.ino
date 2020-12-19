@@ -352,7 +352,8 @@ void initializeFram() {
       framWrite(MIDI_CFG_TRAN_ADDR + i,tran[i]);
       setVelo(i,velo[i]);
     }
-    setUsbMode(USB_MODE_DEVICE);
+    setUsbMode(USB_MODE_DEVICE); 
+    setCurrentPreset(1); //just to have something in there.
     //Mark as initialized for next time.
     setFramString("DONALD", INIT_ADDR);
   } 
@@ -438,6 +439,7 @@ uint8_t getCurrentPreset() {
   result = framRead(CURRENT_PRESET_ADDR);
   if (result < 1) result = 1;
   if (result > 30) result = 30;
+  return result;
 }
 
 void setCurrentPreset(uint8_t preset) {
@@ -1282,6 +1284,12 @@ void handleWifiRequest(WiFiClient client, String urlString){
         getJsonToken(token, client);
     } 
     delete token;
+  } else if (urlString.indexOf("/currentpreset") >= 0) {
+    SerialDebug.println("getCurrentPreset Received"); 
+    int preset = getCurrentPreset();
+    String result = "{\"currentpreset\": \"" + String(preset,DEC) + "\"}";
+    writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
+    client.println(result);
   } else if (urlString.indexOf("/presetname=") >= 0) {
     SerialDebug.println("setPresetName Received"); 
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
