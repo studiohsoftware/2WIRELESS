@@ -78,6 +78,12 @@ Returns BUCHLA200E by default.
 Set wireless WPA password<br/>
 Example: http://192.168.0.1/password=TEST<br/>
 Note password must be at least 8 characters and no more than 63 characters.
+- ### http://192.168.0.1/presetname?preset=(1-30)
+Get preset name<br/>
+Example get name for preset 12: http://192.168.0.1/presetname?preset=12<br/>
+- ### http://192.168.0.1/presetname=(presetname string)&preset=(1-30)
+Set preset name<br/>
+Example set name for preset 5 to "Test": http://192.168.0.1/presetname=Test&preset=5<br/>
 ## V2 Firmware Support
 Old firmware (pre Primo version) also supported. Simply add a "v2" to the URL path. <br/>
 Example: http://192.168.0.1/v2/remotedisable<br/>

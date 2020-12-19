@@ -125,14 +125,8 @@ void setup() {
 
   
   //Initialize serial and wait for port to open:
-  SerialDebug.begin(9600);
-  //while (!Serial) {
-  //  ; // wait for serial port to connect. Needed for native USB port only
-  //}
   SerialDebug.begin(115200);
-
   SerialDebug.println("Access Point Web Server");
-
 
   // check for the presence of the shield:
   if (WiFi.status() == WL_NO_SHIELD) {
@@ -183,7 +177,7 @@ void setup() {
   isUsbDevice = (getUsbMode() && USB_MODE_DEVICE);
 
   if (isUsbDevice) {
-    MidiUSB.attachInterrupt(onMidiUsbDeviceEvent);
+    MidiUSB.attachInterrupt(onMidiUsbDeviceEvent); //Needed to turn off SOF interrupts in USBCore.cpp
   } else {
     if (UsbH.Init()) {
       SerialDebug.println("USB host did not start");
@@ -346,7 +340,7 @@ void initializeFram() {
       poly[i] = framRead(MIDI_CFG_POLY_ADDR + i);
       fine[i] = framRead(MIDI_CFG_FINE_ADDR + i);
       tran[i] = framRead(MIDI_CFG_TRAN_ADDR + i);
-      velo[i] = getVelo[i]; //array of bool
+      velo[i] = getVelo(i); //array of bool
     }  
   } else {
     //Write default values to fram.
@@ -1288,6 +1282,29 @@ void handleWifiRequest(WiFiClient client, String urlString){
         getJsonToken(token, client);
     } 
     delete token;
+  } else if (urlString.indexOf("/presetname=") >= 0) {
+    SerialDebug.println("setPresetName Received"); 
+    writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
+    int len = urlString.indexOf(" HTTP");
+    int eqloc = urlString.indexOf('=');
+    int amploc = urlString.indexOf('&');
+    String pname = urlString.substring(eqloc + 1, amploc);
+    eqloc = urlString.indexOf('=',amploc);
+    int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+    if (preset < 1) preset = 1;
+    if (preset > 30) preset = 30;
+    setPresetName(preset,pname);
+  } else if (urlString.indexOf("/presetname") >= 0) {
+    SerialDebug.println("getPresetName Received"); 
+    int len = urlString.indexOf(" HTTP");
+    int eqloc = urlString.indexOf('=');
+    int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+    if (preset < 1) preset = 1;
+    if (preset > 30) preset = 30;
+    String pname = getPresetName(preset);
+    String result = "{\"presetname\": \"" + pname + "\"}";
+    writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
+    client.println(result);
   } else if (urlString.indexOf("/ssid=") >= 0) {
     SerialDebug.println("setSSID Received"); 
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
