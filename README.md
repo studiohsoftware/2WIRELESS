@@ -48,9 +48,6 @@ Example (Program Change to change preset to 7):</br>
  http://192.168.0.1/sendmidibytes?byte1=C0&byte2=0x07&byte3=0x00<br/>
 Example (Control Change to set fine tune to An on channel 5): </br>
 http://192.168.0.1/sendmidibytes?byte1=B4&byte2=0x1F&byte3=0x32<br/>
-- ### http://192.168.0.1/readmemory?addr=(0x0-0x03FFFF)&length=0-262143
-Read bulk data from on-board non-volatile memory.<br/>
-Example (Address 0x1C, return 32 bytes. Note 0x001C, or 0x00001C also acceptable): http://192.168.0.1/readmemory?addr=0x1C&length=32
 - ### http://192.168.0.1/ssid
 Get wireless SSID<br/>
 Returns BUCHLA200E by default.
@@ -106,6 +103,9 @@ Example: Route channel 1 to bus A http://192.168.0.1/mask=0x8&chan=1<br/>
 Example: Route channel 1 to bus B http://192.168.0.1/mask=0x4&chan=1<br/>
 Example: Route channel 1 to bus C http://192.168.0.1/mask=0x2&chan=1<br/>
 Example: Route channel 6 to bus D http://192.168.0.1/mask=0x1&chan=6<br/>
+- ### http://192.168.0.1/readmemory?addr=(0x0-0x03FFFF)&length=0-262143
+Read bulk data from on-board non-volatile memory.<br/>
+Example (Address 0x1C, return 32 bytes. Note 0x001C, or 0x00001C also acceptable): http://192.168.0.1/readmemory?addr=0x1C&length=32
 - ### http://192.168.0.1/writememory?addr=(0x0-0x03FFFF)&data=(hex string)
 Write data to on-board non-volatile memory at the specified address.<br/>
 Example: (Address 0x1ABCD, five data bytes 0AFF1B0432) http://192.168.0.1/writememory?addr=0x1ABCD&data=0AFF1B0432<br/>
