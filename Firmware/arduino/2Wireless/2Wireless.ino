@@ -1284,6 +1284,138 @@ void handleWifiRequest(WiFiClient client, String urlString){
         getJsonToken(token, client);
     } 
     delete token;
+  } else if (urlString.indexOf("/velo=") >= 0) {
+    SerialDebug.println("setVelo Received"); 
+    writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
+    int len = urlString.indexOf(" HTTP");
+    int eqloc = urlString.indexOf('=');
+    int amploc = urlString.indexOf('&');
+    int velo = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
+    eqloc = urlString.indexOf('=',amploc);
+    int chan = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+    if (chan < 1) chan = 1;
+    if (chan > 16) chan = 16;
+    chan = chan - 1;
+    velo = !!velo; //always save as 1 or 0 enable/disable
+    setVelo(chan,velo);
+  } else if (urlString.indexOf("/velo") >= 0) {
+    SerialDebug.println("getVelo Received"); 
+    int len = urlString.indexOf(" HTTP");
+    int eqloc = urlString.indexOf('=');
+    int chan = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+    if (chan < 1) chan = 1;
+    if (chan > 16) chan = 16;
+    chan = chan - 1;
+    String result = "{\"velo\": \"" + String(velo[chan],DEC) + "\"}"; //one or zero
+    writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
+    client.println(result);
+    
+  } else if (urlString.indexOf("/tran=") >= 0) {
+    SerialDebug.println("setTran Received"); 
+    writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
+    int len = urlString.indexOf(" HTTP");
+    int eqloc = urlString.indexOf('=');
+    int amploc = urlString.indexOf('&');
+    int tran = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
+    eqloc = urlString.indexOf('=',amploc);
+    int chan = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+    if (chan < 1) chan = 1;
+    if (chan > 16) chan = 16;
+    chan = chan - 1;
+    //Transpose is sent as 0x00-0x63 but displayed as -49 to 49 
+    tran = tran + 0x32;
+    if (tran < 0) tran = 0;
+    if (tran > 99) tran = 99;
+    setTran(chan,tran);
+  } else if (urlString.indexOf("/tran") >= 0) {
+    SerialDebug.println("getTran Received"); 
+    int len = urlString.indexOf(" HTTP");
+    int eqloc = urlString.indexOf('=');
+    int chan = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+    if (chan < 1) chan = 1;
+    if (chan > 16) chan = 16;
+    chan = chan - 1;
+    String result = "{\"tran\": \"" + String(tran[chan] - 0x32,DEC) + "\"}";
+    writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
+    client.println(result);
+  } else if (urlString.indexOf("/fine=") >= 0) {
+    SerialDebug.println("setFine Received"); 
+    writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
+    int len = urlString.indexOf(" HTTP");
+    int eqloc = urlString.indexOf('=');
+    int amploc = urlString.indexOf('&');
+    int fine = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
+    eqloc = urlString.indexOf('=',amploc);
+    int chan = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+    if (chan < 1) chan = 1;
+    if (chan > 16) chan = 16;
+    chan = chan - 1;
+    //Fine is sent as 0x00-0x63 but displayed as -49 to 49 with 0 meaning An
+    fine = fine + 0x32;
+    if (fine < 0) fine = 0;
+    if (fine > 99) fine = 99;
+    setFine(chan,fine);
+  } else if (urlString.indexOf("/fine") >= 0) {
+    SerialDebug.println("getPoly Received"); 
+    int len = urlString.indexOf(" HTTP");
+    int eqloc = urlString.indexOf('=');
+    int chan = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+    if (chan < 1) chan = 1;
+    if (chan > 16) chan = 16;
+    chan = chan - 1;
+    String result = "{\"fine\": \"" + String(fine[chan] - 0x32,DEC) + "\"}";
+    writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
+    client.println(result);
+  } else if (urlString.indexOf("/poly=") >= 0) {
+    SerialDebug.println("setPoly Received"); 
+    writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
+    int len = urlString.indexOf(" HTTP");
+    int eqloc = urlString.indexOf('=');
+    int amploc = urlString.indexOf('&');
+    int poly = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+    eqloc = urlString.indexOf('=',amploc);
+    int chan = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+    if (chan < 1) chan = 1;
+    if (chan > 16) chan = 16;
+    chan = chan - 1;
+    poly = !!poly; //always save as 1 or 0 although later it will store active poly bus ABC or D
+    setPoly(chan,poly);
+  } else if (urlString.indexOf("/poly") >= 0) {
+    SerialDebug.println("getPoly Received"); 
+    int len = urlString.indexOf(" HTTP");
+    int eqloc = urlString.indexOf('=');
+    int chan = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+    if (chan < 1) chan = 1;
+    if (chan > 16) chan = 16;
+    chan = chan - 1;
+    String result = "{\"poly\": \"" + String(!!poly[chan],HEX) + "\"}";
+    writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
+    client.println(result);
+  } else if (urlString.indexOf("/mask=") >= 0) {
+    SerialDebug.println("setMask Received"); 
+    writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
+    int len = urlString.indexOf(" HTTP");
+    int eqloc = urlString.indexOf('=');
+    int amploc = urlString.indexOf('&');
+    int mask = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 16);
+    eqloc = urlString.indexOf('=',amploc);
+    int chan = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+    if (chan < 1) chan = 1;
+    if (chan > 16) chan = 16;
+    chan = chan - 1;
+    mask = mask & 0xF;
+    setMask(chan,mask);
+  } else if (urlString.indexOf("/mask") >= 0) {
+    SerialDebug.println("getMask Received"); 
+    int len = urlString.indexOf(" HTTP");
+    int eqloc = urlString.indexOf('=');
+    int chan = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+    if (chan < 1) chan = 1;
+    if (chan > 16) chan = 16;
+    chan = chan - 1;
+    String result = "{\"mask\": \"" + String(mask[chan],HEX) + "\"}";
+    writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
+    client.println(result);
   } else if (urlString.indexOf("/currentpreset") >= 0) {
     SerialDebug.println("getCurrentPreset Received"); 
     int preset = getCurrentPreset();
