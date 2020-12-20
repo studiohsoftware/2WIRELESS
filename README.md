@@ -1,6 +1,6 @@
 # 2WIRELESS
 # Wireless Preset Manager
-## Supported REST Calls (so far)
+## Preset Manager Commands
 - ### http://192.168.0.1/remoteenable
 Global remote enable.
 - ### http://192.168.0.1/remotedisable
@@ -20,6 +20,7 @@ Example (259A): http://192.168.0.1/setpresets?addr=(0x28) <br/> </br>
 Use writememory to send presets to on-board non-volatile memory first.
 Example HTML here https://github.com/studiohsoftware/2WIRELESS/blob/master/Firmware/SetPresets.html <br/>
 Example JSON (for 292e) here https://github.com/studiohsoftware/2WIRELESS/blob/master/Firmware/presetData.json <br/>
+## MIDI Commands
 - ### http://192.168.0.1/midinoteon?chan=(1-16)&note=(0x0-0x7F)&velo=(0x0-0x7F)
 Send MIDI note ON message.<br/> 
 Example (Channel 9, note G1, half velocity): http://192.168.0.1/midinoteon?chan=9&note=0x1F&velo=0x40
@@ -48,6 +49,7 @@ Example (Program Change to change preset to 7):</br>
  http://192.168.0.1/sendmidibytes?byte1=C0&byte2=0x07&byte3=0x00<br/>
 Example (Control Change to set fine tune to An on channel 5): </br>
 http://192.168.0.1/sendmidibytes?byte1=B4&byte2=0x1F&byte3=0x32<br/>
+## Configuration Commands
 - ### http://192.168.0.1/ssid
 Get wireless SSID<br/>
 Returns BUCHLA200E by default.
@@ -103,6 +105,7 @@ Example: Route channel 1 to bus A http://192.168.0.1/mask=0x8&chan=1<br/>
 Example: Route channel 1 to bus B http://192.168.0.1/mask=0x4&chan=1<br/>
 Example: Route channel 1 to bus C http://192.168.0.1/mask=0x2&chan=1<br/>
 Example: Route channel 6 to bus D http://192.168.0.1/mask=0x1&chan=6<br/>
+## Utility Commands
 - ### http://192.168.0.1/readmemory?addr=(0x0-0x03FFFF)&length=0-262143
 Read bulk data from on-board non-volatile memory.<br/>
 Example (Address 0x1C, return 32 bytes. Note 0x001C, or 0x00001C also acceptable): http://192.168.0.1/readmemory?addr=0x1C&length=32
