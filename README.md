@@ -1,5 +1,10 @@
 # 2WIRELESS
 # Wireless Preset Manager
+Connect to your Buchla 200e wirelessly and control it using a web page on your phone or computer. 
+Change and save presets, upload and download preset data, and even update module firmware.</br>
+Call URLs to execute MIDI commands. </br>
+Run as USB host, and connect a MIDI USB controller directly to your 200e.</br>
+Run as USB device, and connect your DAW directly to your 200e using USB. 
 ## Preset Manager Commands
 - ### http://192.168.0.1/remoteenable
 Global remote enable.
