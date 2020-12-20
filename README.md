@@ -51,19 +51,6 @@ http://192.168.0.1/sendmidibytes?byte1=B4&byte2=0x1F&byte3=0x32<br/>
 - ### http://192.168.0.1/readmemory?addr=(0x0-0x03FFFF)&length=0-262143
 Read bulk data from on-board non-volatile memory.<br/>
 Example (Address 0x1C, return 32 bytes. Note 0x001C, or 0x00001C also acceptable): http://192.168.0.1/readmemory?addr=0x1C&length=32
-- ### http://192.168.0.1/writememory?addr=(0x0-0x03FFFF)&data=(hex string)
-Write data to on-board non-volatile memory at the specified address.<br/>
-Example (Address 0x1ABCD, five data bytes 0AFF1B0432): http://192.168.0.1/writememory?addr=0x1ABCD&data=0AFF1B0432<br/>
-Note all addresses below 0x02C000 are used as scratch space by preset and firmware transfers. 
-- ### http://192.168.0.1/writememory
-Write bulk data to on-board non-volatile memory.<br/>
-Note this is an HTTP POST with a JSON formatted body.<br/> 
-Example JSON here https://github.com/studiohsoftware/2WIRELESS/blob/master/Firmware/writeMemoryExample.json<br/>
-Notes:
-- #### 20k byte JSON file limit.
-- #### Addresses are arbitrary locations within 0x0-0x03FFFF.
-- #### Data elements can be up to 256 bytes long each (512 characters).
-- #### All addresses below 0x02C100 are used as scratch space by preset and firmware transfers. 
 - ### http://192.168.0.1/ssid
 Get wireless SSID<br/>
 Returns BUCHLA200E by default.
@@ -80,10 +67,58 @@ Example: http://192.168.0.1/password=TEST<br/>
 Note password must be at least 8 characters and no more than 63 characters.
 - ### http://192.168.0.1/presetname?preset=(1-30)
 Get preset name<br/>
-Example get name for preset 12: http://192.168.0.1/presetname?preset=12<br/>
+Example: get name for preset 12 http://192.168.0.1/presetname?preset=12<br/>
 - ### http://192.168.0.1/presetname=(preset name string)&preset=(1-30)
 Set preset name<br/>
-Example set name for preset 5 to "Test": http://192.168.0.1/presetname=Test&preset=5<br/>
+Example: Set name for preset 5 to "Test" http://192.168.0.1/presetname=Test&preset=5<br/>
+- ### http://192.168.0.1/velo?chan=(1-16)
+Get velocity enable/disable for MIDI channel.<br/>
+Example: Get velocity enable value for channel 2 http://192.168.0.1/velo?chan=2<br/>
+- ### http://192.168.0.1/velo=(0-1)&chan=(1-16)
+Set velocity enable/disable value for MIDI channel.<br/>
+Example: Enable velocity on channel 1 http://192.168.0.1/velo=1&chan=1<br/>
+- ### http://192.168.0.1/poly?chan=(1-16)
+Get poly enable/disable for MIDI channel.<br/>
+Example: Get poly enable value for channel 2 http://192.168.0.1/poly?chan=2<br/>
+- ### http://192.168.0.1/poly=(0-1)&chan=(1-16)
+Set poly enable/disable value for MIDI channel.<br/>
+Example: Enable poly on channel 1 http://192.168.0.1/velo=1&chan=1<br/>
+- ### http://192.168.0.1/tran?chan=(1-16)
+Get transpose value for MIDI channel.<br/>
+Example: Get transpose value for channel 3 http://192.168.0.1/tran?chan=3<br/>
+- ### http://192.168.0.1/tran=(-49 to 49)&chan=(1-16)
+Set transpose value for MIDI channel.<br/>
+Example: Set transpose to -30 on channel 1 http://192.168.0.1/tran=-30&chan=1<br/>
+- ### http://192.168.0.1/fine?chan=(1-16)
+Get fine tune value for MIDI channel.<br/>
+Example: Get fine tune value for channel 3 http://192.168.0.1/tran?chan=3<br/>
+- ### http://192.168.0.1/fine=(-49 to 49)&chan=(1-16)
+Set fine tune value for MIDI channel.<br/>
+Example: Set fine tune to An on channel 1 http://192.168.0.1/tran=0&chan=1<br/>
+Example: Set fine tune to 30 on channel 5 http://192.168.0.1/tran=30&chan=5<br/>
+- ### http://192.168.0.1/mask?chan=(1-16)
+Get bus mask for MIDI channel.<br/>
+Example: Get mask value for channel 3 http://192.168.0.1/mask?chan=3<br/>
+- ### http://192.168.0.1/mask=(0x0-0xF)&chan=(1-16)
+Set mask value for MIDI channel.<br/>
+Example: Route channel 1 to all four 200e buses http://192.168.0.1/mask=0xF&chan=1<br/>
+Example: Route channel 1 to bus A http://192.168.0.1/mask=0x8&chan=1<br/>
+Example: Route channel 1 to bus B http://192.168.0.1/mask=0x4&chan=1<br/>
+Example: Route channel 1 to bus C http://192.168.0.1/mask=0x2&chan=1<br/>
+Example: Route channel 6 to bus D http://192.168.0.1/mask=0x1&chan=6<br/>
+- ### http://192.168.0.1/writememory?addr=(0x0-0x03FFFF)&data=(hex string)
+Write data to on-board non-volatile memory at the specified address.<br/>
+Example: (Address 0x1ABCD, five data bytes 0AFF1B0432) http://192.168.0.1/writememory?addr=0x1ABCD&data=0AFF1B0432<br/>
+Note all addresses below 0x02C000 are used as scratch space by preset and firmware transfers. 
+- ### http://192.168.0.1/writememory
+Write bulk data to on-board non-volatile memory.<br/>
+Note this is an HTTP POST with a JSON formatted body.<br/> 
+Example JSON here https://github.com/studiohsoftware/2WIRELESS/blob/master/Firmware/writeMemoryExample.json<br/>
+Notes:
+- #### 20k byte JSON file limit.
+- #### Addresses are arbitrary locations within 0x0-0x03FFFF.
+- #### Data elements can be up to 256 bytes long each (512 characters).
+- #### All addresses below 0x02C100 are used as scratch space by preset and firmware transfers. 
 ## V2 Firmware Support
 Old firmware (pre Primo version) also supported. Simply add a "v2" to the URL path. <br/>
 Example: http://192.168.0.1/v2/remotedisable<br/>
