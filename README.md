@@ -82,7 +82,7 @@ Get poly enable/disable for MIDI channel.<br/>
 Example: Get poly enable value for channel 2 http://192.168.0.1/poly?chan=2<br/>
 - ### http://192.168.0.1/poly=(0-1)&chan=(1-16)
 Set poly enable/disable value for MIDI channel.<br/>
-Example: Enable poly on channel 1 http://192.168.0.1/velo=1&chan=1<br/>
+Example: Enable poly on channel 1 http://192.168.0.1/poly=1&chan=1<br/>
 - ### http://192.168.0.1/tran?chan=(1-16)
 Get transpose value for MIDI channel.<br/>
 Example: Get transpose value for channel 3 http://192.168.0.1/tran?chan=3<br/>
@@ -91,11 +91,11 @@ Set transpose value for MIDI channel.<br/>
 Example: Set transpose to -30 on channel 1 http://192.168.0.1/tran=-30&chan=1<br/>
 - ### http://192.168.0.1/fine?chan=(1-16)
 Get fine tune value for MIDI channel.<br/>
-Example: Get fine tune value for channel 3 http://192.168.0.1/tran?chan=3<br/>
+Example: Get fine tune value for channel 3 http://192.168.0.1/fine?chan=3<br/>
 - ### http://192.168.0.1/fine=(-49 to 49)&chan=(1-16)
 Set fine tune value for MIDI channel.<br/>
-Example: Set fine tune to An on channel 1 http://192.168.0.1/tran=0&chan=1<br/>
-Example: Set fine tune to 30 on channel 5 http://192.168.0.1/tran=30&chan=5<br/>
+Example: Set fine tune to An on channel 1 http://192.168.0.1/fine=0&chan=1<br/>
+Example: Set fine tune to 30 on channel 5 http://192.168.0.1/fine=30&chan=5<br/>
 - ### http://192.168.0.1/mask?chan=(1-16)
 Get bus mask for MIDI channel.<br/>
 Example: Get mask value for channel 3 http://192.168.0.1/mask?chan=3<br/>
