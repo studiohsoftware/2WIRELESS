@@ -42,12 +42,12 @@ Midi clock start.
 Midi clock stop.
 - ### http://192.168.0.1/midiclock
 Midi clock. 24 per beat required.
-- ### http://192.168.0.1/midibytes?byte1=(0-0x7F)&byte1=(0x0-0x7F)&byte2=(0x0-0x7F)
+- ### http://192.168.0.1/sendmidibytes?byte1=(0-0xFF)&byte2=(0x0-0x7F)&byte3=(0x0-0x7F)
 Send MIDI command as bytes<br/>
 Example (Program Change to change preset to 7):</br>
- http://192.168.0.1/midibytes?byte1=C0&byte2=0x07&byte3=0x00<br/>
+ http://192.168.0.1/sendmidibytes?byte1=C0&byte2=0x07&byte3=0x00<br/>
 Example (Control Change to set fine tune to An on channel 5): </br>
-http://192.168.0.1/midibytes?byte1=B4&byte2=0x1F&byte3=0x32<br/>
+http://192.168.0.1/sendmidibytes?byte1=B4&byte2=0x1F&byte3=0x32<br/>
 - ### http://192.168.0.1/readmemory?addr=(0x0-0x03FFFF)&length=0-262143
 Read bulk data from on-board non-volatile memory.<br/>
 Example (Address 0x1C, return 32 bytes. Note 0x001C, or 0x00001C also acceptable): http://192.168.0.1/readmemory?addr=0x1C&length=32

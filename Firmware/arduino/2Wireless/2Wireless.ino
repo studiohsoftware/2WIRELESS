@@ -1115,7 +1115,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     //SerialDebug.println(bend_lsb);
     //SerialDebug.println(bend_msb);
     sendMidiBend(m,bend_lsb,bend_msb);
-  } else if (urlString.indexOf("/midibytes") >= 0) {
+  } else if (urlString.indexOf("/sendmidibytes") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
     //SerialDebug.println("MIDI Bytes Received"); 
     int len = urlString.indexOf(" HTTP");
