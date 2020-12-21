@@ -8,7 +8,7 @@ Call URLs to execute MIDI commands.
 </br>
 </br>
 Run as USB host, and connect a MIDI USB controller directly to your 200e.
-Run as USB device, and connect your DAW directly to your 200e using USB. 
+Run as USB device, and connect your DAW directly to your 200e. 
 ## Preset Manager Commands
 - ### http://192.168.0.1/remoteenable
 Global remote enable.
@@ -73,6 +73,12 @@ Returns BUCHLA200E by default.
 Set wireless WPA password<br/>
 Example: http://192.168.0.1/password=TEST<br/>
 Note password must be at least 8 characters and no more than 63 characters.
+- ### http://192.168.0.1/usbMode
+Get USB Mode. 1=DEVICE, 0=HOST<br/>
+- ### http://192.168.0.1/usbMode=(0-1)
+Set USB Mode 1=DEVICE, 0=HOST<br/>
+Example: Set USB mode to HOST http://192.168.0.1/usbMode=0<br/>
+Note restart required for change to take effect.
 - ### http://192.168.0.1/presetname?preset=(1-30)
 Get preset name<br/>
 Example: get name for preset 12 http://192.168.0.1/presetname?preset=12<br/>

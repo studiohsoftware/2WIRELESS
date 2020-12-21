@@ -1309,7 +1309,6 @@ void handleWifiRequest(WiFiClient client, String urlString){
     String result = "{\"velo\": \"" + String(velo[chan],DEC) + "\"}"; //one or zero
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
     client.println(result);
-    
   } else if (urlString.indexOf("/tran=") >= 0) {
     SerialDebug.println("setTran Received"); 
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
@@ -1443,6 +1442,20 @@ void handleWifiRequest(WiFiClient client, String urlString){
     if (preset > 30) preset = 30;
     String pname = getPresetName(preset);
     String result = "{\"presetname\": \"" + pname + "\"}";
+    writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
+    client.println(result);
+  } else if (urlString.indexOf("/usbMode=") >= 0) {
+    SerialDebug.println("setUsbMode Received"); 
+    writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
+    int len = urlString.indexOf(" HTTP");
+    int eqloc = urlString.indexOf('=');
+    int mode = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
+    mode = !!mode;
+    setUsbMode(mode);
+  } else if (urlString.indexOf("/usbMode") >= 0) {
+    SerialDebug.println("getSSID Received"); 
+    uint8_t mode = getUsbMode();
+    String result = "{\"usbMode\": \"" + String(!!mode,DEC) + "\"}";
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
     client.println(result);
   } else if (urlString.indexOf("/ssid=") >= 0) {
