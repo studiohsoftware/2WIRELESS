@@ -2,16 +2,53 @@
 	<head> 
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	</head>
+	<style>
+		table,th,td	{
+			border:1px solid black;
+			border-collapse: collapse;
+		}
+		th,td {
+			padding: 1px;
+		}
+		input[type=number] {
+			width: 45px;
+		}
+	</style>
 	<body>
-		<label style="font-weight:bold;font-size:24px;">Setup Page</label></br></br>
+		<div style="display: flex;justify-content: space-between; max-width:290px">
+			<label style="font-weight:bold;font-size:24px;">Setup Page</label>
+			<input type="button" id="submit" value="Submit">
+		</div>
+		<hr>
+		<table id="MidiTable" name="MidiTable">
+			<tr>
+				<th>Chan</th>
+				<th>A</th>
+				<th>B</th>
+				<th>C</th>
+				<th>D</th>
+				<th>Tran</th>
+				<th>Fine</th>
+				<th>Poly</th>
+				<th>Velo</th>				
+			</tr>
+		</table>
+		<hr>
+		<label for="Device">
+		<input type="radio" id="Device" name="usb" value="1">
+		USB Device</label>
+		<label for="Host">
+		<input type="radio" id="Host" name="usb" value="0">
+		USB Host</label>
+		<hr>
 		<label for="ssid">SSID:</label></br>
 		<input type="text" id="ssid" name="ssid" maxlength="32" style="width:250;"><br><br>
 		<label for="pass">Password (eight characters minimum):</label></br>
 		<input type="text" id="pass" name="pass" maxlength="63" style="width:250;"><br>
 		<label for="pass2">Re-enter Password:</label></br>
-		<input type="text" id="pass2" name="pass2" maxlength="63" style="width:250;"><br><br>
+		<input type="text" id="pass2" name="pass2" maxlength="63" style="width:250;"><br>
 		<label for="submit" id="errortext" style="color:red;"></label></br>
-		<input type="button" id="submit" value="Submit">
+		<hr>
 	</body>
 	<script>
 		var ssid = document.getElementById("ssid");
@@ -20,12 +57,79 @@
 		var submit = document.getElementById("submit");
 		var errortext = document.getElementById("errortext");
 		
+		var table = document.getElementById("MidiTable");
+		for (var i = 1; i < 17; ++i) {
+			var tr = document.createElement('tr');
+			var td1 = document.createElement('td');
+			var td2 = document.createElement('td');
+			var td3 = document.createElement('td');
+			var td4 = document.createElement('td');
+			var td5 = document.createElement('td');
+			var td6 = document.createElement('td');
+			var td7 = document.createElement('td');
+			var td8 = document.createElement('td');
+			var td9 = document.createElement('td');
+			var chan = document.createTextNode(i);
+			var a = document.createElement('input');
+			a.type = "checkbox";
+			a.name = "a" + i;
+			a.id = "a" + i;
+			var b = document.createElement('input');
+			b.type = "checkbox";
+			b.name = "b" + i;
+			b.id = "b" + i;
+			var c = document.createElement('input');
+			c.type = "checkbox";
+			c.name = "c" + i;
+			c.id = "c" + i;
+			var d = document.createElement('input');
+			d.type = "checkbox";
+			d.name = "d" + i;
+			d.id = "d" + i;
+			var t = document.createElement('input');
+			t.type = 'number';
+			t.name = "t" + i;
+			t.id = "t" + i;
+			t.setAttribute('max','49');
+			t.setAttribute('min','-49');
+			var f = document.createElement('input');
+			f.type = 'number';
+			f.name = "f" + i;
+			f.id = "f" + i;
+			f.setAttribute('max','49');
+			f.setAttribute('min','-49');
+			var p = document.createElement('input');
+			p.type = "checkbox";
+			p.name = "P" + i;
+			p.id = "P" + i;
+			var v = document.createElement('input');
+			v.type = "checkbox";
+			v.name = "v" + i;
+			v.id = "v" + i;
+			td1.appendChild(chan);
+			td2.appendChild(a);
+			td3.appendChild(b);
+			td4.appendChild(c);
+			td5.appendChild(d);
+			td6.appendChild(t);
+			td7.appendChild(f);
+			td8.appendChild(p);
+			td9.appendChild(v);
+			tr.appendChild(td1);
+			tr.appendChild(td2);
+			tr.appendChild(td3);
+			tr.appendChild(td4);
+			tr.appendChild(td5);
+			tr.appendChild(td6);
+			tr.appendChild(td7);
+			tr.appendChild(td8);
+			tr.appendChild(td9);
+			table.appendChild(tr);
+		}
 		submit.onclick = submitOnClick;
-		
 		ssid.value = getSSID();
 		pass.value = getPass();
 		pass2.value = pass.value;
-		
 		function getSSID(){
 			send("ssid");
 			return(JSON.parse(req.responseText).ssid);
@@ -39,7 +143,6 @@
 			req.open("GET", "http://192.168.0.1/" + url,false); 
 			req.send(null);
 		}
-		
 		function submitOnClick(){
 			if (pass.value != pass2.value) {
 				errortext.innerHTML = "Passwords do not match.";
