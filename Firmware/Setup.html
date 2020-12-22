@@ -35,30 +35,30 @@
 		</table>
 		<hr>
 		<label for="Device">
-		<input type="radio" id="Device" name="usb" value="1">
-		USB Device</label>
+		<input type="radio" id="Device" name="usb" value="1">USB Device</label>
 		<label for="Host">
-		<input type="radio" id="Host" name="usb" value="0">
-		USB Host</label>
+		<input type="radio" id="Host" name="usb" value="0">USB Host</label>
 		<hr>
 		<label for="ssid">SSID:</label></br>
-		<input type="text" id="ssid" name="ssid" maxlength="32" style="width:250;"><br><br>
+		<input type="text" id="ssid" name="ssid" maxlength="32" style="width:250;"><br>
+		<hr>
 		<label for="pass">Password (eight characters minimum):</label></br>
 		<input type="text" id="pass" name="pass" maxlength="63" style="width:250;"><br>
 		<label for="pass2">Re-enter Password:</label></br>
 		<input type="text" id="pass2" name="pass2" maxlength="63" style="width:250;"><br>
-		<label for="submit" id="errortext" style="color:red;"></label></br>
+		<label for="submit" id="errortext" style="color:red;"></label>
 		<hr>
 	</body>
 	<script>
-		var ssid = document.getElementById("ssid");
-		var pass = document.getElementById("pass");
-		var pass2 = document.getElementById("pass2");
+		var req = new XMLHttpRequest();
+		var s = document.getElementById("ssid");
+		var pwd = document.getElementById("pass");
+		var pwd2 = document.getElementById("pass2");
 		var submit = document.getElementById("submit");
 		var errortext = document.getElementById("errortext");
 		
 		var table = document.getElementById("MidiTable");
-		for (var i = 1; i < 17; ++i) {
+		for (var i = 1; i < 17; i++) {
 			var tr = document.createElement('tr');
 			var td1 = document.createElement('td');
 			var td2 = document.createElement('td');
@@ -100,8 +100,8 @@
 			f.setAttribute('min','-49');
 			var p = document.createElement('input');
 			p.type = "checkbox";
-			p.name = "P" + i;
-			p.id = "P" + i;
+			p.name = "p" + i;
+			p.id = "p" + i;
 			var v = document.createElement('input');
 			v.type = "checkbox";
 			v.name = "v" + i;
@@ -127,31 +127,77 @@
 			table.appendChild(tr);
 		}
 		submit.onclick = submitOnClick;
-		ssid.value = getSSID();
-		pass.value = getPass();
-		pass2.value = pass.value;
-		function getSSID(){
-			send("ssid");
-			return(JSON.parse(req.responseText).ssid);
+		send('getsetupdata','GET',null);
+		var parsedJson = JSON.parse(req.responseText);
+		s.value = parsedJson.ssid;
+		pwd.value = parsedJson.password;
+		pwd2.value = pwd.value;
+		if (parseInt(parsedJson.usbMode)==1){
+			document.getElementById("Device").checked = true;
+		} else {
+			document.getElementById("Host").checked = true;
+		}	
+		for (var i=0; i < 16; i++){
+			k = i + 1;
+			var mask = parseInt(parsedJson.channels[i].mask);
+			document.getElementById("a" + k).checked = mask&0x8;
+			document.getElementById("b" + k).checked = mask&0x4;
+			document.getElementById("c" + k).checked = mask&0x2;
+			document.getElementById("d" + k).checked = mask&0x1;
+			document.getElementById("t" + k).value = parseInt(parsedJson.channels[i].tran);
+			document.getElementById("f" + k).value = parseInt(parsedJson.channels[i].fine);
+			document.getElementById("p" + k).checked = parseInt(parsedJson.channels[i].poly);
+			document.getElementById("v" + k).checked = parseInt(parsedJson.channels[i].velo);		
 		}
-		function getPass(){
-			send("password");
-			return(JSON.parse(req.responseText).password);
+		function send(url,method,content) {
+			req.open(method, "http://192.168.0.1/" + url,false); 
+			req.send(content);
 		}
-		function send(url) {
-			req = new XMLHttpRequest();
-			req.open("GET", "http://192.168.0.1/" + url,false); 
-			req.send(null);
-		}
+		
 		function submitOnClick(){
-			if (pass.value != pass2.value) {
+		
+			if (pwd.value != pwd2.value) {
 				errortext.innerHTML = "Passwords do not match.";
-			} else if ((pass.value.length < 8) || (pass2.value.length < 8)){
+			} else if ((pwd.value.length < 8) || (pwd2.value.length < 8)){
 				errortext.innerHTML = "Password too short.";
 			} else {
+				var usb = "0";
+				if (document.getElementById("Device").checked) {
+					usb = "1";
+				}
 				errortext.innerHTML = "";
-				send("ssid=" + ssid.value);
-				send("password=" + pass.value);
+				var response = {
+					ssid : s.value,
+					password : pwd.value,
+					usbMode : usb,
+					channels : []
+				};
+				for (var i = 1; i<17; i++){
+					var m = 0;
+					if (document.getElementById("a" + i).checked) {m = 0x8;}
+					if (document.getElementById("b" + i).checked) {m = m | 0x4};
+					if (document.getElementById("c" + i).checked) {m = m | 0x2};
+					if (document.getElementById("d" + i).checked) {m = m | 0x1};
+					var pp = 0;
+					if (document.getElementById("p" + i).checked) {pp = 1;}
+					var vv = 0;
+					if (document.getElementById("v" + i).checked) {vv = 1;}
+					var channel = {
+						chan : i.toString(),
+						mask : "0x" + m.toString(16),
+						tran : document.getElementById("t" + i).value.toString(),
+						fine : document.getElementById("f" + i).value.toString(),
+						poly : pp.toString(),
+						velo : vv.toString()
+					};
+					response.channels.push(channel);
+				}
+				var responseString = JSON.stringify(response,undefined,2);
+				req = new XMLHttpRequest();
+				req.open("POST", "http://192.168.0.1/postsetupdata",true); 
+				req.setRequestHeader("Content-Length", responseString.length);
+			    req.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+				req.send(responseString);
 			} 	
 		}
 	</script>
