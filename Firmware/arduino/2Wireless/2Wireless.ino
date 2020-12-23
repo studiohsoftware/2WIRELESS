@@ -93,7 +93,8 @@ bool usbConnected = false; //Used to throttle activity on USB Host.
 
 uint8_t mask[16] = {0xF,0xF,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //Channels 1 and 2 all buses by default
 uint8_t tran[16] = {0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32}; //No tran default
-uint8_t fine[16] = {0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32}; //An default
+uint8_t fine[4] = {0x32,0x32,0x32,0x32}; //An default per bus
+uint8_t busMask[4] = {0x8,0x4,0x2,0x1}; //Mask for each bus used for fine tuning
 uint8_t poly[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //no poly by default
 uint32_t polyNotes[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //stores poly notes for note off events
 bool velo[16] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}; //use velocity by default
@@ -340,19 +341,23 @@ void initializeFram() {
     for (int i=0;i<16;i++){
       mask[i] = framRead(MIDI_CFG_MASK_ADDR + i);
       poly[i] = framRead(MIDI_CFG_POLY_ADDR + i);
-      fine[i] = framRead(MIDI_CFG_FINE_ADDR + i);
       tran[i] = framRead(MIDI_CFG_TRAN_ADDR + i);
       velo[i] = getVelo(i); //array of bool
     }  
+    for (int i=0;i<4;i++){
+      fine[i] = framRead(MIDI_CFG_FINE_ADDR + i);
+    }
   } else {
     //Write default values to fram.
     uint16_t velocity = 0x0;
     for (int i=0;i<16;i++){
       framWrite(MIDI_CFG_MASK_ADDR + i,mask[i]);
       framWrite(MIDI_CFG_POLY_ADDR + i,poly[i]);
-      framWrite(MIDI_CFG_FINE_ADDR + i,fine[i]);
       framWrite(MIDI_CFG_TRAN_ADDR + i,tran[i]);
       setVelo(i,velo[i]);
+    }
+    for (int i=0;i<4;i++){
+      framWrite(MIDI_CFG_FINE_ADDR + i,fine[i]);
     }
     setUsbMode(USB_MODE_DEVICE); 
     setCurrentPreset(1); //just to have something in there.
@@ -377,12 +382,12 @@ void setPoly(uint8_t chan, uint8_t val){
   }
 }
 
-void setFine(uint8_t chan, uint8_t val){
-  //Channel is 0-15
-  if (fine[chan] != val){
-    fine[chan] = val;
-    framWrite(MIDI_CFG_FINE_ADDR + chan,fine[chan]); 
-    sendMidiFineTune(mask[chan],fine[chan]);
+void setFine(uint8_t bus, uint8_t val){
+  //Bus is 0-3
+  if (fine[bus] != val){
+    fine[bus] = val;
+    framWrite(MIDI_CFG_FINE_ADDR + bus,fine[bus]); 
+    sendMidiFineTune(busMask[bus],fine[bus]);
   } 
 }
 
@@ -1358,24 +1363,28 @@ void handleWifiRequest(WiFiClient client, String urlString){
     int amploc = urlString.indexOf('&');
     int fine = (int)strtol(urlString.substring(eqloc + 1, amploc).c_str(), nullptr, 10);
     eqloc = urlString.indexOf('=',amploc);
-    int chan = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
-    if (chan < 1) chan = 1;
-    if (chan > 16) chan = 16;
-    chan = chan - 1;
+    String busName = urlString.substring(eqloc + 1, len);
+    uint8_t bus;
+    if (busName == "A") bus = 0;
+    if (busName == "B") bus = 1;
+    if (busName == "C") bus = 2;
+    if (busName == "D") bus = 3;
     //Fine is sent as 0x00-0x63 but displayed as -49 to 49 with 0 meaning An
     fine = fine + 0x32;
     if (fine < 0) fine = 0;
     if (fine > 99) fine = 99;
-    setFine(chan,fine);
+    setFine(bus,fine);
   } else if (urlString.indexOf("/fine") >= 0) {
     SerialDebug.println("getFine Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
-    int chan = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
-    if (chan < 1) chan = 1;
-    if (chan > 16) chan = 16;
-    chan = chan - 1;
-    String result = "{\"chan\": \"" + String(chan + 1,DEC) + "\",\"fine\": \"" + String(fine[chan] - 0x32,DEC) + "\"}";
+    String busName = urlString.substring(eqloc + 1, len);
+    uint8_t bus;
+    if (busName == "A") bus = 0;
+    if (busName == "B") bus = 1;
+    if (busName == "C") bus = 2;
+    if (busName == "D") bus = 3;
+    String result = "{\"bus\": \"" + busName + "\",\"fine\": \"" + String(fine[bus] - 0x32,DEC) + "\"}";
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
     client.println(result);
   } else if (urlString.indexOf("/poly=") >= 0) {
@@ -1506,6 +1515,24 @@ void handleWifiRequest(WiFiClient client, String urlString){
     result = result + "\"ssid\": \"" + ssid + "\"";
     result = result + ",\"password\": \"" + password + "\"";
     result = result + ",\"usbMode\": \"" + usbMode + "\"";
+    result = result + ",\"buses\":[";
+    result = result + "{";
+    result = result + "\"bus\": \"A\"";
+    result = result + ",\"fine\": \"" + String(fine[0] - 0x32,DEC) + "\"";
+    result = result + "}";
+    result = result + ",{";
+    result = result + "\"bus\": \"B\"";
+    result = result + ",\"fine\": \"" + String(fine[1] - 0x32,DEC) + "\"";
+    result = result + "}";
+    result = result + ",{";
+    result = result + "\"bus\": \"C\"";
+    result = result + ",\"fine\": \"" + String(fine[2] - 0x32,DEC) + "\"";
+    result = result + "}";
+    result = result + ",{";
+    result = result + "\"bus\": \"D\"";
+    result = result + ",\"fine\": \"" + String(fine[3] - 0x32,DEC) + "\"";
+    result = result + "}";
+    result = result + "]";
     result = result + ",\"channels\":[";
     String comma = "";
     for (int i=0; i<16; i++){
@@ -1513,7 +1540,6 @@ void handleWifiRequest(WiFiClient client, String urlString){
       result = result + "\"chan\": \"" + String(i+1,10)+ "\"";
       result = result + ",\"mask\": \"0x" + String(mask[i],HEX) + "\"";
       result = result + ",\"tran\": \"" + String(tran[i] - 0x32,DEC) + "\"";
-      result = result + ",\"fine\": \"" + String(fine[i] - 0x32,DEC) + "\"";
       result = result + ",\"poly\": \"" + String(!!poly[i],DEC) + "\"";
       result = result + ",\"velo\": \"" + String(velo[i],DEC) + "\"";
       result = result + "}";
@@ -1549,9 +1575,6 @@ void handleWifiRequest(WiFiClient client, String urlString){
         } else if (token->data ==  "tran") {
           getJsonToken(token, client);
           setTran(chan,0x32 + (int)strtol((token->data).c_str(), nullptr, 10)); 
-        } else if (token->data ==  "fine") {
-          getJsonToken(token, client);
-          setFine(chan,0x32 + (int)strtol((token->data).c_str(), nullptr, 10)); 
         } else if (token->data ==  "poly") {
           getJsonToken(token, client);
           setPoly(chan,(int)strtol((token->data).c_str(), nullptr, 10)); 

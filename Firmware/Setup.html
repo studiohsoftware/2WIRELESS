@@ -28,9 +28,15 @@
 				<th>C</th>
 				<th>D</th>
 				<th>Tran</th>
-				<th>Fine</th>
 				<th>Poly</th>
 				<th>Velo</th>				
+			</tr>
+		</table>
+		<hr>
+		<table id="BusTable" name="BusTable">
+			<tr>
+				<th>Bus</th>
+				<th>Fine</th>			
 			</tr>
 		</table>
 		<hr>
@@ -56,7 +62,46 @@
 		var pwd2 = document.getElementById("pass2");
 		var submit = document.getElementById("submit");
 		var errortext = document.getElementById("errortext");
+		var buses = [];
+		var bus = {
+			name: "A",
+			mask: "0x8"
+		};
+		buses.push(bus);
+		var bus = {
+			name: "B",
+			mask: "0x4"
+		};
+		buses.push(bus);
+		var bus = {
+			name: "C",
+			mask: "0x2"
+		};
+		buses.push(bus);
+		var bus = {
+			name: "D",
+			mask: "0x1"
+		};
+		buses.push(bus);
 		
+		var busTable = document.getElementById("BusTable");
+		for (var i = 1; i < 5; i++) {
+			var tr = document.createElement('tr');
+			var td1 = document.createElement('td');
+			var td2 = document.createElement('td');
+			var f = document.createElement('input');
+			f.type = 'number';
+			f.name = "f" + i;
+			f.id = "f" + i;
+			f.setAttribute('max','49');
+			f.setAttribute('min','-49');
+			td1.appendChild(document.createTextNode(buses[i - 1].name));
+			td2.appendChild(f);
+			tr.appendChild(td1);
+			tr.appendChild(td2);
+			busTable.appendChild(tr);
+		}
+
 		var table = document.getElementById("MidiTable");
 		for (var i = 1; i < 17; i++) {
 			var tr = document.createElement('tr');
@@ -68,7 +113,6 @@
 			var td6 = document.createElement('td');
 			var td7 = document.createElement('td');
 			var td8 = document.createElement('td');
-			var td9 = document.createElement('td');
 			var chan = document.createTextNode(i);
 			var a = document.createElement('input');
 			a.type = "checkbox";
@@ -92,12 +136,6 @@
 			t.id = "t" + i;
 			t.setAttribute('max','49');
 			t.setAttribute('min','-49');
-			var f = document.createElement('input');
-			f.type = 'number';
-			f.name = "f" + i;
-			f.id = "f" + i;
-			f.setAttribute('max','49');
-			f.setAttribute('min','-49');
 			var p = document.createElement('input');
 			p.type = "checkbox";
 			p.name = "p" + i;
@@ -112,9 +150,8 @@
 			td4.appendChild(c);
 			td5.appendChild(d);
 			td6.appendChild(t);
-			td7.appendChild(f);
-			td8.appendChild(p);
-			td9.appendChild(v);
+			td7.appendChild(p);
+			td8.appendChild(v);
 			tr.appendChild(td1);
 			tr.appendChild(td2);
 			tr.appendChild(td3);
@@ -123,7 +160,6 @@
 			tr.appendChild(td6);
 			tr.appendChild(td7);
 			tr.appendChild(td8);
-			tr.appendChild(td9);
 			table.appendChild(tr);
 		}
 		submit.onclick = submitOnClick;
@@ -145,7 +181,6 @@
 			document.getElementById("c" + k).checked = mask&0x2;
 			document.getElementById("d" + k).checked = mask&0x1;
 			document.getElementById("t" + k).value = parseInt(parsedJson.channels[i].tran);
-			document.getElementById("f" + k).value = parseInt(parsedJson.channels[i].fine);
 			document.getElementById("p" + k).checked = parseInt(parsedJson.channels[i].poly);
 			document.getElementById("v" + k).checked = parseInt(parsedJson.channels[i].velo);		
 		}
@@ -185,7 +220,6 @@
 						chan : i.toString(),
 						mask : "0x" + m.toString(16),
 						tran : document.getElementById("t" + i).value.toString(),
-						fine : document.getElementById("f" + i).value.toString(),
 						poly : pp.toString(),
 						velo : vv.toString()
 					};
