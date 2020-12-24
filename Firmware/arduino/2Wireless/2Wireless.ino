@@ -102,7 +102,7 @@ bool velo[16] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}; //use velocity by default
 bool v2version=false; //used to support pre PRIMO firmware.
 SPISettings spiSettings(12000000, MSBFIRST, SPI_MODE0); //MKR1000 max is 12MHz. FRAM chip max is 40MHz.
 String homepageString = "<html> <head> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> <style> .p { display: flex; flex-direction: column; background-color:lightgray; color:darkblue; font-family:Arial; font-weight:bold; letter-spacing: 2px; height: 218px; } .hf { font-size:12px; padding: 10px; border: 1px solid darkblue; } .r { font-style:italic; font-size:20px; padding: 10px; border-left: 1px solid darkblue; border-right: 1px solid darkblue; height: 50px; } .row { display: flex; flex-direction: row; justify-content: space-around; align-items: center; } .col { display: flex; flex-direction: column; justify-content: space-around; align-items: center; font-size:14px; } .screw { display: flex; justify-content: center; align-content: center; flex-direction: column; height: 18px; width: 18px; background-color: #999; border-radius: 50%; color: #444; font-size:30px; border: 1px solid black; } .b { border-radius: 50%; height:40px; width:40px; background-color: #777;  } .d { height: 50px; width: 225px; background-color: white; padding: 0px; margin: 0px; border: 1px solid black; } .dx { height: 50px; width: 200px; background-color: white; padding: 0px; margin: 0px; border: 0px; } .dc { font-family: Courier New; font-weight:bold; background-color: #cfc; height: 50px; border: 0px; } .hole { height: 10px; width: 10px; background-color: #000; border-radius: 50%; display: inline-block; } </style> </head> <body> <div class=\"p\"> <div class=\"hf row\"> <div class=\"screw\">+</div> <div>PRESET &nbsp; MANAGER</div> <div class=\"screw\">+</div> </div> <div class=\"r row\" style=\"border-bottom: 1px solid darkblue;\"> <div class=\"col\"> <button id=\"sB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"1\"></button> <div style=\"height:2\"></div> <div>store</div> </div> <div class=\"d row\"> <div class=\"dx col\" > <input id=\"current_preset\" class=\"dc\" style=\"width:21px;background-color: #afa;\" disabled> <input class=\"dc\" disabled style=\"width:21px;background-color: #afa;\"> </div> <div class=\"dx col\" > <input id=\"current_name\" class=\"dc\" maxlength=\"20\" tabindex=\"2\"> <input id=\"recall_name\" class=\"dc\" disabled style=\"background-color: #afa;\"> </div> <div class=\"dx col\" > <input class=\"dc\" disabled style=\"width:40px;background-color: #afa;\"> <input id=\"recall_preset\" class=\"dc\" style=\"width:40px;\" type=\"number\" min=\"1\" max=\"30\" tabindex=\"3\"> </div> </div> <div class=\"col\"> <button id=\"rB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"4\"></button> <div style=\"height:2\"></div> <div>recall</div> </div> </div> <div class=\"r row\"> <div class=\"row\" style=\"width:200px\"> <div class=\"col\"> <button id=\"lB\" type=\"button\" class=\"b\" tabindex=\"5\"></button> <div style=\"height:2\"></div> <div>last</div> </div> <div class=\"col\"> <button id=\"nB\" type=\"button\" class=\"b\" tabindex=\"6\"></button> <div style=\"height:2\"></div> <div>next</div> </div> </div> <div class=\"col\" style=\"align-items: flex-start;width:33%\"> <div class=\"row\" style=\"align-items: flex-start;\"> <input type=\"radio\" id=\"v3\" name=\"version\" value=\"v3\" tabindex=\"7\" hidden> <label for=\"v3\" hidden>primo</label> </div> <div class=\"row\" style=\"align-items: flex-start;\"> <input type=\"radio\" id=\"v2\" name=\"version\" value=\"v2\" tabindex=\"8\" hidden> <label for=\"v2\" hidden>v2    </label> </div> </div> <div class=\"col\" style=\"width:33%\"> <button id=\"remB\" type=\"button\" class=\"b\" tabindex=\"9\"></button> <div style=\"height:2\"></div> <div>remote</div> </div> </div> <div class=\"hf row\"> <div class=\"hole\"></div> <div>STUDIO H SOFTWARE</div> <div class=\"hole\"></div> </div> </div> </body> <script> var rem = true; var req; var c_pset = document.getElementById(\"current_preset\"); var r_pset = document.getElementById(\"recall_preset\"); var c_name = document.getElementById(\"current_name\"); var r_name = document.getElementById(\"recall_name\"); var names = []; r_pset.onchange = rOnChange; c_name.onchange = cnameOnChange; document.getElementById(\"sB\").onclick = sBOnClick; document.getElementById(\"rB\").onclick = rBOnClick; document.getElementById(\"lB\").onclick = lBOnClick; document.getElementById(\"nB\").onclick = nBOnClick; document.getElementById(\"remB\").onclick = remBOnClick; document.getElementById(\"v3\").checked = true;  for (var i=1; i<31; i++){ names[i]=readName(i); }  c_pset.value = readPreset(); cOnChange(); r_pset.value = c_pset.value; rOnChange();   function sBOnClick() { send(\"savepreset?preset=\" + r_pset.value); names[r_pset.value] = names[c_pset.value]; writeName(r_pset.value,names[r_pset.value]); rOnChange(); }  function rBOnClick() { if (c_pset.value != r_pset.value) { c_pset.value = r_pset.value; cOnChange(); } }  function lBOnClick() { var pset = c_pset.value; pset = pset - 1; if (pset < 1) { pset = pset + 30; } pset = pset % 31; c_pset.value = pset; r_pset.value = pset; cOnChange(); rOnChange(); } function nBOnClick() { var pset = c_pset.value; pset = pset % 30 + 1; c_pset.value = pset; r_pset.value = pset; cOnChange(); rOnChange(); } function remBOnClick() { rem = !rem; if (rem){ send(\"remoteenable\"); } else { send(\"remotedisable\"); } }  function cOnChange(){ c_name.value = names[c_pset.value]; send(\"recallpreset?preset=\" + c_pset.value); }  function rOnChange(){ r_name.value = names[r_pset.value]; }  function cnameOnChange(){ names[c_pset.value] = c_name.value; writeName(c_pset.value,names[c_pset.value]); rOnChange(); }  function send(url) { var version = \"\"; if (document.getElementById('v2').checked) { version = \"v2/\"; } req = new XMLHttpRequest(); req.open(\"GET\", \"http://192.168.0.1/\" + version + url,false); req.send(null); }  function readPreset(){ send(\"currentpreset\"); return(parseInt(JSON.parse(req.responseText).currentpreset)); }  function readName(pset){ send(\"presetname?preset=\" + pset.toString()); var result = JSON.parse(req.responseText).presetname; if (result == undefined) result = \"\"; return(result); }  function writeName(pset,name){ send(\"presetname=\" + name + \"&preset=\" + pset.toString()); } </script> </html>";
-String setupPageString = "<html> <head> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> </head> <style> table,th,td  { border:1px solid black; border-collapse: collapse; } th,td { padding: 1px; } input[type=number] { width: 45px; } </style> <body> <div style=\"display: flex;justify-content: space-between; max-width:290px\"> <label style=\"font-weight:bold;font-size:24px;\">Setup Page</label> <input type=\"button\" id=\"submit\" value=\"Submit\"> </div> <hr> <table id=\"MidiTable\" name=\"MidiTable\"> <tr> <th>Chan</th> <th>A</th> <th>B</th> <th>C</th> <th>D</th> <th>Tran</th> <th>Fine</th> <th>Poly</th> <th>Velo</th> </tr> </table> <hr> <label for=\"Device\"> <input type=\"radio\" id=\"Device\" name=\"usb\" value=\"1\">USB Device</label> <label for=\"Host\"> <input type=\"radio\" id=\"Host\" name=\"usb\" value=\"0\">USB Host</label> <hr> <label for=\"ssid\">SSID:</label></br> <input type=\"text\" id=\"ssid\" name=\"ssid\" maxlength=\"32\" style=\"width:250;\"><br> <hr> <label for=\"pass\">Password (eight characters minimum):</label></br> <input type=\"text\" id=\"pass\" name=\"pass\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"pass2\">Re-enter Password:</label></br> <input type=\"text\" id=\"pass2\" name=\"pass2\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"submit\" id=\"errortext\" style=\"color:red;\"></label> <hr> </body> <script> var req = new XMLHttpRequest(); var s = document.getElementById(\"ssid\"); var pwd = document.getElementById(\"pass\"); var pwd2 = document.getElementById(\"pass2\"); var submit = document.getElementById(\"submit\"); var errortext = document.getElementById(\"errortext\");  var table = document.getElementById(\"MidiTable\"); for (var i = 1; i < 17; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var td3 = document.createElement('td'); var td4 = document.createElement('td'); var td5 = document.createElement('td'); var td6 = document.createElement('td'); var td7 = document.createElement('td'); var td8 = document.createElement('td'); var td9 = document.createElement('td'); var chan = document.createTextNode(i); var a = document.createElement('input'); a.type = \"checkbox\"; a.name = \"a\" + i; a.id = \"a\" + i; var b = document.createElement('input'); b.type = \"checkbox\"; b.name = \"b\" + i; b.id = \"b\" + i; var c = document.createElement('input'); c.type = \"checkbox\"; c.name = \"c\" + i; c.id = \"c\" + i; var d = document.createElement('input'); d.type = \"checkbox\"; d.name = \"d\" + i; d.id = \"d\" + i; var t = document.createElement('input'); t.type = 'number'; t.name = \"t\" + i; t.id = \"t\" + i; t.setAttribute('max','49'); t.setAttribute('min','-49'); var f = document.createElement('input'); f.type = 'number'; f.name = \"f\" + i; f.id = \"f\" + i; f.setAttribute('max','49'); f.setAttribute('min','-49'); var p = document.createElement('input'); p.type = \"checkbox\"; p.name = \"p\" + i; p.id = \"p\" + i; var v = document.createElement('input'); v.type = \"checkbox\"; v.name = \"v\" + i; v.id = \"v\" + i; td1.appendChild(chan); td2.appendChild(a); td3.appendChild(b); td4.appendChild(c); td5.appendChild(d); td6.appendChild(t); td7.appendChild(f); td8.appendChild(p); td9.appendChild(v); tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6); tr.appendChild(td7); tr.appendChild(td8); tr.appendChild(td9); table.appendChild(tr); } submit.onclick = submitOnClick; send('getsetupdata','GET',null); var parsedJson = JSON.parse(req.responseText); s.value = parsedJson.ssid; pwd.value = parsedJson.password; pwd2.value = pwd.value; if (parseInt(parsedJson.usbMode)==1){ document.getElementById(\"Device\").checked = true; } else { document.getElementById(\"Host\").checked = true; } for (var i=0; i < 16; i++){ k = i + 1; var mask = parseInt(parsedJson.channels[i].mask); document.getElementById(\"a\" + k).checked = mask&0x8; document.getElementById(\"b\" + k).checked = mask&0x4; document.getElementById(\"c\" + k).checked = mask&0x2; document.getElementById(\"d\" + k).checked = mask&0x1; document.getElementById(\"t\" + k).value = parseInt(parsedJson.channels[i].tran); document.getElementById(\"f\" + k).value = parseInt(parsedJson.channels[i].fine); document.getElementById(\"p\" + k).checked = parseInt(parsedJson.channels[i].poly); document.getElementById(\"v\" + k).checked = parseInt(parsedJson.channels[i].velo); } function send(url,method,content) { req.open(method, \"http://192.168.0.1/\" + url,false); req.send(content); }  function submitOnClick(){  if (pwd.value != pwd2.value) { errortext.innerHTML = \"Passwords do not match.\"; } else if ((pwd.value.length < 8) || (pwd2.value.length < 8)){ errortext.innerHTML = \"Password too short.\"; } else { var usb = \"0\"; if (document.getElementById(\"Device\").checked) { usb = \"1\"; } errortext.innerHTML = \"\"; var response = { ssid : s.value, password : pwd.value, usbMode : usb, channels : [] }; for (var i = 1; i<17; i++){ var m = 0; if (document.getElementById(\"a\" + i).checked) {m = 0x8;} if (document.getElementById(\"b\" + i).checked) {m = m | 0x4}; if (document.getElementById(\"c\" + i).checked) {m = m | 0x2}; if (document.getElementById(\"d\" + i).checked) {m = m | 0x1}; var pp = 0; if (document.getElementById(\"p\" + i).checked) {pp = 1;} var vv = 0; if (document.getElementById(\"v\" + i).checked) {vv = 1;} var channel = { chan : i.toString(), mask : \"0x\" + m.toString(16), tran : document.getElementById(\"t\" + i).value.toString(), fine : document.getElementById(\"f\" + i).value.toString(), poly : pp.toString(), velo : vv.toString() }; response.channels.push(channel); } var responseString = JSON.stringify(response,undefined,2); req = new XMLHttpRequest(); req.open(\"POST\", \"http://192.168.0.1/postsetupdata\",true); req.setRequestHeader(\"Content-Length\", responseString.length); req.setRequestHeader(\"Content-Type\", \"application/x-www-form-urlencoded\"); req.send(responseString); } } </script> </html>";
+String setupPageString = "<html> <head> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> </head> <style> table,th,td  { border:1px solid black; border-collapse: collapse; } th,td { padding: 1px; } input[type=number] { width: 45px; } </style> <body> <div style=\"display: flex;justify-content: space-between; max-width:245px\"> <label style=\"font-weight:bold;font-size:24px;\">Setup Page</label> <input type=\"button\" id=\"submit\" value=\"Submit\"> </div> <hr> <table id=\"MidiTable\" name=\"MidiTable\"> <tr> <th>Chan</th> <th>A</th> <th>B</th> <th>C</th> <th>D</th> <th>Tran</th> <th>Poly</th> <th>Velo</th> </tr> </table> <hr> <table id=\"BusTable\" name=\"BusTable\"> <tr> <th>Bus</th> <th>Fine</th> </tr> </table> <hr> <label for=\"Device\"> <input type=\"radio\" id=\"Device\" name=\"usb\" value=\"1\">USB Device</label> <label for=\"Host\"> <input type=\"radio\" id=\"Host\" name=\"usb\" value=\"0\">USB Host</label> <hr> <label for=\"ssid\">SSID:</label></br> <input type=\"text\" id=\"ssid\" name=\"ssid\" maxlength=\"32\" style=\"width:250;\"><br> <hr> <label for=\"pass\">Password (eight characters minimum):</label></br> <input type=\"text\" id=\"pass\" name=\"pass\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"pass2\">Re-enter Password:</label></br> <input type=\"text\" id=\"pass2\" name=\"pass2\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"submit\" id=\"errortext\" style=\"color:red;\"></label> <hr> </body> <script> var req = new XMLHttpRequest(); var s = document.getElementById(\"ssid\"); var pwd = document.getElementById(\"pass\"); var pwd2 = document.getElementById(\"pass2\"); var submit = document.getElementById(\"submit\"); var errortext = document.getElementById(\"errortext\"); var busNames = [\"A\",\"B\",\"C\",\"D\"];  var busTable = document.getElementById(\"BusTable\"); for (var i = 0; i < 4; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var f = document.createElement('input'); f.type = 'number'; f.name = \"f\" + i; f.id = \"f\" + i; f.setAttribute('max','49'); f.setAttribute('min','-49'); td1.appendChild(document.createTextNode(busNames[i])); td2.appendChild(f); tr.appendChild(td1); tr.appendChild(td2); busTable.appendChild(tr); } var fineA = document.getElementById(\"f0\"); var fineB = document.getElementById(\"f1\"); var fineC = document.getElementById(\"f2\"); var fineD = document.getElementById(\"f3\");  var table = document.getElementById(\"MidiTable\"); for (var i = 1; i < 17; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var td3 = document.createElement('td'); var td4 = document.createElement('td'); var td5 = document.createElement('td'); var td6 = document.createElement('td'); var td7 = document.createElement('td'); var td8 = document.createElement('td'); var chan = document.createTextNode(i); var a = document.createElement('input'); a.type = \"checkbox\"; a.name = \"a\" + i; a.id = \"a\" + i; var b = document.createElement('input'); b.type = \"checkbox\"; b.name = \"b\" + i; b.id = \"b\" + i; var c = document.createElement('input'); c.type = \"checkbox\"; c.name = \"c\" + i; c.id = \"c\" + i; var d = document.createElement('input'); d.type = \"checkbox\"; d.name = \"d\" + i; d.id = \"d\" + i; var t = document.createElement('input'); t.type = 'number'; t.name = \"t\" + i; t.id = \"t\" + i; t.setAttribute('max','49'); t.setAttribute('min','-49'); var p = document.createElement('input'); p.type = \"checkbox\"; p.name = \"p\" + i; p.id = \"p\" + i; var v = document.createElement('input'); v.type = \"checkbox\"; v.name = \"v\" + i; v.id = \"v\" + i; td1.appendChild(chan); td2.appendChild(a); td3.appendChild(b); td4.appendChild(c); td5.appendChild(d); td6.appendChild(t); td7.appendChild(p); td8.appendChild(v); tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6); tr.appendChild(td7); tr.appendChild(td8); table.appendChild(tr); } submit.onclick = submitOnClick; send('getsetupdata','GET',null); var parsedJson = JSON.parse(req.responseText); s.value = parsedJson.ssid; pwd.value = parsedJson.password; pwd2.value = pwd.value; if (parseInt(parsedJson.usbMode)==1){ document.getElementById(\"Device\").checked = true; } else { document.getElementById(\"Host\").checked = true; } for (var i=0; i < 4; i++){ document.getElementById(\"f\" + i).value = parseInt(parsedJson.buses[i].fine); } for (var i=0; i < 16; i++){ k = i + 1; var mask = parseInt(parsedJson.channels[i].mask); document.getElementById(\"a\" + k).checked = mask&0x8; document.getElementById(\"b\" + k).checked = mask&0x4; document.getElementById(\"c\" + k).checked = mask&0x2; document.getElementById(\"d\" + k).checked = mask&0x1; document.getElementById(\"t\" + k).value = parseInt(parsedJson.channels[i].tran); document.getElementById(\"p\" + k).checked = parseInt(parsedJson.channels[i].poly); document.getElementById(\"v\" + k).checked = parseInt(parsedJson.channels[i].velo); } function send(url,method,content) { req.open(method, \"http://192.168.0.1/\" + url,false); req.send(content); }  function submitOnClick(){ if (pwd.value != pwd2.value) { errortext.innerHTML = \"Passwords do not match.\"; } else if ((pwd.value.length < 8) || (pwd2.value.length < 8)){ errortext.innerHTML = \"Password too short.\"; } else { var usb = \"0\"; if (document.getElementById(\"Device\").checked) { usb = \"1\"; } errortext.innerHTML = \"\"; var response = { ssid : s.value, password : pwd.value, usbMode : usb, buses : [], channels : [] }; var busA = { bus: \"A\", fine: fineA.value.toString() }; response.buses.push(busA); var busB = { bus: \"B\", fine: fineB.value.toString() }; response.buses.push(busB); var busC = { bus: \"C\", fine: fineC.value.toString() }; response.buses.push(busC); var busD = { bus: \"D\", fine: fineD.value.toString() }; response.buses.push(busD);  for (var i = 1; i<17; i++){ var m = 0; if (document.getElementById(\"a\" + i).checked) {m = 0x8;} if (document.getElementById(\"b\" + i).checked) {m = m | 0x4}; if (document.getElementById(\"c\" + i).checked) {m = m | 0x2}; if (document.getElementById(\"d\" + i).checked) {m = m | 0x1}; var pp = 0; if (document.getElementById(\"p\" + i).checked) {pp = 1;} var vv = 0; if (document.getElementById(\"v\" + i).checked) {vv = 1;} var channel = { chan : i.toString(), mask : \"0x\" + m.toString(16), tran : document.getElementById(\"t\" + i).value.toString(), poly : pp.toString(), velo : vv.toString() }; response.channels.push(channel); } var responseString = JSON.stringify(response,undefined,2); req = new XMLHttpRequest(); req.open(\"POST\", \"http://192.168.0.1/postsetupdata\",true); req.setRequestHeader(\"Content-Length\", responseString.length); req.setRequestHeader(\"Content-Type\", \"application/x-www-form-urlencoded\"); req.send(responseString); } }  </script> </html>";
 
 char ssid[33];        // your network SSID (name) max 32 characters plus termination
 char pass[64];    // your network password for WPA. Max is 63 plus termination
@@ -125,12 +125,12 @@ void setup() {
 
   
   //Initialize serial and wait for port to open:
-  SerialDebug.begin(115200);
-  SerialDebug.println("Access Point Web Server");
+  //SerialDebug.begin(115200);
+  //SerialDebug.println("Access Point Web Server");
 
   // check for the presence of the shield:
   if (WiFi.status() == WL_NO_SHIELD) {
-    SerialDebug.println("WiFi shield not present");
+    //SerialDebug.println("WiFi shield not present");
     // don't continue
     while (true);
   }
@@ -148,8 +148,8 @@ void setup() {
   strcpy(pass,getPassword().c_str());
 
   // print the network name (SSID);
-  SerialDebug.print("Creating access point named: ");
-  SerialDebug.println(ssid);
+  //SerialDebug.print("Creating access point named: ");
+  //SerialDebug.println(ssid);
 
   // Create open network. Change this line if you want to create an WEP network:
   //2WIRELESS added pass
@@ -160,7 +160,7 @@ void setup() {
   }
   
   if (status != WL_AP_LISTENING) {
-    SerialDebug.println("Creating access point failed");
+    //SerialDebug.println("Creating access point failed");
     // don't continue
     while (true);
   }
@@ -177,12 +177,12 @@ void setup() {
   isUsbDevice = (getUsbMode() && USB_MODE_DEVICE);
 
   if (isUsbDevice) {
-    SerialDebug.println("Configuring as USB Device");
+    //SerialDebug.println("Configuring as USB Device");
     MidiUSB.attachInterrupt(onMidiUsbDeviceEvent); //Needed to turn off SOF interrupts in USBCore.cpp
   } else {
-    SerialDebug.println("Configuring as USB Host");
+    //SerialDebug.println("Configuring as USB Host");
     if (UsbH.Init()) {
-      SerialDebug.println("USB host did not start");
+      //SerialDebug.println("USB host did not start");
       while (1); //halt
     }
     //USB_SetHandler(&CUSTOM_UHD_Handler);
@@ -199,31 +199,31 @@ void loop() {
     if (status == WL_AP_CONNECTED) {
       byte remoteMac[6];
       // a device has connected to the AP
-      SerialDebug.print("Device connected to AP, MAC address: ");
+      //SerialDebug.print("Device connected to AP, MAC address: ");
       WiFi.APClientMacAddress(remoteMac);
       printMacAddress(remoteMac);
     } else {
       // a device has disconnected from the AP, and we are back in listening mode
-      SerialDebug.println("Device disconnected from AP");
+      //SerialDebug.println("Device disconnected from AP");
     }
   }
  
   WiFiClient client = server.available();   // listen for incoming clients
 
   if (client) {                             // if you get a client,
-    SerialDebug.println("new client");           // print a message out the serial port
+    //SerialDebug.println("new client");           // print a message out the serial port
     String currentLine = "";                // make a String to hold incoming data from the client
     String urlString = "";                  // string to hold the request URL
     while (client.connected()) {            // loop while the client's connected
       if (client.available()) {             // if there's bytes to read from the client,
         char c = client.read();             // read a byte, then
-        SerialDebug.write(c);                    // print it out the serial monitor
+        //SerialDebug.write(c);                    // print it out the serial monitor
         if (c == '\n') {                    // if the byte is a newline character
           // if the current line is blank, you got two newline characters in a row.
           // that's the end of the client HTTP request, so send a response:
           if (currentLine.length() == 0) {
-            SerialDebug.println(""); 
-            SerialDebug.println("URL is: " + urlString);
+            //SerialDebug.println(""); 
+            //SerialDebug.println("URL is: " + urlString);
             handleWifiRequest(client, urlString);
             // break out of the while loop:
             break;
@@ -244,7 +244,7 @@ void loop() {
     // close the connection:
     client.stop();
     delayMicroseconds(1000); //stablizes when load is heavy
-    SerialDebug.println("client disconnected");
+    //SerialDebug.println("client disconnected");
   }
   pollUsbMidi(isUsbDevice);
   digitalWrite(LED_BUILTIN, LOW); //used to show i2c activity
@@ -384,11 +384,10 @@ void setPoly(uint8_t chan, uint8_t val){
 
 void setFine(uint8_t bus, uint8_t val){
   //Bus is 0-3
-  if (fine[bus] != val){
-    fine[bus] = val;
-    framWrite(MIDI_CFG_FINE_ADDR + bus,fine[bus]); 
-    sendMidiFineTune(busMask[bus],fine[bus]);
-  } 
+  //Always send so that setup Submit after boot works
+  fine[bus] = val;
+  framWrite(MIDI_CFG_FINE_ADDR + bus,fine[bus]); 
+  sendMidiFineTune(busMask[bus],fine[bus]);
 }
 
 void setTran(uint8_t chan, uint8_t val){
@@ -531,7 +530,7 @@ void setPassword(String password){
 }
 
 void receiveEvent(int howMany) {
-    SerialDebug.println("receiveEvent");
+    //SerialDebug.println("receiveEvent");
     if (write_i2c_to_fram) {
       while (Wire.available() > 0) { 
         uint8_t data = Wire.read();
@@ -548,7 +547,7 @@ void requestEvent() {
     //The number of bytes requested varies by module. 292e requests 8 bytes per preset, and 291e
     //requests 253 bytes per preset. 251e is over 2k. When the module is done reading, it issues
     //a STOP and this handler will not be called until the next time a restore is requested.
-    SerialDebug.println("requestEvent");
+    //SerialDebug.println("requestEvent");
     if (Wire.available() > 0){
         //This is the first read following address write from the module.
         //The master wrote two or three bytes for the memory address, and we now retrieve it
@@ -654,8 +653,8 @@ void sendSavePreset(byte preset) {
 }
 
 void sendRecallPreset(byte preset) {
-    SerialDebug.print("Recall preset:");
-    SerialDebug.println(preset,HEX);
+    //SerialDebug.print("Recall preset:");
+    //SerialDebug.println(preset,HEX);
     //Recall Preset
     //Preset sent on bus as 0-29
     setCurrentPreset(preset + 1); //Track current preset number (1-30)
@@ -851,6 +850,11 @@ void sendMidiFineTune(byte mask, byte tune){
     mask = mask & 0xf;
     if (mask == 0) return;
     switchToMaster();
+    //SerialDebug.print("Sending Fine Tune. Mask=");
+    //SerialDebug.print(mask,HEX);
+    //SerialDebug.print(" Tune=");
+    //SerialDebug.println(tune,HEX);
+    
     Wire.beginTransmission(0);
     if (v2version) {
         Wire.write(0xB0 | mask);
@@ -962,36 +966,36 @@ void writeHeader(WiFiClient client, String statusString, String contentType, int
 
 void printWiFiStatus() {
   // print the SSID of the network you're attached to:
-  SerialDebug.print("SSID: ");
-  SerialDebug.println(WiFi.SSID());
+  //SerialDebug.print("SSID: ");
+  //SerialDebug.println(WiFi.SSID());
 
   // print your WiFi shield's IP address:
   IPAddress ip = WiFi.localIP();
-  SerialDebug.print("IP Address: ");
-  SerialDebug.println(ip);
+  //SerialDebug.print("IP Address: ");
+  //SerialDebug.println(ip);
 
   // print the received signal strength:
   long rssi = WiFi.RSSI();
-  SerialDebug.print("signal strength (RSSI):");
-  SerialDebug.print(rssi);
-  SerialDebug.println(" dBm");
+  //SerialDebug.print("signal strength (RSSI):");
+  //SerialDebug.print(rssi);
+  //SerialDebug.println(" dBm");
   // print where to go in a browser:
-  SerialDebug.print("To see this page in action, open a browser to http://");
-  SerialDebug.println(ip);
+  //SerialDebug.print("To see this page in action, open a browser to http://");
+  //SerialDebug.println(ip);
 
 }
 
 void printMacAddress(byte mac[]) {
   for (int i = 5; i >= 0; i--) {
     if (mac[i] < 16) {
-      SerialDebug.print("0");
+      //SerialDebug.print("0");
     }
-    SerialDebug.print(mac[i], HEX);
+    //SerialDebug.print(mac[i], HEX);
     if (i > 0) {
-      SerialDebug.print(":");
+      //SerialDebug.print(":");
     }
   }
-  SerialDebug.println();
+  //SerialDebug.println();
 }
 
 void handleWifiRequest(WiFiClient client, String urlString){
@@ -1007,41 +1011,41 @@ void handleWifiRequest(WiFiClient client, String urlString){
   } 
   if (urlString.indexOf("/remoteenable") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-    SerialDebug.println("Remote Enable Received"); 
+    //SerialDebug.println("Remote Enable Received"); 
     sendRemoteEnable();
   } 
   else if (urlString.indexOf("/remotedisable") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-    SerialDebug.println("Remote Disable Received"); 
+    //SerialDebug.println("Remote Disable Received"); 
     sendRemoteDisable();
   } 
   else if (urlString.indexOf("/savepreset?preset") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-    SerialDebug.println("Save Preset Received"); 
+    //SerialDebug.println("Save Preset Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
     if ((preset >=1) && (preset <=30)) {
         preset = preset - 1; //0-29 internally.
-        SerialDebug.println(preset);
+        //SerialDebug.println(preset);
         sendSavePreset(preset);
     }
   }
   else if (urlString.indexOf("/recallpreset?preset") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-    SerialDebug.println("Recall Preset Received"); 
+    //SerialDebug.println("Recall Preset Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
     if ((preset >=1) && (preset <=30)) {
         preset = preset - 1; //0-29 internally.
-        SerialDebug.println(preset);
+        //SerialDebug.println(preset);
         sendRecallPreset(preset);
     }
   }
   else if (urlString.indexOf("/midinoteon?chan") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-    SerialDebug.println("MIDI Note On Received"); 
+    //SerialDebug.println("MIDI Note On Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int amploc = urlString.indexOf('&');
@@ -1056,13 +1060,13 @@ void handleWifiRequest(WiFiClient client, String urlString){
     if (chan > 15) chan = 15;
     note = note & 0x7F;
     velo = velo & 0x7F;
-    SerialDebug.println(note,HEX);
-    SerialDebug.println(velo,HEX);
+    //SerialDebug.println(note,HEX);
+    //SerialDebug.println(velo,HEX);
     processMidiNoteOn(chan, note, velo);
   }
   else if (urlString.indexOf("/midinoteoff?chan") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-    SerialDebug.println("MIDI Note Off Received");         
+    //SerialDebug.println("MIDI Note Off Received");         
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int amploc = urlString.indexOf('&');
@@ -1077,28 +1081,28 @@ void handleWifiRequest(WiFiClient client, String urlString){
     if (chan > 15) chan = 15;
     note = note & 0x7F;
     velo = velo & 0x7F;
-    SerialDebug.println(note);
-    SerialDebug.println(velo);
+    //SerialDebug.println(note);
+    //SerialDebug.println(velo);
     processMidiNoteOff(chan, note, velo);
   }
   else if (urlString.indexOf("/midiclockstart") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-    SerialDebug.println("MIDI Clock Start Received"); 
+    //SerialDebug.println("MIDI Clock Start Received"); 
     sendMidiClockStart();
   }
   else if (urlString.indexOf("/midiclockstop") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-    SerialDebug.println("MIDI Clock Stop Received");              
+    //SerialDebug.println("MIDI Clock Stop Received");              
     sendMidiClockStop();
   }
   else if (urlString.indexOf("/midiclock") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-    SerialDebug.println("MIDI Clock Received"); 
+    //SerialDebug.println("MIDI Clock Received"); 
     sendMidiClock();
   }
   else if (urlString.indexOf("/midifinetune?chan") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-    SerialDebug.println("MIDI Fine Tune Received"); 
+    //SerialDebug.println("MIDI Fine Tune Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int amploc = urlString.indexOf('&');
@@ -1109,13 +1113,13 @@ void handleWifiRequest(WiFiClient client, String urlString){
     if (chan < 1) chan = 1;
     int m = mask[chan - 1];
     tune = tune & 0x3F; //max value is 63 decimal.
-    SerialDebug.println(m);
-    SerialDebug.println(tune);
+    //SerialDebug.println(m);
+    //SerialDebug.println(tune);
     sendMidiFineTune(m,tune);
   }
   else if (urlString.indexOf("/midibend?chan") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-    SerialDebug.println("MIDI Bend Received"); 
+    //SerialDebug.println("MIDI Bend Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int amploc = urlString.indexOf('&');
@@ -1130,13 +1134,13 @@ void handleWifiRequest(WiFiClient client, String urlString){
     int m = mask[chan - 1];
     bend_lsb = bend_lsb & 0x7F; //max value is 7F.
     bend_msb = bend_msb & 0x7F; //max value is 7F.
-    SerialDebug.println(m);
-    SerialDebug.println(bend_lsb);
-    SerialDebug.println(bend_msb);
+    //SerialDebug.println(m);
+    //SerialDebug.println(bend_lsb);
+    //SerialDebug.println(bend_msb);
     sendMidiBend(m,bend_lsb,bend_msb);
   } else if (urlString.indexOf("/sendmidibytes") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-    SerialDebug.println("MIDI Bytes Received"); 
+    //SerialDebug.println("MIDI Bytes Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int amploc = urlString.indexOf('&');
@@ -1151,14 +1155,14 @@ void handleWifiRequest(WiFiClient client, String urlString){
     midiMessage.byte1 = byte1 & 0xFF;
     midiMessage.byte2 = byte2 & 0x7F;
     midiMessage.byte3 = byte3 & 0x7F;
-    SerialDebug.println(midiMessage.byte1,HEX);
-    SerialDebug.println(midiMessage.byte2,HEX);
-    SerialDebug.println(midiMessage.byte3,HEX);
+    //SerialDebug.println(midiMessage.byte1,HEX);
+    //SerialDebug.println(midiMessage.byte2,HEX);
+    //SerialDebug.println(midiMessage.byte3,HEX);
     processMidiMessage(midiMessage);
   }
   else if (urlString.indexOf("/getpresets?addr") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/json",-1); //-1 is chunked encoding
-    SerialDebug.println("Get Presets Received"); 
+    //SerialDebug.println("Get Presets Received"); 
     //Parse module address and optional length parameter (number of bytes in each line of the result data).
     int len = urlString.indexOf(" HTTP");
     int amploc = urlString.indexOf('&');
@@ -1169,7 +1173,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     if (eqloc > -1) {
         line_length = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
     }
-    SerialDebug.println(address,HEX);
+    //SerialDebug.println(address,HEX);
     write_i2c_to_fram = true; //Cache incoming i2c to FRAM 
     sendBackupPresets(address); 
     bool done = false;
@@ -1216,7 +1220,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     write_i2c_to_fram = false; //Stop Caching incoming i2c to FRAM 
   } else if (urlString.indexOf("/setpresets?addr") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-    SerialDebug.println("Set Presets Received"); 
+    //SerialDebug.println("Set Presets Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int module_address = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 16);
@@ -1228,7 +1232,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     }
   } else if (urlString.indexOf("/readmemory?addr") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",-1); //-1 means chunked
-    SerialDebug.println("Read Memory Received"); 
+    //SerialDebug.println("Read Memory Received"); 
     //cb(cbArg, 0, 200, "application/json", nullptr);
     int len = urlString.indexOf(" HTTP");
     int amploc = urlString.indexOf('&');
@@ -1266,7 +1270,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     client.println();
   } else if (urlString.indexOf("/writememory?addr") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-    SerialDebug.println("Write Memory Received"); 
+    //SerialDebug.println("Write Memory Received"); 
     int len = urlString.indexOf(" HTTP");
     int amploc = urlString.indexOf('&');
     if (amploc==-1) amploc=len;
@@ -1280,7 +1284,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     framWriteHexString(addr,data_string);
   } else if (urlString.indexOf("/writememory") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-    SerialDebug.println("Write Memory Received");              
+    //SerialDebug.println("Write Memory Received");              
     fram_address = 0;
     JsonToken* token = new JsonToken();
     getJsonToken(token, client);
@@ -1303,7 +1307,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     } 
     delete token;
   } else if (urlString.indexOf("/velo=") >= 0) {
-    SerialDebug.println("setVelo Received"); 
+    //SerialDebug.println("setVelo Received"); 
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
@@ -1317,7 +1321,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     velo = !!velo; //always save as 1 or 0 enable/disable
     setVelo(chan,velo);
   } else if (urlString.indexOf("/velo") >= 0) {
-    SerialDebug.println("getVelo Received"); 
+    //SerialDebug.println("getVelo Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int chan = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
@@ -1328,7 +1332,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
     client.println(result);
   } else if (urlString.indexOf("/tran=") >= 0) {
-    SerialDebug.println("setTran Received"); 
+    //SerialDebug.println("setTran Received"); 
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
@@ -1345,7 +1349,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     if (tran > 99) tran = 99;
     setTran(chan,tran);
   } else if (urlString.indexOf("/tran") >= 0) {
-    SerialDebug.println("getTran Received"); 
+    //SerialDebug.println("getTran Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int chan = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
@@ -1356,7 +1360,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
     client.println(result);
   } else if (urlString.indexOf("/fine=") >= 0) {
-    SerialDebug.println("setFine Received"); 
+    //SerialDebug.println("setFine Received"); 
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
@@ -1375,7 +1379,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     if (fine > 99) fine = 99;
     setFine(bus,fine);
   } else if (urlString.indexOf("/fine") >= 0) {
-    SerialDebug.println("getFine Received"); 
+    //SerialDebug.println("getFine Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     String busName = urlString.substring(eqloc + 1, len);
@@ -1388,7 +1392,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
     client.println(result);
   } else if (urlString.indexOf("/poly=") >= 0) {
-    SerialDebug.println("setPoly Received"); 
+    //SerialDebug.println("setPoly Received"); 
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
@@ -1402,7 +1406,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     poly = !!poly; //always save as 1 or 0 although later it will store active poly bus ABC or D
     setPoly(chan,poly);
   } else if (urlString.indexOf("/poly") >= 0) {
-    SerialDebug.println("getPoly Received"); 
+    //SerialDebug.println("getPoly Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int chan = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
@@ -1413,7 +1417,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
     client.println(result);
   } else if (urlString.indexOf("/mask=") >= 0) {
-    SerialDebug.println("setMask Received"); 
+    //SerialDebug.println("setMask Received"); 
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
@@ -1427,7 +1431,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     mask = mask & 0xF;
     setMask(chan,mask);
   } else if (urlString.indexOf("/mask") >= 0) {
-    SerialDebug.println("getMask Received"); 
+    //SerialDebug.println("getMask Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int chan = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
@@ -1438,13 +1442,13 @@ void handleWifiRequest(WiFiClient client, String urlString){
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
     client.println(result);
   } else if (urlString.indexOf("/currentpreset") >= 0) {
-    SerialDebug.println("getCurrentPreset Received"); 
+    //SerialDebug.println("getCurrentPreset Received"); 
     int preset = getCurrentPreset();
     String result = "{\"currentpreset\": \"" + String(preset,DEC) + "\"}";
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
     client.println(result);
   } else if (urlString.indexOf("/presetname=") >= 0) {
-    SerialDebug.println("setPresetName Received"); 
+    //SerialDebug.println("setPresetName Received"); 
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
@@ -1456,7 +1460,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     if (preset > 30) preset = 30;
     setPresetName(preset,pname);
   } else if (urlString.indexOf("/presetname") >= 0) {
-    SerialDebug.println("getPresetName Received"); 
+    //SerialDebug.println("getPresetName Received"); 
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
@@ -1467,7 +1471,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
     client.println(result);
   } else if (urlString.indexOf("/usbmode=") >= 0) {
-    SerialDebug.println("setUsbMode Received"); 
+    //SerialDebug.println("setUsbMode Received"); 
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
@@ -1475,39 +1479,39 @@ void handleWifiRequest(WiFiClient client, String urlString){
     mode = !!mode;
     setUsbMode(mode);
   } else if (urlString.indexOf("/usbMode") >= 0) {
-    SerialDebug.println("getSSID Received"); 
+    //SerialDebug.println("getSSID Received"); 
     uint8_t mode = getUsbMode();
     String result = "{\"usbMode\": \"" + String(!!mode,DEC) + "\"}";
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
     client.println(result);
   } else if (urlString.indexOf("/ssid=") >= 0) {
-    SerialDebug.println("setSSID Received"); 
+    //SerialDebug.println("setSSID Received"); 
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     String ssid = urlString.substring(eqloc + 1, len);
     setSSID(ssid);
   } else if (urlString.indexOf("/ssid") >= 0) {
-    SerialDebug.println("getSSID Received"); 
+    //SerialDebug.println("getSSID Received"); 
     String ssid = getSSID();
     String result = "{\"ssid\": \"" + ssid + "\"}";
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
     client.println(result);
   } else if (urlString.indexOf("/password=") >= 0) {
-    SerialDebug.println("setPassword Received"); 
+    //SerialDebug.println("setPassword Received"); 
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",0);
     int len = urlString.indexOf(" HTTP");
     int eqloc = urlString.indexOf('=');
     String password = urlString.substring(eqloc + 1, len);
     setPassword(password);
   } else if (urlString.indexOf("/password") >= 0) {
-    SerialDebug.println("getPassword Received"); 
+    //SerialDebug.println("getPassword Received"); 
     String password = getPassword();
     String result = "{\"password\": \"" + password + "\"}";
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
     client.println(result);
   } else if (urlString.indexOf("/getsetupdata") >= 0) {
-    SerialDebug.println("getSetupData Received"); 
+    //SerialDebug.println("getSetupData Received"); 
     String ssid = getSSID();
     String password = getPassword();
     int usbMode = getUsbMode();
@@ -1551,11 +1555,12 @@ void handleWifiRequest(WiFiClient client, String urlString){
     client.println(result);
   } else if (urlString.indexOf("/postsetupdata") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
-    SerialDebug.println("Post Setup Data Received");              
+    //SerialDebug.println("Post Setup Data Received");              
     fram_address = 0;
     JsonToken* token = new JsonToken();
     getJsonToken(token, client);
     uint8_t chan = 0;
+    uint8_t bus = 0;
     while (token->data != "") {
         if (token->data ==  "ssid") {
           getJsonToken(token, client);
@@ -1566,6 +1571,20 @@ void handleWifiRequest(WiFiClient client, String urlString){
         } else if (token->data ==  "usbMode") {
           getJsonToken(token, client);
           setUsbMode((int)strtol((token->data).c_str(), nullptr, 10));
+        } else if (token->data ==  "bus") {
+          getJsonToken(token, client);
+          String busName = token->data;
+          if (busName == "A") bus = 0;
+          if (busName == "B") bus = 1;
+          if (busName == "C") bus = 2;
+          if (busName == "D") bus = 3;
+        } else if (token->data ==  "fine") {
+          getJsonToken(token, client);
+          int fine = (int)strtol((token->data).c_str(), nullptr, 10);
+          fine = fine + 0x32;
+          if (fine < 0) fine = 0;
+          if (fine > 99) fine = 99;
+          setFine(bus,fine);
         } else if (token->data ==  "chan") {
           getJsonToken(token, client);
           chan = (int)strtol((token->data).c_str(), nullptr, 10) - 1;
@@ -1586,7 +1605,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     } 
     delete token;
   } else if (urlString.indexOf("/test") >= 0) {
-    SerialDebug.println("Test Received"); 
+    //SerialDebug.println("Test Received"); 
     int charcount=0;
     bool done = false;
     unsigned long lastTime = millis();
@@ -1603,21 +1622,21 @@ void handleWifiRequest(WiFiClient client, String urlString){
         }
     }
     String responseString = String(charcount) + " bytes received.";
-    SerialDebug.println(responseString);
+    //SerialDebug.println(responseString);
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
     client.println(responseString);
   } else if (urlString.indexOf("/favicon.ico") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","image/x-icon",0);
-    SerialDebug.println("Favicon Received"); 
+    //SerialDebug.println("Favicon Received"); 
     //cb(cbArg, 0, 200, "image/x-icon", nullptr);
     //return URL icon here, if desired.
   } else if (urlString.indexOf("/generate_204") >= 0) {
     writeHeader(client,"HTTP/1.1 204 No Content","Content-type:text/plain",0);
-    SerialDebug.println("Generate 204 Received"); 
+    //SerialDebug.println("Generate 204 Received"); 
     //cb(cbArg, 0, 204, "text/plain", nullptr);
   } else if (urlString.indexOf("/setup") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",setupPageString.length());
-    SerialDebug.println("Returning setup page"); 
+    //SerialDebug.println("Returning setup page"); 
     //Write page in 1k chunks. 
     int i = 0;
     String tmp = setupPageString.substring(i,i+1000);
@@ -1628,8 +1647,8 @@ void handleWifiRequest(WiFiClient client, String urlString){
     }
     client.println();   // The HTTP response ends with another blank line:
   } else {
-    SerialDebug.println("Returning homepage");
-    SerialDebug.println(homepageString);
+    //SerialDebug.println("Returning homepage");
+    //SerialDebug.println(homepageString);
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",homepageString.length());
     //Write page in 1k chunks. 
     int i = 0;
@@ -1688,19 +1707,19 @@ void pollUsbMidi(bool isUsbDevice) {
           uhd_unfreeze_pipe(epAddr); //launch the transfer
           USB->HOST.HostPipe[epAddr].PINTENSET.reg = 0x3; //Enable pipe interrupts
   
-          SerialDebug.println("Pipe Started");
-          SerialDebug.print("Dump:");
-          SerialDebug.print("ADDR0:");
-          SerialDebug.print(usb_pipe_table[epAddr].HostDescBank[0].ADDR.reg,HEX);
-          SerialDebug.print(":");
-          SerialDebug.print("ADDR1:");
-          SerialDebug.print(usb_pipe_table[epAddr].HostDescBank[1].ADDR.reg,HEX);
-          SerialDebug.print(":");
-          SerialDebug.print(USB->HOST.INTFLAG.reg,HEX);
-          SerialDebug.print(":");
-          SerialDebug.print(USB->HOST.HostPipe[epAddr].PINTFLAG.reg,HEX);
-          SerialDebug.print(":");
-          SerialDebug.println(USB->HOST.HostPipe[epAddr].PSTATUS.reg,HEX);
+          //SerialDebug.println("Pipe Started");
+          //SerialDebug.print("Dump:");
+          //SerialDebug.print("ADDR0:");
+          //SerialDebug.print(usb_pipe_table[epAddr].HostDescBank[0].ADDR.reg,HEX);
+          //SerialDebug.print(":");
+          //SerialDebug.print("ADDR1:");
+          //SerialDebug.print(usb_pipe_table[epAddr].HostDescBank[1].ADDR.reg,HEX);
+          //SerialDebug.print(":");
+          //SerialDebug.print(USB->HOST.INTFLAG.reg,HEX);
+          //SerialDebug.print(":");
+          //SerialDebug.print(USB->HOST.HostPipe[epAddr].PINTFLAG.reg,HEX);
+          //SerialDebug.print(":");
+          //SerialDebug.println(USB->HOST.HostPipe[epAddr].PSTATUS.reg,HEX);
         } else {
           while(usbHostBuffer.available()>3) {
             midiMessage.header = usbHostBuffer.read_char();
@@ -1722,56 +1741,56 @@ void CUSTOM_UHD_Handler(void)
 {
   uint32_t epAddr = Midi.GetEpAddress();
   if (USB->HOST.INTFLAG.reg == USB_HOST_INTFLAG_DCONN) {
-    SerialDebug.println("Connected");
+    //SerialDebug.println("Connected");
     doPipeConfig = true;
     usbConnected = true;
   } else if (USB->HOST.INTFLAG.reg == USB_HOST_INTFLAG_DDISC) {
-    SerialDebug.println("Disconnected");
+    //SerialDebug.println("Disconnected");
     usbConnected = false;
     USB->HOST.HostPipe[epAddr].PINTENCLR.reg = 0xFF; //Disable pipe interrupts
   }
   UHD_Handler();
   uhd_freeze_pipe(epAddr);
   /*
-  SerialDebug.print(USB->HOST.INTFLAG.reg,HEX);
-  SerialDebug.print(":");
-  SerialDebug.print(USB->HOST.HostPipe[epAddr].PINTFLAG.reg,HEX);
-  SerialDebug.print(":");
-  SerialDebug.print(USB->HOST.HostPipe[epAddr].PSTATUS.reg,HEX);
-  SerialDebug.print(":");
-  SerialDebug.print("|STATUS0:");
-  SerialDebug.print(usb_pipe_table[epAddr].HostDescBank[0].STATUS_PIPE.reg,HEX);
-  SerialDebug.print("|STATUS1:");
-  SerialDebug.print(usb_pipe_table[epAddr].HostDescBank[1].STATUS_PIPE.reg,HEX);
-  SerialDebug.print("|STATUS_BK0:");
-  SerialDebug.print(usb_pipe_table[epAddr].HostDescBank[0].STATUS_BK.reg,HEX);
-  SerialDebug.print("|STATUS_BK1:");
-  SerialDebug.print(usb_pipe_table[epAddr].HostDescBank[1].STATUS_BK.reg,HEX);
-  SerialDebug.print("|BYTECOUNT0:");
-  SerialDebug.print(uhd_byte_count0(epAddr),HEX);
-  SerialDebug.print("|BYTECOUNT1:");
-  SerialDebug.print(uhd_byte_count1(epAddr),HEX);
-  SerialDebug.print("|TRCPT0:");
-  SerialDebug.print(Is_uhd_in_received0(epAddr),HEX);
-  SerialDebug.print("|TRCPT1:");
-  SerialDebug.print(Is_uhd_in_received1(epAddr),HEX);
-  SerialDebug.print("|READY0:");
-  SerialDebug.print(Is_uhd_in_ready0(epAddr),HEX);
-  SerialDebug.print("|READY1:");
-  SerialDebug.print(Is_uhd_in_ready1(epAddr),HEX);
-  SerialDebug.print("|CURRBK:");
-  SerialDebug.print(uhd_current_bank(epAddr),HEX);
-  SerialDebug.print("|TOGGLE:");
-  SerialDebug.print(Is_uhd_toggle(epAddr),HEX);
-  SerialDebug.print("|TOGGLE_ERROR0:");
-  SerialDebug.print(Is_uhd_toggle_error0(epAddr),HEX);
-  SerialDebug.print("|TOGGLE_ERROR1:");
-  SerialDebug.print(Is_uhd_toggle_error1(epAddr),HEX);
-  SerialDebug.print("|NAK:");
-  SerialDebug.print(Is_uhd_nak_received(epAddr),HEX);
-  SerialDebug.print("|INTSUMMARY:");
-  SerialDebug.print(uhd_endpoint_interrupt(),HEX);
-  SerialDebug.print("|");
+  //SerialDebug.print(USB->HOST.INTFLAG.reg,HEX);
+  //SerialDebug.print(":");
+  //SerialDebug.print(USB->HOST.HostPipe[epAddr].PINTFLAG.reg,HEX);
+  //SerialDebug.print(":");
+  //SerialDebug.print(USB->HOST.HostPipe[epAddr].PSTATUS.reg,HEX);
+  //SerialDebug.print(":");
+  //SerialDebug.print("|STATUS0:");
+  //SerialDebug.print(usb_pipe_table[epAddr].HostDescBank[0].STATUS_PIPE.reg,HEX);
+  //SerialDebug.print("|STATUS1:");
+  //SerialDebug.print(usb_pipe_table[epAddr].HostDescBank[1].STATUS_PIPE.reg,HEX);
+  //SerialDebug.print("|STATUS_BK0:");
+  //SerialDebug.print(usb_pipe_table[epAddr].HostDescBank[0].STATUS_BK.reg,HEX);
+  //SerialDebug.print("|STATUS_BK1:");
+  //SerialDebug.print(usb_pipe_table[epAddr].HostDescBank[1].STATUS_BK.reg,HEX);
+  //SerialDebug.print("|BYTECOUNT0:");
+  //SerialDebug.print(uhd_byte_count0(epAddr),HEX);
+  //SerialDebug.print("|BYTECOUNT1:");
+  //SerialDebug.print(uhd_byte_count1(epAddr),HEX);
+  //SerialDebug.print("|TRCPT0:");
+  //SerialDebug.print(Is_uhd_in_received0(epAddr),HEX);
+  //SerialDebug.print("|TRCPT1:");
+  //SerialDebug.print(Is_uhd_in_received1(epAddr),HEX);
+  //SerialDebug.print("|READY0:");
+  //SerialDebug.print(Is_uhd_in_ready0(epAddr),HEX);
+  //SerialDebug.print("|READY1:");
+  //SerialDebug.print(Is_uhd_in_ready1(epAddr),HEX);
+  //SerialDebug.print("|CURRBK:");
+  //SerialDebug.print(uhd_current_bank(epAddr),HEX);
+  //SerialDebug.print("|TOGGLE:");
+  //SerialDebug.print(Is_uhd_toggle(epAddr),HEX);
+  //SerialDebug.print("|TOGGLE_ERROR0:");
+  //SerialDebug.print(Is_uhd_toggle_error0(epAddr),HEX);
+  //SerialDebug.print("|TOGGLE_ERROR1:");
+  //SerialDebug.print(Is_uhd_toggle_error1(epAddr),HEX);
+  //SerialDebug.print("|NAK:");
+  //SerialDebug.print(Is_uhd_nak_received(epAddr),HEX);
+  //SerialDebug.print("|INTSUMMARY:");
+  //SerialDebug.print(uhd_endpoint_interrupt(),HEX);
+  //SerialDebug.print("|");
   */
 
   //Both banks full and bank1 is oldest, so process first. 
@@ -1823,8 +1842,8 @@ void handleBank1(uint32_t epAddr){
 }
 
 void processMidiMessage(midiEventPacket_t midiMessage){
-  SerialDebug.print("Received: ");
-  SerialDebug.print(midiMessage.header, HEX);
+  //SerialDebug.print("Received: ");
+  //SerialDebug.print(midiMessage.header, HEX);
   uint8_t chan = midiMessage.byte1 & 0x0F;
   switch (midiMessage.byte1 & 0xF0) {
     case 0x90 : {processMidiNoteOn(chan, midiMessage.byte2, midiMessage.byte3);break;}
@@ -1835,9 +1854,9 @@ void processMidiMessage(midiEventPacket_t midiMessage){
     case 0xC0 : {processProgramChange(midiMessage.byte2);break;}
     default   : {}
   }
-  SerialDebug.print(midiMessage.byte1, HEX);
-  SerialDebug.print(midiMessage.byte2, HEX);
-  SerialDebug.println(midiMessage.byte3, HEX);
+  //SerialDebug.print(midiMessage.byte1, HEX);
+  //SerialDebug.print(midiMessage.byte2, HEX);
+  //SerialDebug.println(midiMessage.byte3, HEX);
 }
 
 void processMidiNoteOn(uint8_t chan, uint8_t note, uint8_t velo){

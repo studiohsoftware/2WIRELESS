@@ -15,7 +15,7 @@
 		}
 	</style>
 	<body>
-		<div style="display: flex;justify-content: space-between; max-width:290px">
+		<div style="display: flex;justify-content: space-between; max-width:245px">
 			<label style="font-weight:bold;font-size:24px;">Setup Page</label>
 			<input type="button" id="submit" value="Submit">
 		</div>
@@ -62,30 +62,10 @@
 		var pwd2 = document.getElementById("pass2");
 		var submit = document.getElementById("submit");
 		var errortext = document.getElementById("errortext");
-		var buses = [];
-		var bus = {
-			name: "A",
-			mask: "0x8"
-		};
-		buses.push(bus);
-		var bus = {
-			name: "B",
-			mask: "0x4"
-		};
-		buses.push(bus);
-		var bus = {
-			name: "C",
-			mask: "0x2"
-		};
-		buses.push(bus);
-		var bus = {
-			name: "D",
-			mask: "0x1"
-		};
-		buses.push(bus);
+		var busNames = ["A","B","C","D"];
 		
 		var busTable = document.getElementById("BusTable");
-		for (var i = 1; i < 5; i++) {
+		for (var i = 0; i < 4; i++) {
 			var tr = document.createElement('tr');
 			var td1 = document.createElement('td');
 			var td2 = document.createElement('td');
@@ -95,12 +75,16 @@
 			f.id = "f" + i;
 			f.setAttribute('max','49');
 			f.setAttribute('min','-49');
-			td1.appendChild(document.createTextNode(buses[i - 1].name));
+			td1.appendChild(document.createTextNode(busNames[i]));
 			td2.appendChild(f);
 			tr.appendChild(td1);
 			tr.appendChild(td2);
 			busTable.appendChild(tr);
 		}
+		var fineA = document.getElementById("f0");
+		var fineB = document.getElementById("f1");
+		var fineC = document.getElementById("f2");
+		var fineD = document.getElementById("f3");
 
 		var table = document.getElementById("MidiTable");
 		for (var i = 1; i < 17; i++) {
@@ -173,6 +157,9 @@
 		} else {
 			document.getElementById("Host").checked = true;
 		}	
+		for (var i=0; i < 4; i++){
+			document.getElementById("f" + i).value = parseInt(parsedJson.buses[i].fine);
+		}
 		for (var i=0; i < 16; i++){
 			k = i + 1;
 			var mask = parseInt(parsedJson.channels[i].mask);
@@ -204,8 +191,30 @@
 					ssid : s.value,
 					password : pwd.value,
 					usbMode : usb,
+					buses : [],
 					channels : []
 				};
+				var busA = {
+					bus: "A",
+					fine: fineA.value.toString()
+				};
+				response.buses.push(busA);
+				var busB = {
+					bus: "B",
+					fine: fineB.value.toString()
+				};
+				response.buses.push(busB);
+				var busC = {
+					bus: "C",
+					fine: fineC.value.toString()
+				};
+				response.buses.push(busC);
+				var busD = {
+					bus: "D",
+					fine: fineD.value.toString()
+				};
+				response.buses.push(busD);
+
 				for (var i = 1; i<17; i++){
 					var m = 0;
 					if (document.getElementById("a" + i).checked) {m = 0x8;}
@@ -233,6 +242,7 @@
 				req.send(responseString);
 			} 	
 		}
+		
 	</script>
 </html>
 
