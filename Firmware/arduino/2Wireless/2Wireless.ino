@@ -592,7 +592,7 @@ void switchToMaster(){
 }
 
 void switchToSlave(){
-    delayMicroseconds(10);
+    delayMicroseconds(100);
     Wire.end();
     Wire.begin(0x50 | CARD_ADDRESS);
     Wire.onReceive(receiveEvent);
@@ -1914,7 +1914,7 @@ uint8_t getPolyMaskFromNote(uint8_t chan, uint8_t note){
   //and if found, return the corresponding mask.
   //Chan is 0-15
   uint8_t result = 0;
-  if (note == (polyNotes[chan] && 0xFF)) result = 1;
+  if (note == (polyNotes[chan] & 0xFF)) result = 1;
   else if (note == (polyNotes[chan] & (0xFF << 8))>>8) result = 2;
   else if (note == (polyNotes[chan] & (0xFF << 16))>>16) result = 4;
   else if (note == (polyNotes[chan] & (0xFF << 24))>>24) result = 8;
