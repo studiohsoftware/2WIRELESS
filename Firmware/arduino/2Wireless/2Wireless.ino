@@ -96,7 +96,8 @@ uint8_t tran[16] = {0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,
 uint8_t fine[4] = {0x32,0x32,0x32,0x32}; //An default per bus
 uint8_t busMask[4] = {0x8,0x4,0x2,0x1}; //Mask for each bus used for fine tuning
 uint8_t poly[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //no poly by default
-uint32_t polyNotes[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //stores poly notes for note off events
+uint32_t polyNotes[16] = {0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80}; //stores poly notes for note off events
+uint8_t polyAvail[16] = {0xF,0xF,0xF,0xF,0xF,0xF,0xF,0xF,0xF,0xF,0xF,0xF,0xF,0xF,0xF,0xF};
 bool velo[16] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}; //use velocity by default
 
 bool v2version=false; //used to support pre PRIMO firmware.
@@ -379,6 +380,10 @@ void setPoly(uint8_t chan, uint8_t val){
   if (poly[chan] != val){
     poly[chan] = val;
     framWrite(MIDI_CFG_POLY_ADDR + chan,poly[chan]); 
+  }
+  if (val) {
+    polyAvail[chan]=0xF; //init to all buses available
+    polyNotes[chan] = 0xFFFFFFFF;
   }
 }
 
@@ -1866,15 +1871,21 @@ void processMidiNoteOn(uint8_t chan, uint8_t note, uint8_t velo){
   if (note < 0) note = 0;
   if (note > 0x7F) note = 0x7F;
   if ((poly[chan]>0) && (mask[chan]>0)) {
+    if (getPolyMaskFromNote(chan,note) > 0) {
+      return; //bail out if poly and the note is already playing
+    }
     //Shift poly bit to next bus in mask and return as mask.
     poly[chan] = (poly[chan] <<1) & 0xF;
     if (poly[chan] == 0) poly[chan] = 1; //wrap
-    while ((poly[chan] & mask[chan]) == 0) {
+    uint8_t nextAvail = polyAvail[chan] & mask[chan] & 0xF;
+    if (nextAvail == 0) nextAvail = mask[chan]; //steal if necessary.
+    while ((poly[chan] & nextAvail) == 0) {
       poly[chan] = (poly[chan] <<1) & 0xF;
       if (poly[chan] == 0) poly[chan] = 1; //wrap
     }
     m = poly[chan]; //One of 0001/0010/0100/1000
     savePolyNote(chan,m,note); //save note and mask for note OFF
+    polyAvail[chan] = polyAvail[chan] & mask[chan] & ~m & 0xF; //mark bus unavailable
   }
   sendMidiNoteOn(m, note, getVelocity(chan,velo));
 }
@@ -1888,6 +1899,8 @@ void processMidiNoteOff(uint8_t chan, uint8_t note, uint8_t velo) {
   if ((poly[chan]>0) && (mask[chan]>0)){
     //Poly mode.
     m = getPolyMaskFromNote(chan,note); //retrieve associated mask for this note
+    polyAvail[chan] = ((polyAvail[chan] & mask[chan]) | m) & 0xF; //mark bus available.
+    savePolyNote(chan,m,0x80); //set bogus note for this bus to mark available
   }
   sendMidiNoteOff(m, note, getVelocity(chan,velo));
 }
