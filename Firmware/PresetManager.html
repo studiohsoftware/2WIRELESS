@@ -267,7 +267,9 @@
 		}
 		
 		function writeName(pset,name){
-			send("presetname=" + name + "&preset=" + pset.toString());
+			if (name != undefined) {
+				send("presetname=" + name + "&preset=" + pset.toString());
+			}
 		}
 	</script>
 </html>
