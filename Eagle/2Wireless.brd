@@ -222,7 +222,7 @@
 <wire x1="48.514" y1="27.178" x2="48.514" y2="32.512" width="0.3048" layer="21"/>
 <wire x1="48.514" y1="32.512" x2="41.402" y2="32.512" width="0.3048" layer="21"/>
 <text x="53.848" y="8.636" size="1.27" layer="25" font="vector" ratio="12" rot="R90">OPEN</text>
-<hole x="58.166" y="28.956" drill="2.794"/>
+<hole x="58.166" y="28.956" drill="3.302"/>
 </plain>
 <libraries>
 <library name="studio_h">
