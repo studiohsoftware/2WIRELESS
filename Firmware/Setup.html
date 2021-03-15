@@ -45,6 +45,9 @@
 		<label for="Host">
 		<input type="radio" id="Host" name="usb" value="0">USB Host</label>
 		<hr>
+			<input type="checkbox" id="Poll" name="poll">
+			<label for="Poll">Poll modules on startup</label>
+		<hr>
 		<label for="ssid">SSID:</label></br>
 		<input type="text" id="ssid" name="ssid" maxlength="32" style="width:250;"><br>
 		<hr>
@@ -54,7 +57,7 @@
 		<input type="text" id="pass2" name="pass2" maxlength="63" style="width:250;"><br>
 		<label for="submit" id="errortext" style="color:red;"></label>
 		<hr>
-		Firmware v1.0
+		Firmware v1.1
 	</body>
 	<script>
 		var req = new XMLHttpRequest();
@@ -153,6 +156,9 @@
 		s.value = parsedJson.ssid;
 		pwd.value = parsedJson.password;
 		pwd2.value = pwd.value;
+		if (parseInt(parsedJson.poll)==1) {
+			document.getElementById("Poll").checked = true;
+		}
 		if (parseInt(parsedJson.usbMode)==1){
 			document.getElementById("Device").checked = true;
 		} else {
@@ -187,11 +193,16 @@
 				if (document.getElementById("Device").checked) {
 					usb = "1";
 				}
+				var poll = "0";
+				if (document.getElementById("Poll").checked) {
+					poll = "1";
+				}
 				errortext.innerHTML = "";
 				var response = {
 					ssid : s.value,
 					password : pwd.value,
 					usbMode : usb,
+					poll : poll,
 					buses : [],
 					channels : []
 				};
