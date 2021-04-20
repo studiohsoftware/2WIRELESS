@@ -41,6 +41,8 @@
 #define MIDI_CFG_VELO_ADDR 0x02BE40 //2 bytes for 16 bools velo y/n.
 #define USB_MODE_ADDR 0x02BE42 //1 byte for USB MODE 1=DEVICE 0=HOST
 #define POLL_ON_START_ADDR 0x02BE4A //1 byte for POLL ON START 1=POLL 0=NO POLL
+#define PROGRAM_CHANGE_ENABLE 0x02BE4B //1 byte for enabling preset change on program change. 1=ENABLE 0=DISABLE
+#define SEND_MIDI_TO_USB 0x02BE4C //1 byte to enable send of MIDI from bus to USB out. 1=ENABLE 0=DISABLE
 #define INIT_ADDR 0x02BE43 //six bytes set to DONALD once 1st config is done.
 //END RESERVED FRAM ADDRESSES
 #define SerialDebug Serial1
@@ -81,8 +83,10 @@ volatile bool write_i2c_to_fram = false; //Cache incoming i2c to FRAM.
 unsigned long readTime = 0; //used to detect idle to free up 206e at start.
 
 bool isUsbDevice = true; //Select between USB Device and USB Host
+bool sendMidiToUsb = false; //Publish bus MIDI messages to USB
 midiEventPacket_t midiMessage; //Convenience structure for carrying MIDI data
 RingBuffer usbHostBuffer; //USB Host uses this to decouple interrupt from loop().
+RingBuffer i2cReadBuffer; //Used to decouple incoming i2c MIDI commands from loop();
 USBHost UsbH; //Host object in case we are running as USB Host
 USBHub Hub(&UsbH); //Host object
 USBH_MIDI  Midi(&UsbH); //Host object
@@ -121,7 +125,7 @@ void setup() {
   pinMode(LED_BUILTIN,OUTPUT); //built in LED on MKR1000
   pinMode(SPI_CS, OUTPUT); //SPI CS
   SPI.begin(); //FRAM communications
-  Wire.begin(0x50 | CARD_ADDRESS);
+  Wire.begin(0x50 | CARD_ADDRESS,sendMidiToUsb); //Enable GeneralCall to receive MIDI from bus
   Wire.onReceive(receiveEvent);
   Wire.onRequest(requestEvent);
 
@@ -565,6 +569,35 @@ void receiveEvent(int howMany) {
         framWrite(write_counter,data);
         write_counter++;
       }
+    } else if (sendMidiToUsb) {
+      int num_read = 0;
+      int command = 0;
+      int MIDI_EVENT = 0x0800000F;
+      while (Wire.available() > 0) {
+        byte val = Wire.read();
+        if (num_read<4){
+          command = command + (val << ((3 - num_read)*8));
+        } else if ((num_read == 4) && ((command & MIDI_EVENT) == MIDI_EVENT)) {
+          //SerialDebug.print("MIDI EVENT:");
+          //SerialDebug.println(val,HEX);
+          //Currently only MIDI clock is supported due to bus->channel ambiguity for others
+          if ((val == 0xF8) || (val == 0xFA) || (val == 0xFB) || (val == 0xFC)){
+            if (i2cReadBuffer.availableForStore() > 3) {
+              i2cReadBuffer.store_char(0x0F); //header CN=0, CIN=0xF.
+              i2cReadBuffer.store_char(val); //byte1
+              i2cReadBuffer.store_char(0x0); //byte2
+              i2cReadBuffer.store_char(0x0); //byte3
+            }
+          }
+        }
+        num_read++;
+        //SerialDebug.print(val,HEX);
+        //SerialDebug.print("|");
+      }
+      //SerialDebug.println();
+      //SerialDebug.println(command,HEX);
+    } else {
+      Wire.flush();
     }
 }
 void requestEvent() {
@@ -621,7 +654,7 @@ void switchToMaster(){
 void switchToSlave(){
     delayMicroseconds(100);
     Wire.end();
-    Wire.begin(0x50 | CARD_ADDRESS);
+    Wire.begin(0x50 | CARD_ADDRESS,sendMidiToUsb);//Enable GeneralCall to receive MIDI from bus
     Wire.onReceive(receiveEvent);
     Wire.onRequest(requestEvent);
 }
@@ -1745,6 +1778,25 @@ void pollUsbMidi(bool isUsbDevice) {
         processMidiMessage(midiMessage);
       }
     } while (midiMessage.header != 0);
+    if (sendMidiToUsb) {
+      while (i2cReadBuffer.available() > 3) {
+        midiEventPacket_t midiMessage;
+        midiMessage.header = i2cReadBuffer.read_char();
+        midiMessage.byte1 = i2cReadBuffer.read_char();
+        midiMessage.byte2 = i2cReadBuffer.read_char();
+        midiMessage.byte3 = i2cReadBuffer.read_char();
+        MidiUSB.sendMIDI(midiMessage);
+        MidiUSB.flush();
+        //SerialDebug.print("SendingMIDI:");
+        //SerialDebug.print(midiMessage.header,HEX);
+        //SerialDebug.print("|");
+        //SerialDebug.print(midiMessage.byte1,HEX);
+        //SerialDebug.print("|");
+        //SerialDebug.print(midiMessage.byte2,HEX);
+        //SerialDebug.print("|");
+        //SerialDebug.println(midiMessage.byte3,HEX);
+      } 
+    }
   } else if (isUsbDevice && (USB->DEVICE.DADD.bit.DADD == 0)) {
     //This happens when the USB cable has been disconnected and reconnected.
     //The SOF interrupt is needed to re-enumerate. 
