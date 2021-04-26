@@ -40,6 +40,20 @@
 			</tr>
 		</table>
 		<hr>
+			<table id="MidiOptions" name="MidiOptions">
+				<tr>
+					<th colspan="2">MIDI Options</th>					
+				</tr>
+				<tr>
+					<td>
+						<label for="PrgChEnbl">Receive Program Change</label>
+					</td>
+					<td>
+						<input type="checkbox" id="PrgChEnbl" name="PrgChEnbl">
+					</td>
+				</tr>
+			</table>
+		<hr>
 		<label for="Device">
 		<input type="radio" id="Device" name="usb" value="1">USB Device</label>
 		<label for="Host">
@@ -57,7 +71,7 @@
 		<input type="text" id="pass2" name="pass2" maxlength="63" style="width:250;"><br>
 		<label for="submit" id="errortext" style="color:red;"></label>
 		<hr>
-		Firmware v1.2
+		Firmware v1.3
 	</body>
 	<script>
 		var req = new XMLHttpRequest();
@@ -159,6 +173,9 @@
 		if (parseInt(parsedJson.poll)==1) {
 			document.getElementById("Poll").checked = true;
 		}
+		if (parseInt(parsedJson.prgChEnbl)==1) {
+			document.getElementById("PrgChEnbl").checked = true;
+		}
 		if (parseInt(parsedJson.usbMode)==1){
 			document.getElementById("Device").checked = true;
 		} else {
@@ -197,12 +214,17 @@
 				if (document.getElementById("Poll").checked) {
 					poll = "1";
 				}
+				var prgChEnbl = "0";
+				if (document.getElementById("PrgChEnbl").checked) {
+					prgChEnbl = "1";
+				}
 				errortext.innerHTML = "";
 				var response = {
 					ssid : s.value,
 					password : pwd.value,
 					usbMode : usb,
 					poll : poll,
+					prgChEnbl : prgChEnbl,
 					buses : [],
 					channels : []
 				};
