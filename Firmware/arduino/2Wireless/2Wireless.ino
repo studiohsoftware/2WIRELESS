@@ -41,8 +41,8 @@
 #define MIDI_CFG_VELO_ADDR 0x02BE40 //2 bytes for 16 bools velo y/n.
 #define USB_MODE_ADDR 0x02BE42 //1 byte for USB MODE 1=DEVICE 0=HOST
 #define POLL_ON_START_ADDR 0x02BE4A //1 byte for POLL ON START 1=POLL 0=NO POLL
-#define PROGRAM_CHANGE_ENABLE 0x02BE4B //1 byte for enabling preset change on program change. 1=ENABLE 0=DISABLE
-#define SEND_MIDI_TO_USB 0x02BE4C //1 byte to enable send of MIDI from bus to USB out. 1=ENABLE 0=DISABLE
+#define PROGRAM_CHANGE_ENABLE_ADDR 0x02BE4B //1 byte for enabling preset change on program change. 1=ENABLE 0=DISABLE
+#define SEND_MIDI_TO_USB_ADDR 0x02BE4C //1 byte to enable send of MIDI from bus to USB out. 1=ENABLE 0=DISABLE
 #define INIT_ADDR 0x02BE43 //six bytes set to DONALD once 1st config is done.
 //END RESERVED FRAM ADDRESSES
 #define SerialDebug Serial1
@@ -83,7 +83,6 @@ volatile bool write_i2c_to_fram = false; //Cache incoming i2c to FRAM.
 unsigned long readTime = 0; //used to detect idle to free up 206e at start.
 
 bool isUsbDevice = true; //Select between USB Device and USB Host
-bool sendMidiToUsb = false; //Publish bus MIDI messages to USB
 midiEventPacket_t midiMessage; //Convenience structure for carrying MIDI data
 RingBuffer usbHostBuffer; //USB Host uses this to decouple interrupt from loop().
 RingBuffer i2cReadBuffer; //Used to decouple incoming i2c MIDI commands from loop();
@@ -125,7 +124,7 @@ void setup() {
   pinMode(LED_BUILTIN,OUTPUT); //built in LED on MKR1000
   pinMode(SPI_CS, OUTPUT); //SPI CS
   SPI.begin(); //FRAM communications
-  Wire.begin(0x50 | CARD_ADDRESS,sendMidiToUsb); //Enable GeneralCall to receive MIDI from bus
+  Wire.begin(0x50 | CARD_ADDRESS,getSendMidiToUsb()); //Enable GeneralCall to receive MIDI from bus
   Wire.onReceive(receiveEvent);
   Wire.onRequest(requestEvent);
 
@@ -379,6 +378,8 @@ void initializeFram() {
     }
     setUsbMode(USB_MODE_DEVICE); 
     setPollOnStart(0);
+    setProgramChangeEnable(0);
+    setSendMidiToUsb(0);
     setCurrentPreset(1); //just to have something in there.
     //Mark as initialized for next time.
     setFramString("DONALD", INIT_ADDR);
@@ -452,6 +453,22 @@ bool getPollOnStart() {
 
 void setPollOnStart(bool mode){
   framWrite(POLL_ON_START_ADDR,mode);
+}
+
+bool getProgramChangeEnable() {
+  return (framRead(PROGRAM_CHANGE_ENABLE_ADDR) > 0);
+}
+
+void setProgramChangeEnable(bool mode){
+  framWrite(PROGRAM_CHANGE_ENABLE_ADDR,mode);
+}
+
+bool getSendMidiToUsb() {
+  return (framRead(SEND_MIDI_TO_USB_ADDR) > 0);
+}
+
+void setSendMidiToUsb(bool mode){
+  framWrite(SEND_MIDI_TO_USB_ADDR,mode);
 }
 
 String getSSID(){
@@ -569,7 +586,7 @@ void receiveEvent(int howMany) {
         framWrite(write_counter,data);
         write_counter++;
       }
-    } else if (sendMidiToUsb) {
+    } else if (getSendMidiToUsb()) {
       int num_read = 0;
       int command = 0;
       int MIDI_EVENT = 0x0800000F;
@@ -654,7 +671,7 @@ void switchToMaster(){
 void switchToSlave(){
     delayMicroseconds(100);
     Wire.end();
-    Wire.begin(0x50 | CARD_ADDRESS,sendMidiToUsb);//Enable GeneralCall to receive MIDI from bus
+    Wire.begin(0x50 | CARD_ADDRESS,getSendMidiToUsb());//Enable GeneralCall to receive MIDI from bus
     Wire.onReceive(receiveEvent);
     Wire.onRequest(requestEvent);
 }
@@ -1612,11 +1629,15 @@ void handleWifiRequest(WiFiClient client, String urlString){
     String ssid = getSSID();
     String password = getPassword();
     int pollonstart = getPollOnStart();
+    int programChangeEnable = getProgramChangeEnable();
+    int sendMidiToUsb = getSendMidiToUsb();
     int usbMode = getUsbMode();
     String result = "{";
     result = result + "\"ssid\": \"" + ssid + "\"";
     result = result + ",\"password\": \"" + password + "\"";
     result = result + ",\"poll\": \"" + pollonstart + "\"";
+    result = result + ",\"prgChEnbl\": \"" + programChangeEnable + "\"";
+    result = result + ",\"sendMidi\": \"" + sendMidiToUsb + "\"";
     result = result + ",\"usbMode\": \"" + usbMode + "\"";
     result = result + ",\"buses\":[";
     result = result + "{";
@@ -1673,6 +1694,12 @@ void handleWifiRequest(WiFiClient client, String urlString){
         } else if (token->data ==  "poll") {
           getJsonToken(token, client);
           setPollOnStart((int)strtol((token->data).c_str(), nullptr, 10));
+        } else if (token->data ==  "prgChEnbl") {
+          getJsonToken(token, client);
+          setProgramChangeEnable((int)strtol((token->data).c_str(), nullptr, 10));
+        } else if (token->data ==  "sendMidi") {
+          getJsonToken(token, client);
+          setSendMidiToUsb((int)strtol((token->data).c_str(), nullptr, 10));
         } else if (token->data ==  "bus") {
           getJsonToken(token, client);
           String busName = token->data;
@@ -1778,7 +1805,7 @@ void pollUsbMidi(bool isUsbDevice) {
         processMidiMessage(midiMessage);
       }
     } while (midiMessage.header != 0);
-    if (sendMidiToUsb) {
+    if (getSendMidiToUsb()) {
       while (i2cReadBuffer.available() > 3) {
         midiEventPacket_t midiMessage;
         midiMessage.header = i2cReadBuffer.read_char();
@@ -2092,8 +2119,10 @@ void processControlChange(uint8_t chan, uint8_t byte1, uint8_t byte2){
 void processProgramChange(int preset){
   //presets are 0-29, but display as 1-30. 
   //Let's have program change use 1-30.
-  preset = preset - 1;
-  if (preset < 0) preset = 0; //Map minimum to 0.
-  else if (preset > 29) preset = 29; //Map maximum to 29.
-  sendRecallPreset(preset);
+  if (getProgramChangeEnable()){
+    preset = preset - 1;
+    if (preset < 0) preset = 0; //Map minimum to 0.
+    else if (preset > 29) preset = 29; //Map maximum to 29.
+    sendRecallPreset(preset);
+  }
 }
