@@ -257,6 +257,7 @@ void loop() {
         }
       } 
       pollUsbMidi(isUsbDevice);
+      digitalWrite(LED_BUILTIN, LOW); //used to show i2c activity
     }
     // close the connection:
     client.stop();
@@ -464,7 +465,8 @@ void setProgramChangeEnable(bool mode){
 }
 
 bool getSendMidiToUsb() {
-  return (framRead(SEND_MIDI_TO_USB_ADDR) > 0);
+  return false; //Publishing MIDI causes lockup
+  //return (framRead(SEND_MIDI_TO_USB_ADDR) > 0);
 }
 
 void setSendMidiToUsb(bool mode){
@@ -614,7 +616,7 @@ void receiveEvent(int howMany) {
       //SerialDebug.println();
       //SerialDebug.println(command,HEX);
     } else {
-      Wire.flush();
+      //Wire.flush();
     }
 }
 void requestEvent() {
