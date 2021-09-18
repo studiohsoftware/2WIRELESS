@@ -136,6 +136,14 @@
 						firmwareImagePart.push(hex_end_i2c_address);
 						firmwareImagePart.push(hex_end_address);
 						firmwareImagePart.push(termination2);
+
+						for(var i = 0x20;i < 0x50;i++){
+							var zerodata = {
+								addr : "00" + i.toString(16),
+								data : "00"
+							}
+							firmwareImagePart.push(zerodata);
+						}
 						
 						var lines = content.split(":");	
 						var address = 0x50; //Starts at 0x50 in V1.
@@ -290,6 +298,7 @@
 			request.setRequestHeader("Content-Length", firmwareImagePartString.length);
 			request.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 			request.send(firmwareImagePartString);
+			//textValue = textValue + firmwareImagePartString;
 		}
 		
 		function getAsciiHexString(text) {
