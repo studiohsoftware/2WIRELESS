@@ -52,12 +52,20 @@
 						<input type="checkbox" id="PrgChEnbl" name="PrgChEnbl">
 					</td>
 				</tr>
+				<tr>
+					<td>
+						<label for="SendMidi" id="SendMidiLabel">Send 252e Midi Clock</label>
+					</td>
+					<td>
+						<input type="checkbox" id="SendMidi" name="SendMidi">
+					</td>
+				</tr>
 			</table>
 		<hr>
 		<label for="Device">
-		<input type="radio" id="Device" name="usb" value="1">USB Device</label>
+		<input type="radio" id="Device" name="usb" value="1" onclick="deviceOnClick()">USB Device</label>
 		<label for="Host">
-		<input type="radio" id="Host" name="usb" value="0">USB Host</label>
+		<input type="radio" id="Host" name="usb" value="0" onclick="hostOnClick()">USB Host</label>
 		<hr>
 			<input type="checkbox" id="Poll" name="poll">
 			<label for="Poll">Poll modules on startup</label>
@@ -71,7 +79,7 @@
 		<input type="text" id="pass2" name="pass2" maxlength="63" style="width:250;"><br>
 		<label for="submit" id="errortext" style="color:red;"></label>
 		<hr>
-		Firmware v1.3
+		Firmware v1.4
 	</body>
 	<script>
 		var req = new XMLHttpRequest();
@@ -176,10 +184,15 @@
 		if (parseInt(parsedJson.prgChEnbl)==1) {
 			document.getElementById("PrgChEnbl").checked = true;
 		}
+		if (parseInt(parsedJson.sendMidi)==1) {
+			document.getElementById("SendMidi").checked = true;
+		}
 		if (parseInt(parsedJson.usbMode)==1){
 			document.getElementById("Device").checked = true;
+			disable252eClock(false);
 		} else {
 			document.getElementById("Host").checked = true;
+			disable252eClock(true);
 		}	
 		for (var i=0; i < 4; i++){
 			document.getElementById("f" + i).value = parseInt(parsedJson.buses[i].fine);
@@ -200,6 +213,24 @@
 			req.send(content);
 		}
 		
+		function deviceOnClick(){
+			disable252eClock(false);
+		}
+		
+		function hostOnClick(){
+			disable252eClock(true);
+		}
+		
+		function disable252eClock(disable){
+			if (disable){
+				document.getElementById("SendMidi").disabled=true;
+				document.getElementById("SendMidiLabel").style.color = 'gray';
+			} else {
+				document.getElementById("SendMidi").disabled=false;
+				document.getElementById("SendMidiLabel").style.color = 'black';
+			}
+		}
+		
 		function submitOnClick(){
 			if (pwd.value != pwd2.value) {
 				errortext.innerHTML = "Passwords do not match.";
@@ -218,6 +249,10 @@
 				if (document.getElementById("PrgChEnbl").checked) {
 					prgChEnbl = "1";
 				}
+				var sendMidi = "0";
+				if (document.getElementById("SendMidi").checked) {
+					sendMidi = "1";
+				}
 				errortext.innerHTML = "";
 				var response = {
 					ssid : s.value,
@@ -225,6 +260,7 @@
 					usbMode : usb,
 					poll : poll,
 					prgChEnbl : prgChEnbl,
+					sendMidi : sendMidi,
 					buses : [],
 					channels : []
 				};
