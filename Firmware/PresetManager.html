@@ -176,9 +176,7 @@
 		document.getElementById("remB").onclick = remBOnClick;
 		document.getElementById("v3").checked = true;
 		
-		for (var i=1; i<31; i++){
-			names[i]=readName(i);
-		}
+		readNames();
 		
 		c_pset.value = readPreset();
 		cOnChange();
@@ -259,11 +257,13 @@
 			return(parseInt(JSON.parse(req.responseText).currentpreset));
 		}
 		
-		function readName(pset){
-			send("presetname?preset=" + pset.toString());
-			var result = JSON.parse(req.responseText).presetname;
-			if (result == undefined) result = "";
-			return(result);
+		function readNames(){
+			send("presetnames");
+			var tmp = JSON.parse(req.responseText).presetnames;
+			for (var i=0;i<30;i++){
+				names[i+1]=tmp[i];
+			}
+			
 		}
 		
 		function writeName(pset,name){
