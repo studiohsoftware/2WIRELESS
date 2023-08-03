@@ -172,6 +172,29 @@
 				dataskip[36] = 8;
 			}
 			
+			else if (module_name.indexOf("207e") == 0) {
+				//207e is same as 206e.
+				for (i = 0; i < 38; i++) {
+					dataskip[i] = 40;
+				}
+				dataskip[3] = 8;
+				dataskip[4] = 32;
+				dataskip[7] = 16;
+				dataskip[8] = 24;
+				dataskip[11] = 24;
+				dataskip[12] = 16;
+				dataskip[15] = 32;
+				dataskip[16] = 8;
+				dataskip[23] = 8;
+				dataskip[24] = 32;
+				dataskip[27] = 16;
+				dataskip[28] = 24;
+				dataskip[31] = 24;
+				dataskip[32] = 16;
+				dataskip[35] = 32;
+				dataskip[36] = 8;
+			}
+			
 			else if (module_name.indexOf("210e") == 0) {
 				//210e is mostly 128.
 				for (i = 0; i < 60; i++) {
