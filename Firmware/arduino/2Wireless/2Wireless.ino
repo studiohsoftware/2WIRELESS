@@ -229,9 +229,10 @@ void loop() {
       //SerialDebug.println("Device disconnected from AP");
     }
   }
- 
+  
   WiFiClient client = server.available();   // listen for incoming clients
-
+  //When web page is served, we return to this with no client. 
+  //TO DO: If device was disconnected from AP, then it seems AP needs to be reconstructed here.
   if (client) {                             // if you get a client,
     //SerialDebug.println("new client");           // print a message out the serial port
     String currentLine = "";                // make a String to hold incoming data from the client
@@ -268,6 +269,8 @@ void loop() {
     client.stop();
     delayMicroseconds(1000); //stablizes when load is heavy
     //SerialDebug.println("client disconnected");
+  } else {
+    //SerialDebug.println("No client");
   }
   pollUsbMidi(isUsbDevice);
   digitalWrite(LED_BUILTIN, LOW); //used to show i2c activity
