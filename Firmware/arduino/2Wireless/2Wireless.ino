@@ -17,6 +17,9 @@
 #include <usbhub.h>
 #include <MIDIUSB.h>
 
+//#define DEBUG
+//#define DEBUG_MIDI
+//#define DEBUG_USB
 #define CARD_ADDRESS 0x00 //This ends up meaning that our I2C address is 0x50.
 #define BUFFER_SIZE 2000 //Ring buffer size for incoming I2C. 
 #define FRAM_WREN 0x06 //FRAM WRITE ENABLE COMMAND
