@@ -50,7 +50,6 @@
 #define SEND_MIDI_TO_USB_ADDR 0x02BE4C //1 byte to enable send of MIDI from bus to USB out. 1=ENABLE 0=DISABLE
 #define INIT_ADDR 0x02BE43 //six bytes set to DONALD once 1st config is done.
 //END RESERVED FRAM ADDRESSES
-#define SerialDebug Serial1
 
 //USB Host Convenience Functions
 #define Is_uhd_in_received0(p)                    ((USB->HOST.HostPipe[p].PINTFLAG.reg&USB_HOST_PINTFLAG_TRCPT0) == USB_HOST_PINTFLAG_TRCPT0)
