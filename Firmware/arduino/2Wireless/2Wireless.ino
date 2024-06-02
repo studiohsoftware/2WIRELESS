@@ -195,9 +195,6 @@ void setup() {
   // wait 10 seconds for connection:
   //delay(10000);
 
-  // start the web server on port 80
-  server.begin();
-
   // you're connected now, so print out the status
   printWiFiStatus();
 
@@ -231,6 +228,7 @@ void setup() {
 
 
 void loop() {
+  WiFiClient client;
   // compare the previous status to the current status
   if (status != WiFi.status()) {
     // it has changed update the variable
@@ -241,13 +239,15 @@ void loop() {
       DEBUG_PRINT("Device connected to AP, MAC address: ");
       WiFi.APClientMacAddress(remoteMac);
       printMacAddress(remoteMac);
+      server.begin();
     } else {
       // a device has disconnected from the AP, and we are back in listening mode
       DEBUG_PRINTLN("Device disconnected from AP");
+      client.stop();
     }
   }
   
-  WiFiClient client = server.available();   // listen for incoming clients
+  client = server.available();   // listen for incoming clients
   //When web page is served, we return to this with no client. 
   //TO DO: If device was disconnected from AP, then it seems AP needs to be reconstructed here.
   if (client) {                             // if you get a client,
@@ -286,8 +286,6 @@ void loop() {
     client.stop();
     delayMicroseconds(1000); //stablizes when load is heavy
     DEBUG_PRINTLN("client disconnected");
-  } else {
-    DEBUG_PRINTLN("No client");
   }
   pollUsbMidi(isUsbDevice);
   digitalWrite(LED_BUILTIN, LOW); //used to show i2c activity
@@ -1849,7 +1847,9 @@ void handleWifiRequest(WiFiClient client, String urlString){
 
 void onMidiUsbDeviceEvent(int ep) {
     //This stops SOF (start of frame) interrupt from happening every 1ms.
+    #ifdef DEBUG_MIDI
     DEBUG_PRINTLN("MIDI Device Interrupt Received");
+    #endif
     USB->DEVICE.INTENCLR.bit.SOF = 1; //SAMD interrupts continuously without this.
 }
 
@@ -1869,8 +1869,10 @@ void pollUsbMidi(bool isUsbDevice) {
     } while (midiMessage.header != 0);
   } else if (isUsbDevice && (USB->DEVICE.DADD.bit.DADD == 0)) {
     //This happens when the USB cable has been disconnected and reconnected.
-    //The SOF interrupt is needed to re-enumerate. 
+    //The SOF interrupt is needed to re-enumerate.
+    #ifdef DEBUG_MIDI
     DEBUG_PRINTLN("MIDI Device Address is zero.");
+    #endif
     USB->DEVICE.INTENSET.bit.SOF = 1;
   } else if (!isUsbDevice) {
     //Note that Task() polls a hub if present, and we want to avoid polling.
