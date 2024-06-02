@@ -243,7 +243,7 @@ void loop() {
     } else {
       // a device has disconnected from the AP, and we are back in listening mode
       DEBUG_PRINTLN("Device disconnected from AP");
-      client.stop();
+      if (client) client.stop();
     }
   }
   
