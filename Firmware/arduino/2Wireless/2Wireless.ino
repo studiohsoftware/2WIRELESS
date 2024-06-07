@@ -136,6 +136,7 @@ int keyIndex = 0;                // your network key Index number (needed only f
 
 int status = WL_IDLE_STATUS;
 WiFiServer server(80);
+WiFiClient client;
 
 void setup() {
   //Set this stuff up first so we are ready for firmware requests from modules.
@@ -228,7 +229,6 @@ void setup() {
 
 
 void loop() {
-  WiFiClient client;
   // compare the previous status to the current status
   if (status != WiFi.status()) {
     // it has changed update the variable
