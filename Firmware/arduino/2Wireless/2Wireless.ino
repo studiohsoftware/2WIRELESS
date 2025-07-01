@@ -1737,7 +1737,7 @@ void masterEndTransmission() {
     if (SERCOM2->I2CM.STATUS.bit.BUSSTATE == WIRE_OWNER_STATE){
       //Total delay here only applies when stuck in OWNER. In that case DEBUG statements helped because delay.
       //Reducing max number of delays here reduces stability.
-      int maxdelays = 5; //1ms max.
+      int maxdelays = 100; //1ms max.
       while ((SERCOM2->I2CM.STATUS.bit.BUSSTATE == WIRE_OWNER_STATE) && (delays < maxdelays)) {
         delays++;
         delayMicroseconds(10);
