@@ -22,6 +22,7 @@
 //#define DEBUG_MIDI //MIDI clock might be too fast for logging. 
 //#define DEBUG_PRESETS
 //#define DEBUG_USB
+//#define DEBUG_I2C
 #define CARD_ADDRESS 0x00 //This ends up meaning that our I2C address is 0x50.
 #define BUFFER_SIZE 2000 //Ring buffer size for incoming I2C. 
 #define FRAM_WREN 0x06 //FRAM WRITE ENABLE COMMAND
@@ -67,16 +68,76 @@
 #define uhd_current_bank(p)                       ((USB->HOST.HostPipe[p].PSTATUS.reg&USB_HOST_PSTATUS_CURBK) == USB_HOST_PSTATUS_CURBK)  
 
 // for debugging
-#ifdef DEBUG
+#if defined DEBUG
 #define DEBUG_PRINT(str) Serial1.print(str)
 #define DEBUG_PRINTLN(str) Serial1.println(str)
 #define DEBUG_PRINTHEX(str) Serial1.print(str, HEX)
 #define DEBUG_PRINTHEXLN(str) Serial1.println(str, HEX)
-#else
+#else 
 #define DEBUG_PRINT(str)
 #define DEBUG_PRINTLN(str)
 #define DEBUG_PRINTHEX(str)
 #define DEBUG_PRINTHEXLN(str)
+#endif
+
+#if defined DEBUG_HTTP
+#define DEBUG_HTTP_PRINT(str) Serial1.print(str)
+#define DEBUG_HTTP_PRINTLN(str) Serial1.println(str)
+#define DEBUG_HTTP_PRINTHEX(str) Serial1.print(str, HEX)
+#define DEBUG_HTTP_PRINTHEXLN(str) Serial1.println(str, HEX)
+#else
+#define DEBUG_HTTP_PRINT(str) 
+#define DEBUG_HTTP_PRINTLN(str) 
+#define DEBUG_HTTP_PRINTHEX(str) 
+#define DEBUG_HTTP_PRINTHEXLN(str) 
+#endif
+
+#if defined DEBUG_MIDI
+#define DEBUG_MIDI_PRINT(str) Serial1.print(str)
+#define DEBUG_MIDI_PRINTLN(str) Serial1.println(str)
+#define DEBUG_MIDI_PRINTHEX(str) Serial1.print(str, HEX)
+#define DEBUG_MIDI_PRINTHEXLN(str) Serial1.println(str, HEX)
+#else
+#define DEBUG_MIDI_PRINT(str) 
+#define DEBUG_MIDI_PRINTLN(str) 
+#define DEBUG_MIDI_PRINTHEX(str) 
+#define DEBUG_MIDI_PRINTHEXLN(str) 
+#endif
+
+#if defined DEBUG_PRESETS
+#define DEBUG_PRESETS_PRINT(str) Serial1.print(str)
+#define DEBUG_PRESETS_PRINTLN(str) Serial1.println(str)
+#define DEBUG_PRESETS_PRINTHEX(str) Serial1.print(str, HEX)
+#define DEBUG_PRESETS_PRINTHEXLN(str) Serial1.println(str, HEX)
+#else
+#define DEBUG_PRESETS_PRINT(str) 
+#define DEBUG_PRESETS_PRINTLN(str) 
+#define DEBUG_PRESETS_PRINTHEX(str) 
+#define DEBUG_PRESETS_PRINTHEXLN(str) 
+#endif
+
+#if defined DEBUG_USB
+#define DEBUG_USB_PRINT(str) Serial1.print(str)
+#define DEBUG_USB_PRINTLN(str) Serial1.println(str)
+#define DEBUG_USB_PRINTHEX(str) Serial1.print(str, HEX)
+#define DEBUG_USB_PRINTHEXLN(str) Serial1.println(str, HEX)
+#else
+#define DEBUG_USB_PRINT(str) 
+#define DEBUG_USB_PRINTLN(str) 
+#define DEBUG_USB_PRINTHEX(str) 
+#define DEBUG_USB_PRINTHEXLN(str) 
+#endif
+
+#if defined DEBUG_I2C
+#define DEBUG_I2C_PRINT(str) Serial1.print(str)
+#define DEBUG_I2C_PRINTLN(str) Serial1.println(str)
+#define DEBUG_I2C_PRINTHEX(str) Serial1.print(str, HEX)
+#define DEBUG_I2C_PRINTHEXLN(str) Serial1.println(str, HEX)
+#else
+#define DEBUG_I2C_PRINT(str) 
+#define DEBUG_I2C_PRINTLN(str) 
+#define DEBUG_I2C_PRINTHEX(str) 
+#define DEBUG_I2C_PRINTHEXLN(str) 
 #endif
 
 class JsonToken {
@@ -131,7 +192,7 @@ bool velo[16] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}; //use velocity by default
 bool v2version=false; //used to support pre PRIMO firmware.
 SPISettings spiSettings(12000000, MSBFIRST, SPI_MODE0); //MKR1000 max is 12MHz. FRAM chip max is 40MHz.
 const static String PROGMEM homepageString = "<html> <head>  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">  <style>   .p {    display: flex;    flex-direction: column;    background-color:lightgray;    color:darkblue;    font-family:Arial;    font-weight:bold;    letter-spacing: 2px;    height: 218px;   }   .hf {    font-size:12px;    padding: 10px;    border: 1px solid darkblue;   }   .r {    font-style:italic;    font-size:20px;    padding: 10px;    border-left: 1px solid darkblue;    border-right: 1px solid darkblue;    height: 50px;   }   .row {    display: flex;    flex-direction: row;    justify-content: space-around;    align-items: center;       }   .col {    display: flex;    flex-direction: column;    justify-content: space-around;    align-items: center;    font-size:14px;    padding-inline: 4px;    margin: 0px;   }   .screw {    display: flex;    justify-content: center;    align-content: center;    flex-direction: column;    height: 18px;    width: 18px;    background-color: #999;    border-radius: 50%;    color: #444;    font-size:30px;    border: 1px solid black;   }   .b {    border-radius: 50%;    height:40px;    width:40px;    background-color: #777;    padding: 0px;    margin: 0px;   }   .d {    height: 50px;    background-color: white;    padding: 0px;    margin: 0px;    border: 1px solid black;   }   .dx {    height: 50px;    background-color: white;    padding: 0px;    margin: 0px;    border: 0px;   }     .dc {    font-family: Courier New;    font-weight:bold;    background-color: #cfc;    height: 50px;    border: 0px;   }   .hole {    height: 10px;    width: 10px;    background-color: #000;    border-radius: 50%;    display: inline-block;   }   </style> </head> <body>  <div class=\"p\">   <div class=\"hf row\">    <div class=\"screw\">+</div>    <div>PRESET &nbsp; MANAGER</div>   <div class=\"screw\">+</div>  </div>  <div class=\"r row\" style=\"border-bottom: 1px solid darkblue;margin-left:0;padding-left:0\">   <div class=\"col\">    <button id=\"sB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"1\"></button>    <div style=\"height:2;margin-left:0;padding-left:0\"></div>    <div>store</div>   </div>   <div class=\"d row\" style=\"margin-left:0;padding-left:0\">    <div class=\"dx col\" >     <input id=\"current_preset\" class=\"dc\" style=\"width:21px;background-color: #afa;\" disabled>     <input class=\"dc\" disabled style=\"width:21px;background-color: #afa;\">    </div>    <div class=\"dx col\" >     <input id=\"current_name\" class=\"dc\" maxlength=\"20\" tabindex=\"2\">     <input id=\"recall_name\" class=\"dc\" disabled style=\"background-color: #afa;\">    </div>    <div class=\"dx col\" >     <input class=\"dc\" disabled style=\"width:40px;background-color: #afa; \">     <input id=\"recall_preset\" class=\"dc\" style=\"width:40px;\" type=\"number\" min=\"1\" max=\"30\" tabindex=\"3\">    </div>   </div>   <div class=\"col\">    <button id=\"rB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"4\"></button>    <div style=\"height:2\"></div>    <div>recall</div>   </div>  </div>  <div class=\"r row\">   <div class=\"row\" style=\"width:200px\">    <div class=\"col\">     <button id=\"lB\" type=\"button\" class=\"b\" tabindex=\"5\"></button>     <div style=\"height:2\"></div>     <div>last</div>    </div>    <div class=\"col\">     <button id=\"nB\" type=\"button\" class=\"b\" tabindex=\"6\"></button>     <div style=\"height:2\"></div>     <div>next</div>    </div>   </div>   <div class=\"col\" style=\"align-items: flex-start;width:33%\">    <div class=\"row\" style=\"align-items: flex-start;\">     <input type=\"radio\" id=\"v3\" name=\"version\" value=\"v3\" tabindex=\"7\" hidden>     <label for=\"v3\" hidden>primo</label>    </div>    <div class=\"row\" style=\"align-items: flex-start;\">     <input type=\"radio\" id=\"v2\" name=\"version\" value=\"v2\" tabindex=\"8\" hidden>     <label for=\"v2\" hidden>v2    </label>    </div>   </div>   <div class=\"col\" style=\"width:33%\">    <button id=\"dispB\" type=\"button\" class=\"b\" tabindex=\"9\"></button>    <div style=\"height:2\"></div>    <div>display</div>   </div>    <div class=\"col\" style=\"width:33%\">    <button id=\"remB\" type=\"button\" class=\"b\" tabindex=\"10\"></button>    <div style=\"height:2\"></div>    <div>remote</div>   </div>      </div>  <div class=\"hf row\">   <div class=\"hole\"></div>   <div>STUDIO H SOFTWARE</div>   <div class=\"hole\"></div>  </div>  </div> </body> <script>  var rem = true;  var req;  var c_pset = document.getElementById(\"current_preset\");  var r_pset = document.getElementById(\"recall_preset\");  var c_name = document.getElementById(\"current_name\");  var r_name = document.getElementById(\"recall_name\");  var names = [];  var lock = false;  r_pset.onchange = rOnChange;  c_name.onchange = cnameOnChange;  document.getElementById(\"sB\").onclick = sBOnClick;  document.getElementById(\"rB\").onclick = rBOnClick;  document.getElementById(\"lB\").onclick = lBOnClick;  document.getElementById(\"nB\").onclick = nBOnClick;  document.getElementById(\"remB\").onclick = remBOnClick;  document.getElementById(\"dispB\").onclick = dispBOnClick;  document.getElementById(\"v3\").checked = true;    readNames();    c_pset.value = readPreset();  cOnChange();  r_pset.value = c_pset.value;  rOnChange();     function sBOnClick() {   send(\"savepreset?preset=\" + r_pset.value);   names[r_pset.value] = names[c_pset.value];   writeName(r_pset.value,names[r_pset.value]);   rOnChange();  }    function rBOnClick() {   c_pset.value = r_pset.value;   cOnChange();  }    function lBOnClick() {   var pset = c_pset.value;   pset = pset - 1;   if (pset < 1) {    pset = pset + 30;   }   pset = pset % 31;   c_pset.value = pset;   r_pset.value = pset;   cOnChange();   rOnChange();  }  function nBOnClick() {   var pset = c_pset.value;   pset = pset % 30 + 1;   c_pset.value = pset;   r_pset.value = pset;   cOnChange();   rOnChange();  }  function remBOnClick() {   rem = !rem;   if (rem){    send(\"remoteenable\");   } else {    send(\"remotedisable\");   }  }  function dispBOnClick() {   if (!lock) {    lock = true;    var c_saved = c_name.value;    var r_saved = r_name.value;    send(\"displaymessage\");    var tmp = JSON.parse(req.responseText).message;    c_name.value = tmp[0];     r_name.value = tmp[1];    setTimeout(()=>{      c_name.value = c_saved;      r_name.value = r_saved;     lock = false;    }, 2500)   }  }    function cOnChange(){   c_name.value = names[c_pset.value];   send(\"recallpreset?preset=\" + c_pset.value);  }    function rOnChange(){   r_name.value = names[r_pset.value];  }    function cnameOnChange(){   names[c_pset.value] = c_name.value;   writeName(c_pset.value,names[c_pset.value]);   rOnChange();  }    function send(url) {   var version = \"\";   if (document.getElementById('v2').checked) {    version = \"v2/\";   }   req = new XMLHttpRequest();   req.open(\"GET\", \"http://192.168.0.1/\" + version + url,false);    req.send(null);  }    function readPreset(){   send(\"currentpreset\");   return(parseInt(JSON.parse(req.responseText).currentpreset));  }    function readNames(){   send(\"presetnames\");   var tmp = JSON.parse(req.responseText).presetnames;   for (var i=0;i<30;i++){    names[i+1]=tmp[i];   }     }    function writeName(pset,name){   if (name != undefined) {    send(\"presetname=\" + name + \"&preset=\" + pset.toString());   }  } </script></html>";
-const static String PROGMEM setupPageString = "<html> <head> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> </head> <style> table,th,td  { border:1px solid black; border-collapse: collapse; } th,td { padding: 1px; } input[type=number] { width: 45px; } </style> <body> <div style=\"display: flex;justify-content: space-between; max-width:245px\"> <label style=\"font-weight:bold;font-size:24px;\">Setup Page</label> <input type=\"button\" id=\"submit\" value=\"Submit\"> </div> <hr> <table id=\"MidiTable\" name=\"MidiTable\"> <tr> <th>Chan</th> <th>A</th> <th>B</th> <th>C</th> <th>D</th> <th>Tran</th> <th>Poly</th> <th>Velo</th> </tr> </table> <hr> <table id=\"BusTable\" name=\"BusTable\"> <tr> <th>Bus</th> <th>Fine</th> </tr> </table> <hr> <table id=\"MidiOptions\" name=\"MidiOptions\"> <tr> <th colspan=\"2\">MIDI Options</th> </tr> <tr> <td> <label for=\"PrgChEnbl\">Receive Program Change</label> </td> <td> <input type=\"checkbox\" id=\"PrgChEnbl\" name=\"PrgChEnbl\"> </td> </tr> <tr> <td> <label for=\"SendMidi\" id=\"SendMidiLabel\">Send 252e Midi Clock</label> </td> <td> <input type=\"checkbox\" id=\"SendMidi\" name=\"SendMidi\"> </td> </tr> </table> <hr> <label for=\"Device\"> <input type=\"radio\" id=\"Device\" name=\"usb\" value=\"1\" onclick=\"deviceOnClick()\">USB Device</label> <label for=\"Host\"> <input type=\"radio\" id=\"Host\" name=\"usb\" value=\"0\" onclick=\"hostOnClick()\">USB Host</label> <hr> <input type=\"checkbox\" id=\"Poll\" name=\"poll\"> <label for=\"Poll\">Poll modules on startup</label> <hr> <label for=\"ssid\">SSID:</label></br> <input type=\"text\" id=\"ssid\" name=\"ssid\" maxlength=\"32\" style=\"width:250;\"><br> <hr> <label for=\"pass\">Password (eight characters minimum):</label></br> <input type=\"text\" id=\"pass\" name=\"pass\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"pass2\">Re-enter Password:</label></br> <input type=\"text\" id=\"pass2\" name=\"pass2\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"submit\" id=\"errortext\" style=\"color:red;\"></label> <hr> Firmware v1.13 </body> <script> var req = new XMLHttpRequest(); var s = document.getElementById(\"ssid\"); var pwd = document.getElementById(\"pass\"); var pwd2 = document.getElementById(\"pass2\"); var submit = document.getElementById(\"submit\"); var errortext = document.getElementById(\"errortext\"); var busNames = [\"A\",\"B\",\"C\",\"D\"];  var busTable = document.getElementById(\"BusTable\"); for (var i = 0; i < 4; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var f = document.createElement('input'); f.type = 'number'; f.name = \"f\" + i; f.id = \"f\" + i; f.setAttribute('max','49'); f.setAttribute('min','-49'); td1.appendChild(document.createTextNode(busNames[i])); td2.appendChild(f); tr.appendChild(td1); tr.appendChild(td2); busTable.appendChild(tr); } var fineA = document.getElementById(\"f0\"); var fineB = document.getElementById(\"f1\"); var fineC = document.getElementById(\"f2\"); var fineD = document.getElementById(\"f3\");  var table = document.getElementById(\"MidiTable\"); for (var i = 1; i < 17; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var td3 = document.createElement('td'); var td4 = document.createElement('td'); var td5 = document.createElement('td'); var td6 = document.createElement('td'); var td7 = document.createElement('td'); var td8 = document.createElement('td'); var chan = document.createTextNode(i); var a = document.createElement('input'); a.type = \"checkbox\"; a.name = \"a\" + i; a.id = \"a\" + i; var b = document.createElement('input'); b.type = \"checkbox\"; b.name = \"b\" + i; b.id = \"b\" + i; var c = document.createElement('input'); c.type = \"checkbox\"; c.name = \"c\" + i; c.id = \"c\" + i; var d = document.createElement('input'); d.type = \"checkbox\"; d.name = \"d\" + i; d.id = \"d\" + i; var t = document.createElement('input'); t.type = 'number'; t.name = \"t\" + i; t.id = \"t\" + i; t.setAttribute('max','49'); t.setAttribute('min','-49'); var p = document.createElement('input'); p.type = \"checkbox\"; p.name = \"p\" + i; p.id = \"p\" + i; var v = document.createElement('input'); v.type = \"checkbox\"; v.name = \"v\" + i; v.id = \"v\" + i; td1.appendChild(chan); td2.appendChild(a); td3.appendChild(b); td4.appendChild(c); td5.appendChild(d); td6.appendChild(t); td7.appendChild(p); td8.appendChild(v); tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6); tr.appendChild(td7); tr.appendChild(td8); table.appendChild(tr); } submit.onclick = submitOnClick; send('getsetupdata','GET',null); var parsedJson = JSON.parse(req.responseText); s.value = parsedJson.ssid; pwd.value = parsedJson.password; pwd2.value = pwd.value; if (parseInt(parsedJson.poll)==1) { document.getElementById(\"Poll\").checked = true; } if (parseInt(parsedJson.prgChEnbl)==1) { document.getElementById(\"PrgChEnbl\").checked = true; } if (parseInt(parsedJson.sendMidi)==1) { document.getElementById(\"SendMidi\").checked = true; } if (parseInt(parsedJson.usbMode)==1){ document.getElementById(\"Device\").checked = true; disable252eClock(false); } else { document.getElementById(\"Host\").checked = true; disable252eClock(true); } for (var i=0; i < 4; i++){ document.getElementById(\"f\" + i).value = parseInt(parsedJson.buses[i].fine); } for (var i=0; i < 16; i++){ k = i + 1; var mask = parseInt(parsedJson.channels[i].mask); document.getElementById(\"a\" + k).checked = mask&0x8; document.getElementById(\"b\" + k).checked = mask&0x4; document.getElementById(\"c\" + k).checked = mask&0x2; document.getElementById(\"d\" + k).checked = mask&0x1; document.getElementById(\"t\" + k).value = parseInt(parsedJson.channels[i].tran); document.getElementById(\"p\" + k).checked = parseInt(parsedJson.channels[i].poly); document.getElementById(\"v\" + k).checked = parseInt(parsedJson.channels[i].velo); } function send(url,method,content) { req.open(method, \"http://192.168.0.1/\" + url,false); req.send(content); }  function deviceOnClick(){ disable252eClock(false); }  function hostOnClick(){ disable252eClock(true); }  function disable252eClock(disable){ if (disable){ document.getElementById(\"SendMidi\").disabled=true; document.getElementById(\"SendMidiLabel\").style.color = 'gray'; } else { document.getElementById(\"SendMidi\").disabled=false; document.getElementById(\"SendMidiLabel\").style.color = 'black'; } }  function submitOnClick(){ if (pwd.value != pwd2.value) { errortext.innerHTML = \"Passwords do not match.\"; } else if ((pwd.value.length < 8) || (pwd2.value.length < 8)){ errortext.innerHTML = \"Password too short.\"; } else { var usb = \"0\"; if (document.getElementById(\"Device\").checked) { usb = \"1\"; } var poll = \"0\"; if (document.getElementById(\"Poll\").checked) { poll = \"1\"; } var prgChEnbl = \"0\"; if (document.getElementById(\"PrgChEnbl\").checked) { prgChEnbl = \"1\"; } var sendMidi = \"0\"; if (document.getElementById(\"SendMidi\").checked) { sendMidi = \"1\"; } errortext.innerHTML = \"\"; var response = { ssid : s.value, password : pwd.value, usbMode : usb, poll : poll, prgChEnbl : prgChEnbl, sendMidi : sendMidi, buses : [], channels : [] }; var busA = { bus: \"A\", fine: fineA.value.toString() }; response.buses.push(busA); var busB = { bus: \"B\", fine: fineB.value.toString() }; response.buses.push(busB); var busC = { bus: \"C\", fine: fineC.value.toString() }; response.buses.push(busC); var busD = { bus: \"D\", fine: fineD.value.toString() }; response.buses.push(busD);  for (var i = 1; i<17; i++){ var m = 0; if (document.getElementById(\"a\" + i).checked) {m = 0x8;} if (document.getElementById(\"b\" + i).checked) {m = m | 0x4}; if (document.getElementById(\"c\" + i).checked) {m = m | 0x2}; if (document.getElementById(\"d\" + i).checked) {m = m | 0x1}; var pp = 0; if (document.getElementById(\"p\" + i).checked) {pp = 1;} var vv = 0; if (document.getElementById(\"v\" + i).checked) {vv = 1;} var channel = { chan : i.toString(), mask : \"0x\" + m.toString(16), tran : document.getElementById(\"t\" + i).value.toString(), poly : pp.toString(), velo : vv.toString() }; response.channels.push(channel); } var responseString = JSON.stringify(response,undefined,2); req = new XMLHttpRequest(); req.open(\"POST\", \"http://192.168.0.1/postsetupdata\",true); req.setRequestHeader(\"Content-Length\", responseString.length); req.setRequestHeader(\"Content-Type\", \"application/x-www-form-urlencoded\"); req.send(responseString); } }  </script> </html>";
+const static String PROGMEM setupPageString = "<html> <head> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> </head> <style> table,th,td  { border:1px solid black; border-collapse: collapse; } th,td { padding: 1px; } input[type=number] { width: 45px; } </style> <body> <div style=\"display: flex;justify-content: space-between; max-width:245px\"> <label style=\"font-weight:bold;font-size:24px;\">Setup Page</label> <input type=\"button\" id=\"submit\" value=\"Submit\"> </div> <hr> <table id=\"MidiTable\" name=\"MidiTable\"> <tr> <th>Chan</th> <th>A</th> <th>B</th> <th>C</th> <th>D</th> <th>Tran</th> <th>Poly</th> <th>Velo</th> </tr> </table> <hr> <table id=\"BusTable\" name=\"BusTable\"> <tr> <th>Bus</th> <th>Fine</th> </tr> </table> <hr> <table id=\"MidiOptions\" name=\"MidiOptions\"> <tr> <th colspan=\"2\">MIDI Options</th> </tr> <tr> <td> <label for=\"PrgChEnbl\">Receive Program Change</label> </td> <td> <input type=\"checkbox\" id=\"PrgChEnbl\" name=\"PrgChEnbl\"> </td> </tr> <tr> <td> <label for=\"SendMidi\" id=\"SendMidiLabel\">Send 252e Midi Clock</label> </td> <td> <input type=\"checkbox\" id=\"SendMidi\" name=\"SendMidi\"> </td> </tr> </table> <hr> <label for=\"Device\"> <input type=\"radio\" id=\"Device\" name=\"usb\" value=\"1\" onclick=\"deviceOnClick()\">USB Device</label> <label for=\"Host\"> <input type=\"radio\" id=\"Host\" name=\"usb\" value=\"0\" onclick=\"hostOnClick()\">USB Host</label> <hr> <input type=\"checkbox\" id=\"Poll\" name=\"poll\"> <label for=\"Poll\">Poll modules on startup</label> <hr> <label for=\"ssid\">SSID:</label></br> <input type=\"text\" id=\"ssid\" name=\"ssid\" maxlength=\"32\" style=\"width:250;\"><br> <hr> <label for=\"pass\">Password (eight characters minimum):</label></br> <input type=\"text\" id=\"pass\" name=\"pass\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"pass2\">Re-enter Password:</label></br> <input type=\"text\" id=\"pass2\" name=\"pass2\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"submit\" id=\"errortext\" style=\"color:red;\"></label> <hr> Firmware v1.14.0 </body> <script> var req = new XMLHttpRequest(); var s = document.getElementById(\"ssid\"); var pwd = document.getElementById(\"pass\"); var pwd2 = document.getElementById(\"pass2\"); var submit = document.getElementById(\"submit\"); var errortext = document.getElementById(\"errortext\"); var busNames = [\"A\",\"B\",\"C\",\"D\"];  var busTable = document.getElementById(\"BusTable\"); for (var i = 0; i < 4; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var f = document.createElement('input'); f.type = 'number'; f.name = \"f\" + i; f.id = \"f\" + i; f.setAttribute('max','49'); f.setAttribute('min','-49'); td1.appendChild(document.createTextNode(busNames[i])); td2.appendChild(f); tr.appendChild(td1); tr.appendChild(td2); busTable.appendChild(tr); } var fineA = document.getElementById(\"f0\"); var fineB = document.getElementById(\"f1\"); var fineC = document.getElementById(\"f2\"); var fineD = document.getElementById(\"f3\");  var table = document.getElementById(\"MidiTable\"); for (var i = 1; i < 17; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var td3 = document.createElement('td'); var td4 = document.createElement('td'); var td5 = document.createElement('td'); var td6 = document.createElement('td'); var td7 = document.createElement('td'); var td8 = document.createElement('td'); var chan = document.createTextNode(i); var a = document.createElement('input'); a.type = \"checkbox\"; a.name = \"a\" + i; a.id = \"a\" + i; var b = document.createElement('input'); b.type = \"checkbox\"; b.name = \"b\" + i; b.id = \"b\" + i; var c = document.createElement('input'); c.type = \"checkbox\"; c.name = \"c\" + i; c.id = \"c\" + i; var d = document.createElement('input'); d.type = \"checkbox\"; d.name = \"d\" + i; d.id = \"d\" + i; var t = document.createElement('input'); t.type = 'number'; t.name = \"t\" + i; t.id = \"t\" + i; t.setAttribute('max','49'); t.setAttribute('min','-49'); var p = document.createElement('input'); p.type = \"checkbox\"; p.name = \"p\" + i; p.id = \"p\" + i; var v = document.createElement('input'); v.type = \"checkbox\"; v.name = \"v\" + i; v.id = \"v\" + i; td1.appendChild(chan); td2.appendChild(a); td3.appendChild(b); td4.appendChild(c); td5.appendChild(d); td6.appendChild(t); td7.appendChild(p); td8.appendChild(v); tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6); tr.appendChild(td7); tr.appendChild(td8); table.appendChild(tr); } submit.onclick = submitOnClick; send('getsetupdata','GET',null); var parsedJson = JSON.parse(req.responseText); s.value = parsedJson.ssid; pwd.value = parsedJson.password; pwd2.value = pwd.value; if (parseInt(parsedJson.poll)==1) { document.getElementById(\"Poll\").checked = true; } if (parseInt(parsedJson.prgChEnbl)==1) { document.getElementById(\"PrgChEnbl\").checked = true; } if (parseInt(parsedJson.sendMidi)==1) { document.getElementById(\"SendMidi\").checked = true; } if (parseInt(parsedJson.usbMode)==1){ document.getElementById(\"Device\").checked = true; disable252eClock(false); } else { document.getElementById(\"Host\").checked = true; disable252eClock(true); } for (var i=0; i < 4; i++){ document.getElementById(\"f\" + i).value = parseInt(parsedJson.buses[i].fine); } for (var i=0; i < 16; i++){ k = i + 1; var mask = parseInt(parsedJson.channels[i].mask); document.getElementById(\"a\" + k).checked = mask&0x8; document.getElementById(\"b\" + k).checked = mask&0x4; document.getElementById(\"c\" + k).checked = mask&0x2; document.getElementById(\"d\" + k).checked = mask&0x1; document.getElementById(\"t\" + k).value = parseInt(parsedJson.channels[i].tran); document.getElementById(\"p\" + k).checked = parseInt(parsedJson.channels[i].poly); document.getElementById(\"v\" + k).checked = parseInt(parsedJson.channels[i].velo); } function send(url,method,content) { req.open(method, \"http://192.168.0.1/\" + url,false); req.send(content); }  function deviceOnClick(){ disable252eClock(false); }  function hostOnClick(){ disable252eClock(true); }  function disable252eClock(disable){ if (disable){ document.getElementById(\"SendMidi\").disabled=true; document.getElementById(\"SendMidiLabel\").style.color = 'gray'; } else { document.getElementById(\"SendMidi\").disabled=false; document.getElementById(\"SendMidiLabel\").style.color = 'black'; } }  function submitOnClick(){ if (pwd.value != pwd2.value) { errortext.innerHTML = \"Passwords do not match.\"; } else if ((pwd.value.length < 8) || (pwd2.value.length < 8)){ errortext.innerHTML = \"Password too short.\"; } else { var usb = \"0\"; if (document.getElementById(\"Device\").checked) { usb = \"1\"; } var poll = \"0\"; if (document.getElementById(\"Poll\").checked) { poll = \"1\"; } var prgChEnbl = \"0\"; if (document.getElementById(\"PrgChEnbl\").checked) { prgChEnbl = \"1\"; } var sendMidi = \"0\"; if (document.getElementById(\"SendMidi\").checked) { sendMidi = \"1\"; } errortext.innerHTML = \"\"; var response = { ssid : s.value, password : pwd.value, usbMode : usb, poll : poll, prgChEnbl : prgChEnbl, sendMidi : sendMidi, buses : [], channels : [] }; var busA = { bus: \"A\", fine: fineA.value.toString() }; response.buses.push(busA); var busB = { bus: \"B\", fine: fineB.value.toString() }; response.buses.push(busB); var busC = { bus: \"C\", fine: fineC.value.toString() }; response.buses.push(busC); var busD = { bus: \"D\", fine: fineD.value.toString() }; response.buses.push(busD);  for (var i = 1; i<17; i++){ var m = 0; if (document.getElementById(\"a\" + i).checked) {m = 0x8;} if (document.getElementById(\"b\" + i).checked) {m = m | 0x4}; if (document.getElementById(\"c\" + i).checked) {m = m | 0x2}; if (document.getElementById(\"d\" + i).checked) {m = m | 0x1}; var pp = 0; if (document.getElementById(\"p\" + i).checked) {pp = 1;} var vv = 0; if (document.getElementById(\"v\" + i).checked) {vv = 1;} var channel = { chan : i.toString(), mask : \"0x\" + m.toString(16), tran : document.getElementById(\"t\" + i).value.toString(), poly : pp.toString(), velo : vv.toString() }; response.channels.push(channel); } var responseString = JSON.stringify(response,undefined,2); req = new XMLHttpRequest(); req.open(\"POST\", \"http://192.168.0.1/postsetupdata\",true); req.setRequestHeader(\"Content-Length\", responseString.length); req.setRequestHeader(\"Content-Type\", \"application/x-www-form-urlencoded\"); req.send(responseString); } }  </script> </html>";
 char ssid[33];    // your network SSID (name) max 32 characters plus termination
 char pass[64];    // your network password for WPA. Max is 63 plus termination
 int keyIndex = 0; // your network key Index number (needed only for WEP)
@@ -669,9 +730,12 @@ void setup() {
   Wire.onReceive(receiveEvent);
   Wire.onRequest(requestEvent);
 
+  #if defined DEBUG || defined DEBUG_HTTP || defined DEBUG_MIDI || defined DEBUG_PRESETS || defined DEBUG_USB || defined DEBUG_I2C
+  Serial1.begin(115200);
+  #endif
+  
   #ifdef DEBUG
   //Initialize serial and wait for port to open:
-  Serial1.begin(115200);
   DEBUG_PRINTLN("Access Point Web Server");
   #endif
 
@@ -787,7 +851,6 @@ void loop() {
           // if the current line is blank, you got two newline characters in a row.
           // that's the end of the client HTTP request, so send a response:
           if (currentLine.length() == 0) {
-            DEBUG_PRINTLN(""); 
             DEBUG_PRINTLN("URL is: " + urlString);
             handleWifiRequest(client, urlString);
             // break out of the while loop:
@@ -810,6 +873,7 @@ void loop() {
     client.stop();
     delayMicroseconds(1000); //stablizes when load is heavy
     DEBUG_PRINTLN("client disconnected");
+    DEBUG_PRINTLN();
   }
   pollUsbMidi(isUsbDevice);
 }
@@ -1642,12 +1706,10 @@ void sendMidiFineTune(byte mask, byte tune){
     mask = mask & 0xf;
     if (mask == 0) return;
     switchToMaster();
-    #ifdef DEBUG_MIDI
-    DEBUG_PRINT("Sending Fine Tune. Mask=");
-    DEBUG_PRINTHEX(mask);
-    DEBUG_PRINT(" Tune=");
-    DEBUG_PRINTHEXLN(tune);
-    #endif
+    DEBUG_MIDI_PRINT("Sending Fine Tune. Mask=");
+    DEBUG_MIDI_PRINTHEX(mask);
+    DEBUG_MIDI_PRINT(" Tune=");
+    DEBUG_MIDI_PRINTHEXLN(tune);
     Wire.beginTransmission(0);
     if (v2version) {
         Wire.write(0xB0 | mask);
@@ -1713,36 +1775,34 @@ void masterEndTransmission() {
       //Not sure it helps.
       result = Wire.endTransmission(1); 
     } 
-    #ifdef DEBUG
-      if (result !=0) {
-        DEBUG_PRINT("I2C RESULT:");
-        DEBUG_PRINT(result);
-        DEBUG_PRINT(" BUSSTATE:");
-        DEBUG_PRINT(SERCOM2->I2CM.STATUS.bit.BUSSTATE);
-        DEBUG_PRINT(" BUS ERROR:");
-        DEBUG_PRINT(SERCOM2->I2CM.STATUS.bit.BUSERR);
-        DEBUG_PRINT(" NACK:");
-        DEBUG_PRINT(SERCOM2->I2CM.STATUS.bit.RXNACK);
-        DEBUG_PRINT(" ARBLOST:");
-        DEBUG_PRINT(SERCOM2->I2CM.STATUS.bit.ARBLOST);
-        DEBUG_PRINT(" STATUS:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.STATUS.reg);
-        DEBUG_PRINT(" CTRLA:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.CTRLA.reg);
-        DEBUG_PRINT(" CTRLB:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.CTRLB.reg);
-        DEBUG_PRINT(" INTFLAG:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.INTFLAG.reg);
-        DEBUG_PRINT(" SYNCBUSY:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.SYNCBUSY.reg);
-        DEBUG_PRINT(" ADDR:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.ADDR.reg);
-        DEBUG_PRINT(" DATA:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.DATA.reg);
-        DEBUG_PRINT(" MB:");
-        DEBUG_PRINTLN(SERCOM2->I2CM.INTFLAG.bit.MB);
-      }
-    #endif
+    if (result !=0) {
+      DEBUG_I2C_PRINT("I2C RESULT:");
+      DEBUG_I2C_PRINT(result);
+      DEBUG_I2C_PRINT(" BUSSTATE:");
+      DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.BUSSTATE);
+      DEBUG_I2C_PRINT(" BUS ERROR:");
+      DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.BUSERR);
+      DEBUG_I2C_PRINT(" NACK:");
+      DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.RXNACK);
+      DEBUG_I2C_PRINT(" ARBLOST:");
+      DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.ARBLOST);
+      DEBUG_I2C_PRINT(" STATUS:");
+      DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.STATUS.reg);
+      DEBUG_I2C_PRINT(" CTRLA:");
+      DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.CTRLA.reg);
+      DEBUG_I2C_PRINT(" CTRLB:");
+      DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.CTRLB.reg);
+      DEBUG_I2C_PRINT(" INTFLAG:");
+      DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.INTFLAG.reg);
+      DEBUG_I2C_PRINT(" SYNCBUSY:");
+      DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.SYNCBUSY.reg);
+      DEBUG_I2C_PRINT(" ADDR:");
+      DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.ADDR.reg);
+      DEBUG_I2C_PRINT(" DATA:");
+      DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.DATA.reg);
+      DEBUG_I2C_PRINT(" MB:");
+      DEBUG_I2C_PRINTLN(SERCOM2->I2CM.INTFLAG.bit.MB);
+    }
     //Running in debug mode with print statements here made things more stable.
     //With debug statments, we almost always exit in WIRE_IDLE_STATE.
     //Without, we almost always exit in WIRE_OWNER_STATE. 
@@ -1764,11 +1824,9 @@ void masterEndTransmission() {
       //Longer delays seem to be the best way to reduce problems.
       //Reset clears OWNER status, but still unstable if delays are shortened.
       if (sercom2.isBusOwnerWIRE()){
-        #ifdef DEBUG
-          DEBUG_PRINT("***I2C RESET*** ");
-          DEBUG_PRINT(" BUSSTATE:");
-          DEBUG_PRINTLN(SERCOM2->I2CM.STATUS.bit.BUSSTATE);
-        #endif
+        DEBUG_I2C_PRINT("***I2C RESET*** ");
+        DEBUG_I2C_PRINT(" BUSSTATE:");
+        DEBUG_I2C_PRINTLN(SERCOM2->I2CM.STATUS.bit.BUSSTATE);
         sercom2.resetWIRE(); //Is there a better way to clear BUSSTATE=OWNER?
         sercom2.enableWIRE(); //should set BUSSTATE to IDLE!
       }
@@ -1778,13 +1836,13 @@ void masterEndTransmission() {
         usbHostBuffer.read_char();
       }
     }       
-    #ifdef DEBUG
+    #ifdef DEBUG_I2C
     if (!sercom2.isBusIdleWIRE()) {
       //how are we possibly still not in IDLE state?
-      DEBUG_PRINT("I2C BUS STATE:");
-      DEBUG_PRINT(SERCOM2->I2CM.STATUS.bit.BUSSTATE);
-      DEBUG_PRINT(" DELAYS:");
-      DEBUG_PRINTLN(delays);
+      DEBUG_I2C_PRINT("I2C BUS STATE:");
+      DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.BUSSTATE);
+      DEBUG_I2C_PRINT(" DELAYS:");
+      DEBUG_I2C_PRINTLN(delays);
     }
     #endif
 }
@@ -1885,6 +1943,7 @@ void printMacAddress(byte mac[]) {
 }
 
 void handleWifiRequest(WiFiClient client, String urlString){
+  DEBUG_PRINTLN("Handling Wifi Request");
   //Default to PRIMO
   v2version = false;
   //Look at version switch
@@ -1924,9 +1983,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
     if ((preset >=1) && (preset <=30)) {
         preset = preset - 1; //0-29 internally.
-        #ifdef DEBUG_PRESETS
-        DEBUG_PRINTLN(preset);
-        #endif
+        DEBUG_HTTP_PRINTLN(preset);
         sendSavePreset(preset);
     }
   }
@@ -1938,9 +1995,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     int preset = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
     if ((preset >=1) && (preset <=30)) {
         preset = preset - 1; //0-29 internally.
-        #ifdef DEBUG_PRESETS
-        DEBUG_PRINTLN(preset);
-        #endif
+        DEBUG_HTTP_PRINTLN(preset);
         sendRecallPreset(preset);
     }
   }
@@ -1961,10 +2016,8 @@ void handleWifiRequest(WiFiClient client, String urlString){
     if (chan > 15) chan = 15;
     note = note & 0x7F;
     velo = velo & 0x7F;
-    #ifdef DEBUG_MIDI
-    DEBUG_PRINTHEXLN(note);
-    DEBUG_PRINTHEXLN(velo);
-    #endif
+    DEBUG_HTTP_PRINTHEXLN(note);
+    DEBUG_HTTP_PRINTHEXLN(velo);
     processMidiNoteOn(chan, note, velo);
   }
   else if (urlString.indexOf("/midinoteoff?chan") >= 0) {
@@ -1984,10 +2037,8 @@ void handleWifiRequest(WiFiClient client, String urlString){
     if (chan > 15) chan = 15;
     note = note & 0x7F;
     velo = velo & 0x7F;
-    #ifdef DEBUG_MIDI
-    DEBUG_PRINTLN(note);
-    DEBUG_PRINTLN(velo);
-    #endif
+    DEBUG_HTTP_PRINTLN(note);
+    DEBUG_HTTP_PRINTLN(velo);
     processMidiNoteOff(chan, note, velo);
   }
   else if (urlString.indexOf("/midiclockstart") >= 0) {
@@ -2018,10 +2069,8 @@ void handleWifiRequest(WiFiClient client, String urlString){
     if (chan < 1) chan = 1;
     int m = mask[chan - 1];
     tune = tune & 0x3F; //max value is 63 decimal.
-    #ifdef DEBUG_MIDI
-    DEBUG_PRINTLN(m);
-    DEBUG_PRINTLN(tune);
-    #endif
+    DEBUG_HTTP_PRINTLN(m);
+    DEBUG_HTTP_PRINTLN(tune);
     sendMidiFineTune(m,tune);
   }
   else if (urlString.indexOf("/midibend?chan") >= 0) {
@@ -2041,11 +2090,9 @@ void handleWifiRequest(WiFiClient client, String urlString){
     int m = mask[chan - 1];
     bend_lsb = bend_lsb & 0x7F; //max value is 7F.
     bend_msb = bend_msb & 0x7F; //max value is 7F.
-    #ifdef DEBUG_MIDI
-    DEBUG_PRINTLN(m);
-    DEBUG_PRINTLN(bend_lsb);
-    DEBUG_PRINTLN(bend_msb);
-    #endif
+    DEBUG_HTTP_PRINTLN(m);
+    DEBUG_HTTP_PRINTLN(bend_lsb);
+    DEBUG_HTTP_PRINTLN(bend_msb);
     sendMidiBend(m,bend_lsb,bend_msb);
   } else if (urlString.indexOf("/sendmidibytes") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
@@ -2064,11 +2111,9 @@ void handleWifiRequest(WiFiClient client, String urlString){
     midiMessage.byte1 = byte1 & 0xFF;
     midiMessage.byte2 = byte2 & 0x7F;
     midiMessage.byte3 = byte3 & 0x7F;
-    #ifdef DEBUG_MIDI
-    DEBUG_PRINTHEXLN(midiMessage.byte1);
-    DEBUG_PRINTHEXLN(midiMessage.byte2);
-    DEBUG_PRINTHEXLN(midiMessage.byte3);
-    #endif
+    DEBUG_HTTP_PRINTHEXLN(midiMessage.byte1);
+    DEBUG_HTTP_PRINTHEXLN(midiMessage.byte2);
+    DEBUG_HTTP_PRINTHEXLN(midiMessage.byte3);
     processMidiMessage(midiMessage);
   }
   else if (urlString.indexOf("/getpresets?addr") >= 0) {
@@ -2084,7 +2129,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     if (eqloc > -1) {
         line_length = (int)strtol(urlString.substring(eqloc + 1, len).c_str(), nullptr, 10);
     }
-    DEBUG_PRINTHEXLN(address);
+    DEBUG_HTTP_PRINTHEXLN(address);
     write_i2c_to_fram = true; //Cache incoming i2c to FRAM 
     sendBackupPresets(address); 
     bool done = false;
@@ -2441,7 +2486,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
     int programChangeEnable = getProgramChangeEnable();
     int sendMidiToUsb = getSendMidiToUsb();
     int usbMode = getUsbMode();
-    DEBUG_PRINTLN("Building result"); 
+    DEBUG_HTTP_PRINTLN("Building result"); 
     String result = "{";
     result = result + "\"ssid\": \"" + ssid + "\"";
     result = result + ",\"password\": \"" + password + "\"";
@@ -2481,8 +2526,8 @@ void handleWifiRequest(WiFiClient client, String urlString){
     }
     result = result + "]";
     result = result + "}";
-    DEBUG_PRINTLN("Sending setup data"); 
-    DEBUG_PRINTLN(result); 
+    DEBUG_HTTP_PRINTLN("Sending setup data"); 
+    DEBUG_HTTP_PRINTLN(result); 
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:application/json",result.length());
     client.println(result);
   } else if (urlString.indexOf("/postsetupdata") >= 0) {
@@ -2563,7 +2608,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
         }
     }
     String responseString = String(charcount) + " bytes received.";
-    DEBUG_PRINTLN(responseString);
+    DEBUG_HTTP_PRINTLN(responseString);
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
     client.println(responseString);
   } else if (urlString.indexOf("/favicon.ico") >= 0) {
@@ -2575,8 +2620,8 @@ void handleWifiRequest(WiFiClient client, String urlString){
     while (written < sizeof(favicon)){
       int remaining = sizeof(favicon) - written;
       int sent = 0;
-      if (remaining > 1000){
-        sent = client.write(&favicon[written],1000); //Print in chunks of 1000
+      if (remaining > 500){
+        sent = client.write(&favicon[written],500); //Print in chunks 
       } else {
         sent = written + client.write(&favicon[written],remaining);
       }
@@ -2584,7 +2629,8 @@ void handleWifiRequest(WiFiClient client, String urlString){
       written = written + sent;
     } 
     client.println();   // The HTTP response ends with another blank line:
-   
+    DEBUG_HTTP_PRINT("Bytes written.");
+    DEBUG_HTTP_PRINTLN(written);
   } else if (urlString.indexOf("/generate_204") >= 0) {
     writeHeader(client,"HTTP/1.1 204 No Content","Content-type:text/plain",0);
     DEBUG_PRINTLN("Generate 204 Received"); 
@@ -2592,28 +2638,26 @@ void handleWifiRequest(WiFiClient client, String urlString){
   } else if (urlString.indexOf("/setup") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",setupPageString.length());
     DEBUG_PRINTLN("Returning setup page"); 
-    //Write page in 1k chunks. 
+    //Write page in chunks. 
     int i = 0;
-    String tmp = setupPageString.substring(i,i+1000);
+    String tmp = setupPageString.substring(i,i+500);
     while (tmp != ""){
       client.print(tmp);
-      i = i + 1000;
-      tmp = setupPageString.substring(i,i+1000);
+      i = i + 500;
+      tmp = setupPageString.substring(i,i+500);
     }
     client.println();   // The HTTP response ends with another blank line:
   } else {
     DEBUG_PRINTLN("Returning homepage");
-    #ifdef DEBUG_HTTP
-    DEBUG_PRINTLN(homepageString);
-    #endif
+    DEBUG_HTTP_PRINTLN(homepageString);
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/html",homepageString.length());
-    //Write page in 1k chunks. 
+    //Write page in chunks. 
     int i = 0;
-    String tmp = homepageString.substring(i,i+1000);
+    String tmp = homepageString.substring(i,i+500);
     while (tmp != ""){
       client.print(tmp);
-      i = i + 1000;
-      tmp = homepageString.substring(i,i+1000);
+      i = i + 500;
+      tmp = homepageString.substring(i,i+500);
     }
     client.println();   // The HTTP response ends with another blank line:
   }
@@ -2621,9 +2665,7 @@ void handleWifiRequest(WiFiClient client, String urlString){
 
 void onMidiUsbDeviceEvent(int ep) {
     //This stops SOF (start of frame) interrupt from happening every 1ms.
-    #ifdef DEBUG_MIDI
-    DEBUG_PRINTLN("MIDI Device Interrupt Received");
-    #endif
+    DEBUG_MIDI_PRINTLN("MIDI Device Interrupt Received");
     USB->DEVICE.INTENCLR.bit.SOF = 1; //SAMD interrupts continuously without this.
 }
 
@@ -2644,9 +2686,7 @@ void pollUsbMidi(bool isUsbDevice) {
   } else if (isUsbDevice && (USB->DEVICE.DADD.bit.DADD == 0)) {
     //This happens when the USB cable has been disconnected and reconnected.
     //The SOF interrupt is needed to re-enumerate.
-    #ifdef DEBUG_MIDI
-    DEBUG_PRINTLN("MIDI Device Address is zero.");
-    #endif
+    DEBUG_MIDI_PRINTLN("MIDI Device Address is zero.");
     USB->DEVICE.INTENSET.bit.SOF = 1;
   } else if (!isUsbDevice) {
     //Note that Task() polls a hub if present, and we want to avoid polling.
@@ -2679,21 +2719,19 @@ void pollUsbMidi(bool isUsbDevice) {
           USB->HOST.HostPipe[epAddr].PSTATUSCLR.reg = USB_HOST_PSTATUSCLR_BK0RDY; 
           uhd_unfreeze_pipe(epAddr); //launch the transfer
           USB->HOST.HostPipe[epAddr].PINTENSET.reg = 0x3; //Enable pipe interrupts
-          #ifdef DEBUG_USB
-          DEBUG_PRINTLN("Pipe Started");
-          DEBUG_PRINT("Dump:");
-          DEBUG_PRINT("ADDR0:");
-          DEBUG_PRINTHEX(usb_pipe_table[epAddr].HostDescBank[0].ADDR.reg);
-          DEBUG_PRINT(":");
-          DEBUG_PRINT("ADDR1:");
-          DEBUG_PRINTHEX(usb_pipe_table[epAddr].HostDescBank[1].ADDR.reg);
-          DEBUG_PRINT(":");
-          DEBUG_PRINTHEX(USB->HOST.INTFLAG.reg);
-          DEBUG_PRINT(":");
-          DEBUG_PRINTHEX(USB->HOST.HostPipe[epAddr].PINTFLAG.reg);
-          DEBUG_PRINT(":");
-          DEBUG_PRINTHEXLN(USB->HOST.HostPipe[epAddr].PSTATUS.reg);
-          #endif
+          DEBUG_USB_PRINTLN("Pipe Started");
+          DEBUG_USB_PRINT("Dump:");
+          DEBUG_USB_PRINT("ADDR0:");
+          DEBUG_USB_PRINTHEX(usb_pipe_table[epAddr].HostDescBank[0].ADDR.reg);
+          DEBUG_USB_PRINT(":");
+          DEBUG_USB_PRINT("ADDR1:");
+          DEBUG_USB_PRINTHEX(usb_pipe_table[epAddr].HostDescBank[1].ADDR.reg);
+          DEBUG_USB_PRINT(":");
+          DEBUG_USB_PRINTHEX(USB->HOST.INTFLAG.reg);
+          DEBUG_USB_PRINT(":");
+          DEBUG_USB_PRINTHEX(USB->HOST.HostPipe[epAddr].PINTFLAG.reg);
+          DEBUG_USB_PRINT(":");
+          DEBUG_USB_PRINTHEXLN(USB->HOST.HostPipe[epAddr].PSTATUS.reg);
         } else {
           while(usbHostBuffer.available()>3) {
             midiMessage.header = usbHostBuffer.read_char();
@@ -2718,110 +2756,104 @@ void CUSTOM_UHD_Handler(void)
     DEBUG_PRINTLN("Connected");
     doPipeConfig = true;
     usbConnected = true;
-    #ifdef DEBUG
-        DEBUG_PRINT("I2C BUSSTATE:");
-        DEBUG_PRINT(SERCOM2->I2CM.STATUS.bit.BUSSTATE);
-        DEBUG_PRINT(" BUS ERROR:");
-        DEBUG_PRINT(SERCOM2->I2CM.STATUS.bit.BUSERR);
-        DEBUG_PRINT(" NACK:");
-        DEBUG_PRINT(SERCOM2->I2CM.STATUS.bit.RXNACK);
-        DEBUG_PRINT(" ARBLOST:");
-        DEBUG_PRINT(SERCOM2->I2CM.STATUS.bit.ARBLOST);
-        DEBUG_PRINT(" STATUS:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.STATUS.reg);
-        DEBUG_PRINT(" CTRLA:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.CTRLA.reg);
-        DEBUG_PRINT(" CTRLB:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.CTRLB.reg);
-        DEBUG_PRINT(" INTFLAG:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.INTFLAG.reg);
-        DEBUG_PRINT(" SYNCBUSY:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.SYNCBUSY.reg);
-        DEBUG_PRINT(" ADDR:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.ADDR.reg);
-        DEBUG_PRINT(" DATA:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.DATA.reg);
-        DEBUG_PRINT(" MB:");
-        DEBUG_PRINTLN(SERCOM2->I2CM.INTFLAG.bit.MB);
-    #endif
-  } else if (USB->HOST.INTFLAG.reg == USB_HOST_INTFLAG_DDISC) {
-    DEBUG_PRINTLN("Disconnected");
-    #ifdef DEBUG
-        DEBUG_PRINT("I2C BUSSTATE:");
-        DEBUG_PRINT(SERCOM2->I2CM.STATUS.bit.BUSSTATE);
-        DEBUG_PRINT(" BUS ERROR:");
-        DEBUG_PRINT(SERCOM2->I2CM.STATUS.bit.BUSERR);
-        DEBUG_PRINT(" NACK:");
-        DEBUG_PRINT(SERCOM2->I2CM.STATUS.bit.RXNACK);
-        DEBUG_PRINT(" ARBLOST:");
-        DEBUG_PRINT(SERCOM2->I2CM.STATUS.bit.ARBLOST);
-        DEBUG_PRINT(" STATUS:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.STATUS.reg);
-        DEBUG_PRINT(" CTRLA:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.CTRLA.reg);
-        DEBUG_PRINT(" CTRLB:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.CTRLB.reg);
-        DEBUG_PRINT(" INTFLAG:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.INTFLAG.reg);
-        DEBUG_PRINT(" SYNCBUSY:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.SYNCBUSY.reg);
-        DEBUG_PRINT(" ADDR:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.ADDR.reg);
-        DEBUG_PRINT(" DATA:");
-        DEBUG_PRINTHEX(SERCOM2->I2CM.DATA.reg);
-        DEBUG_PRINT(" MB:");
-        DEBUG_PRINTLN(SERCOM2->I2CM.INTFLAG.bit.MB);
-    #endif
-    //Sometimes the I2C stops working and the WPM gets stuck except for this interrupt.
+    //Sometimes I2C stops working and the WPM gets stuck except for this interrupt.
     //Saw ARBLOST=1 here after a hang. Anyway, this is a desperate attempt to get things going again.
     sercom2.resetWIRE(); //Should clear errors
     sercom2.enableWIRE(); //should set BUSSTATE to IDLE!
-    usbConnected = false;
+    DEBUG_I2C_PRINT("I2C BUSSTATE:");
+    DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.BUSSTATE);
+    DEBUG_I2C_PRINT(" BUS ERROR:");
+    DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.BUSERR);
+    DEBUG_I2C_PRINT(" NACK:");
+    DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.RXNACK);
+    DEBUG_I2C_PRINT(" ARBLOST:");
+    DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.ARBLOST);
+    DEBUG_I2C_PRINT(" STATUS:");
+    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.STATUS.reg);
+    DEBUG_I2C_PRINT(" CTRLA:");
+    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.CTRLA.reg);
+    DEBUG_I2C_PRINT(" CTRLB:");
+    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.CTRLB.reg);
+    DEBUG_I2C_PRINT(" INTFLAG:");
+    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.INTFLAG.reg);
+    DEBUG_I2C_PRINT(" SYNCBUSY:");
+    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.SYNCBUSY.reg);
+    DEBUG_I2C_PRINT(" ADDR:");
+    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.ADDR.reg);
+    DEBUG_I2C_PRINT(" DATA:");
+    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.DATA.reg);
+    DEBUG_I2C_PRINT(" MB:");
+    DEBUG_I2C_PRINTLN(SERCOM2->I2CM.INTFLAG.bit.MB);
+  } else if (USB->HOST.INTFLAG.reg == USB_HOST_INTFLAG_DDISC) {
+    DEBUG_PRINTLN("Disconnected");
+    DEBUG_I2C_PRINT("I2C BUSSTATE:");
+    DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.BUSSTATE);
+    DEBUG_I2C_PRINT(" BUS ERROR:");
+    DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.BUSERR);
+    DEBUG_I2C_PRINT(" NACK:");
+    DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.RXNACK);
+    DEBUG_I2C_PRINT(" ARBLOST:");
+    DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.ARBLOST);
+    DEBUG_I2C_PRINT(" STATUS:");
+    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.STATUS.reg);
+    DEBUG_I2C_PRINT(" CTRLA:");
+    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.CTRLA.reg);
+    DEBUG_I2C_PRINT(" CTRLB:");
+    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.CTRLB.reg);
+    DEBUG_I2C_PRINT(" INTFLAG:");
+    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.INTFLAG.reg);
+    DEBUG_PRINT(" SYNCBUSY:");
+    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.SYNCBUSY.reg);
+    DEBUG_I2C_PRINT(" ADDR:");
+    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.ADDR.reg);
+    DEBUG_I2C_PRINT(" DATA:");
+    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.DATA.reg);
+    DEBUG_I2C_PRINT(" MB:");
+    DEBUG_I2C_PRINTLN(SERCOM2->I2CM.INTFLAG.bit.MB);
     USB->HOST.HostPipe[epAddr].PINTENCLR.reg = 0xFF; //Disable pipe interrupts
+    usbConnected = false;
   }
   UHD_Handler();
   uhd_freeze_pipe(epAddr);
-  #ifdef DEBUG_USB
-  DEBUG_PRINTHEX(USB->HOST.INTFLAG.reg);
-  DEBUG_PRINT(":");
-  DEBUG_PRINTHEX(USB->HOST.HostPipe[epAddr].PINTFLAG.reg);
-  DEBUG_PRINT(":");
-  DEBUG_PRINTHEX(USB->HOST.HostPipe[epAddr].PSTATUS.reg);
-  DEBUG_PRINT(":");
-  DEBUG_PRINT("|STATUS0:");
-  DEBUG_PRINTHEX(usb_pipe_table[epAddr].HostDescBank[0].STATUS_PIPE.reg);
-  DEBUG_PRINT("|STATUS1:");
-  DEBUG_PRINTHEX(usb_pipe_table[epAddr].HostDescBank[1].STATUS_PIPE.reg);
-  DEBUG_PRINT("|STATUS_BK0:");
-  DEBUG_PRINTHEX(usb_pipe_table[epAddr].HostDescBank[0].STATUS_BK.reg);
-  DEBUG_PRINT("|STATUS_BK1:");
-  DEBUG_PRINTHEX(usb_pipe_table[epAddr].HostDescBank[1].STATUS_BK.reg);
-  DEBUG_PRINT("|BYTECOUNT0:");
-  DEBUG_PRINTHEX(uhd_byte_count0(epAddr));
-  DEBUG_PRINT("|BYTECOUNT1:");
-  DEBUG_PRINTHEX(uhd_byte_count1(epAddr));
-  DEBUG_PRINT("|TRCPT0:");
-  DEBUG_PRINT(Is_uhd_in_received0(epAddr));
-  DEBUG_PRINT("|TRCPT1:");
-  DEBUG_PRINTHEX(Is_uhd_in_received1(epAddr));
-  DEBUG_PRINT("|READY0:");
-  DEBUG_PRINTHEX(Is_uhd_in_ready0(epAddr));
-  DEBUG_PRINT("|READY1:");
-  DEBUG_PRINTHEX(Is_uhd_in_ready1(epAddr));
-  DEBUG_PRINT("|CURRBK:");
-  DEBUG_PRINTHEX(uhd_current_bank(epAddr));
-  DEBUG_PRINT("|TOGGLE:");
-  DEBUG_PRINTHEX(Is_uhd_toggle(epAddr));
-  DEBUG_PRINT("|TOGGLE_ERROR0:");
-  DEBUG_PRINTHEX(Is_uhd_toggle_error0(epAddr));
-  DEBUG_PRINT("|TOGGLE_ERROR1:");
-  DEBUG_PRINTHEX(Is_uhd_toggle_error1(epAddr));
-  DEBUG_PRINT("|NAK:");
-  DEBUG_PRINTHEX(Is_uhd_nak_received(epAddr));
-  DEBUG_PRINT("|INTSUMMARY:");
-  DEBUG_PRINTHEX(uhd_endpoint_interrupt());
-  DEBUG_PRINT("|");
-  #endif
+  DEBUG_USB_PRINTHEX(USB->HOST.INTFLAG.reg);
+  DEBUG_USB_PRINT(":");
+  DEBUG_USB_PRINTHEX(USB->HOST.HostPipe[epAddr].PINTFLAG.reg);
+  DEBUG_USB_PRINT(":");
+  DEBUG_USB_PRINTHEX(USB->HOST.HostPipe[epAddr].PSTATUS.reg);
+  DEBUG_USB_PRINT(":");
+  DEBUG_USB_PRINT("|STATUS0:");
+  DEBUG_USB_PRINTHEX(usb_pipe_table[epAddr].HostDescBank[0].STATUS_PIPE.reg);
+  DEBUG_USB_PRINT("|STATUS1:");
+  DEBUG_USB_PRINTHEX(usb_pipe_table[epAddr].HostDescBank[1].STATUS_PIPE.reg);
+  DEBUG_USB_PRINT("|STATUS_BK0:");
+  DEBUG_USB_PRINTHEX(usb_pipe_table[epAddr].HostDescBank[0].STATUS_BK.reg);
+  DEBUG_USB_PRINT("|STATUS_BK1:");
+  DEBUG_USB_PRINTHEX(usb_pipe_table[epAddr].HostDescBank[1].STATUS_BK.reg);
+  DEBUG_USB_PRINT("|BYTECOUNT0:");
+  DEBUG_USB_PRINTHEX(uhd_byte_count0(epAddr));
+  DEBUG_USB_PRINT("|BYTECOUNT1:");
+  DEBUG_USB_PRINTHEX(uhd_byte_count1(epAddr));
+  DEBUG_USB_PRINT("|TRCPT0:");
+  DEBUG_USB_PRINT(Is_uhd_in_received0(epAddr));
+  DEBUG_USB_PRINT("|TRCPT1:");
+  DEBUG_USB_PRINTHEX(Is_uhd_in_received1(epAddr));
+  DEBUG_USB_PRINT("|READY0:");
+  DEBUG_USB_PRINTHEX(Is_uhd_in_ready0(epAddr));
+  DEBUG_USB_PRINT("|READY1:");
+  DEBUG_USB_PRINTHEX(Is_uhd_in_ready1(epAddr));
+  DEBUG_USB_PRINT("|CURRBK:");
+  DEBUG_USB_PRINTHEX(uhd_current_bank(epAddr));
+  DEBUG_USB_PRINT("|TOGGLE:");
+  DEBUG_USB_PRINTHEX(Is_uhd_toggle(epAddr));
+  DEBUG_USB_PRINT("|TOGGLE_ERROR0:");
+  DEBUG_USB_PRINTHEX(Is_uhd_toggle_error0(epAddr));
+  DEBUG_USB_PRINT("|TOGGLE_ERROR1:");
+  DEBUG_USB_PRINTHEX(Is_uhd_toggle_error1(epAddr));
+  DEBUG_USB_PRINT("|NAK:");
+  DEBUG_USB_PRINTHEX(Is_uhd_nak_received(epAddr));
+  DEBUG_USB_PRINT("|INTSUMMARY:");
+  DEBUG_USB_PRINTHEX(uhd_endpoint_interrupt());
+  DEBUG_USB_PRINT("|");
 
   //Both banks full and bank1 is oldest, so process first. 
   if (Is_uhd_in_received0(epAddr) && Is_uhd_in_received1(epAddr) && uhd_current_bank(epAddr)) {
@@ -2872,10 +2904,8 @@ void handleBank1(uint32_t epAddr){
 }
 
 void processMidiMessage(midiEventPacket_t midiMessage){
-  #ifdef DEBUG_MIDI
-  DEBUG_PRINT("Received: ");
-  DEBUG_PRINTHEX(midiMessage.header);
-  #endif
+  DEBUG_MIDI_PRINT("Received: ");
+  DEBUG_MIDI_PRINTHEX(midiMessage.header);
   uint8_t chan = midiMessage.byte1 & 0x0F;
   switch (midiMessage.byte1 & 0xF0) {
     case 0x90 : {processMidiNoteOn(chan, midiMessage.byte2, midiMessage.byte3);break;}
@@ -2886,11 +2916,9 @@ void processMidiMessage(midiEventPacket_t midiMessage){
     case 0xC0 : {processProgramChange(midiMessage.byte2);break;}
     default   : {}
   }
-  #ifdef DEBUG_MIDI
-  DEBUG_PRINTHEX(midiMessage.byte1);
-  DEBUG_PRINTHEX(midiMessage.byte2);
-  DEBUG_PRINTHEXLN(midiMessage.byte3);
-  #endif
+  DEBUG_MIDI_PRINTHEX(midiMessage.byte1);
+  DEBUG_MIDI_PRINTHEX(midiMessage.byte2);
+  DEBUG_MIDI_PRINTHEXLN(midiMessage.byte3);
 }
 
 void processMidiNoteOn(uint8_t chan, uint8_t note, uint8_t velo){
