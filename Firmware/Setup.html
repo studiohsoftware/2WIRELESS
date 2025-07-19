@@ -79,7 +79,7 @@
 		<input type="text" id="pass2" name="pass2" maxlength="63" style="width:250;"><br>
 		<label for="submit" id="errortext" style="color:red;"></label>
 		<hr>
-		Firmware v1.7
+		Firmware v1.15
 	</body>
 	<script>
 		var req = new XMLHttpRequest();
@@ -173,7 +173,7 @@
 			table.appendChild(tr);
 		}
 		submit.onclick = submitOnClick;
-		send('getsetupdata','GET',null);
+		send('getsetupdata1','GET',null);
 		var parsedJson = JSON.parse(req.responseText);
 		s.value = parsedJson.ssid;
 		pwd.value = parsedJson.password;
@@ -197,6 +197,8 @@
 		for (var i=0; i < 4; i++){
 			document.getElementById("f" + i).value = parseInt(parsedJson.buses[i].fine);
 		}
+		send('getsetupdata2','GET',null);
+		var parsedJson = JSON.parse(req.responseText);
 		for (var i=0; i < 16; i++){
 			k = i + 1;
 			var mask = parseInt(parsedJson.channels[i].mask);
