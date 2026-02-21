@@ -83,6 +83,8 @@
 			<option value="0x2D">Studio H DPO (261e) B</option>
 			<option value="0x2E">Studio H DPO (261e) C</option>
 			<option value="0x2F">Studio H DPO (261e) D</option>
+			<option value="0x44">Studio H TRF (291e) A</option>
+			<option value="0x45">Studio H TRF (291e) B</option>
 			<option value="0x72">226h</option>
 		</select>
 		<p id="result" style="font-family:'Arial';font-size:12px"></p>
@@ -716,7 +718,7 @@
 				dataskip[29] = 6;
 				dataskip[30] = 8;
 			}
-			
+			/* This is pre v30.6
 			else if (module_name.indexOf("281e") == 0) {
 				//281e is mostly 14.
 				for (i = 0; i < 33; i++) {
@@ -728,6 +730,15 @@
 				dataskip[20] = 10;
 				dataskip[29] = 6;
 				dataskip[30] = 8;
+			}
+			*/
+			else if (module_name.indexOf("281e") == 0) {
+				//281e is mostly 14.
+				for (i = 0; i < 31; i++) {
+					dataskip[i] = 14;
+				}
+				dataskip[18] = 4;
+				dataskip[19] = 10;
 			}
 			
 			else if (module_name.indexOf("285e F") == 0) {
@@ -993,6 +1004,13 @@
 			
 			else if (module_name.indexOf("Studio H DPO") == 0) {
 				//DPO is 64 per line. 
+				for (i = 0; i < 30; i++) {
+					dataskip[i] = 64;
+				}
+			}
+			
+			else if (module_name.indexOf("Studio H TRF") == 0) {
+				//TRF is 64 per line. 
 				for (i = 0; i < 30; i++) {
 					dataskip[i] = 64;
 				}
