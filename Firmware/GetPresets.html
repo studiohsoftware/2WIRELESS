@@ -1,6 +1,8 @@
 <html>
 	<head>
 		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Fetch Presets from Module</title>
+		<link rel="icon" type="image/x-icon" href="favicon.ico">
 	</head>
 	<body>
 			<p id="title" style="font-family:'Arial';font-size:16px">
@@ -71,8 +73,8 @@
 			<option value="0x64">296e A</option>
 			<option value="0x65">296e B</option>
 			<option value="0x20">Studio H CSR (210e)</option>
-			<option value="0x35">Studio H 254e (256e) A</option>
-			<option value="0x37">Studio H 254e (256e) B</option>
+			<option value="0x34">Studio H 254e (256e) A</option>
+			<option value="0x35">Studio H 254e (256e) B</option>
 			<option value="0x10">Studio H 255e (257e) A</option>
 			<option value="0x11">Studio H 255e (257e) B</option>
 			<option value="0x28">Studio H DPO (259e) A</option>
@@ -633,7 +635,7 @@
 				dataskip[38]=4;
 				dataskip[39]=40;
 			}
-			
+			/*
 			else if (module_name.indexOf("259e") == 0) {
 				//259e has a pattern. Every third line is 66.
 				for (i = 0; i < 45; i++) {
@@ -669,6 +671,27 @@
 				dataskip[41] = 56;
 				dataskip[43] = 6;
 				dataskip[44] = 60;
+			}
+			*/
+			else if (module_name.indexOf("259e") == 0) {
+				//259e v31.2 has a pattern. Most 66.
+				for (i = 0; i < 38; i++) {
+					dataskip[i] = 66;
+				}
+				dataskip[3] = 58;
+				dataskip[4] = 8;
+				dataskip[8] = 50;
+				dataskip[9] = 16;
+				dataskip[13] = 42;
+				dataskip[14] = 24;
+				dataskip[18] = 34;
+				dataskip[19] = 32;
+				dataskip[23] = 26;
+				dataskip[24] = 40;
+				dataskip[28] = 18;
+				dataskip[29] = 48;
+				dataskip[33] = 10;
+				dataskip[34] = 56;
 			}
 			
 			else if (module_name.indexOf("261e") == 0) {
