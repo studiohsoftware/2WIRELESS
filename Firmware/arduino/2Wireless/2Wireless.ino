@@ -195,7 +195,7 @@ bool velo[16] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}; //use velocity by default
 bool v2version=false; //used to support pre PRIMO firmware.
 SPISettings spiSettings(12000000, MSBFIRST, SPI_MODE0); //MKR1000 max is 12MHz. FRAM chip max is 40MHz.
 const static String PROGMEM homepageString = "<html> <head>  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">  <style>   .p {    display: flex;    flex-direction: column;    background-color:lightgray;    color:darkblue;    font-family:Arial;    font-weight:bold;    letter-spacing: 2px;    height: 218px;   }   .hf {    font-size:12px;    padding: 10px;    border: 1px solid darkblue;   }   .r {    font-style:italic;    font-size:20px;    padding: 10px;    border-left: 1px solid darkblue;    border-right: 1px solid darkblue;    height: 50px;   }   .row {    display: flex;    flex-direction: row;    justify-content: space-around;    align-items: center;       }   .col {    display: flex;    flex-direction: column;    justify-content: space-around;    align-items: center;    font-size:14px;    padding-inline: 4px;    margin: 0px;   }   .screw {    display: flex;    justify-content: center;    align-content: center;    flex-direction: column;    height: 18px;    width: 18px;    background-color: #999;    border-radius: 50%;    color: #444;    font-size:30px;    border: 1px solid black;   }   .b {    border-radius: 50%;    height:40px;    width:40px;    background-color: #777;    padding: 0px;    margin: 0px;   }   .d {    height: 50px;    background-color: white;    padding: 0px;    margin: 0px;    border: 1px solid black;   }   .dx {    height: 50px;    background-color: white;    padding: 0px;    margin: 0px;    border: 0px;   }     .dc {    font-family: Courier New;    font-weight:bold;    background-color: #cfc;    height: 50px;    border: 0px;   }   .hole {    height: 10px;    width: 10px;    background-color: #000;    border-radius: 50%;    display: inline-block;   }   </style> </head> <body>  <div class=\"p\">   <div class=\"hf row\">    <div class=\"screw\">+</div>    <div>PRESET &nbsp; MANAGER</div>   <div class=\"screw\">+</div>  </div>  <div class=\"r row\" style=\"border-bottom: 1px solid darkblue;margin-left:0;padding-left:0\">   <div class=\"col\">    <button id=\"sB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"1\"></button>    <div style=\"height:2;margin-left:0;padding-left:0\"></div>    <div>store</div>   </div>   <div class=\"d row\" style=\"margin-left:0;padding-left:0\">    <div class=\"dx col\" >     <input id=\"current_preset\" class=\"dc\" style=\"width:21px;background-color: #afa;\" disabled>     <input class=\"dc\" disabled style=\"width:21px;background-color: #afa;\">    </div>    <div class=\"dx col\" >     <input id=\"current_name\" class=\"dc\" maxlength=\"20\" tabindex=\"2\">     <input id=\"recall_name\" class=\"dc\" disabled style=\"background-color: #afa;\">    </div>    <div class=\"dx col\" >     <input class=\"dc\" disabled style=\"width:40px;background-color: #afa; \">     <input id=\"recall_preset\" class=\"dc\" style=\"width:40px;\" type=\"number\" min=\"1\" max=\"30\" tabindex=\"3\">    </div>   </div>   <div class=\"col\">    <button id=\"rB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"4\"></button>    <div style=\"height:2\"></div>    <div>recall</div>   </div>  </div>  <div class=\"r row\">   <div class=\"row\" style=\"width:200px\">    <div class=\"col\">     <button id=\"lB\" type=\"button\" class=\"b\" tabindex=\"5\"></button>     <div style=\"height:2\"></div>     <div>last</div>    </div>    <div class=\"col\">     <button id=\"nB\" type=\"button\" class=\"b\" tabindex=\"6\"></button>     <div style=\"height:2\"></div>     <div>next</div>    </div>   </div>   <div class=\"col\" style=\"align-items: flex-start;width:33%\">    <div class=\"row\" style=\"align-items: flex-start;\">     <input type=\"radio\" id=\"v3\" name=\"version\" value=\"v3\" tabindex=\"7\" hidden>     <label for=\"v3\" hidden>primo</label>    </div>    <div class=\"row\" style=\"align-items: flex-start;\">     <input type=\"radio\" id=\"v2\" name=\"version\" value=\"v2\" tabindex=\"8\" hidden>     <label for=\"v2\" hidden>v2    </label>    </div>   </div>   <div class=\"col\" style=\"width:33%\">    <button id=\"dispB\" type=\"button\" class=\"b\" tabindex=\"9\"></button>    <div style=\"height:2\"></div>    <div>display</div>   </div>    <div class=\"col\" style=\"width:33%\">    <button id=\"remB\" type=\"button\" class=\"b\" tabindex=\"10\"></button>    <div style=\"height:2\"></div>    <div>remote</div>   </div>      </div>  <div class=\"hf row\">   <div class=\"hole\"></div>   <div>STUDIO H SOFTWARE</div>   <div class=\"hole\"></div>  </div>  </div> </body> <script>  var rem = true;  var req;  var c_pset = document.getElementById(\"current_preset\");  var r_pset = document.getElementById(\"recall_preset\");  var c_name = document.getElementById(\"current_name\");  var r_name = document.getElementById(\"recall_name\");  var names = [];  var lock = false;  r_pset.onchange = rOnChange;  c_name.onchange = cnameOnChange;  document.getElementById(\"sB\").onclick = sBOnClick;  document.getElementById(\"rB\").onclick = rBOnClick;  document.getElementById(\"lB\").onclick = lBOnClick;  document.getElementById(\"nB\").onclick = nBOnClick;  document.getElementById(\"remB\").onclick = remBOnClick;  document.getElementById(\"dispB\").onclick = dispBOnClick;  document.getElementById(\"v3\").checked = true;    readNames();    c_pset.value = readPreset();  cOnChange();  r_pset.value = c_pset.value;  rOnChange();     function sBOnClick() {   send(\"savepreset?preset=\" + r_pset.value);   names[r_pset.value] = names[c_pset.value];   writeName(r_pset.value,names[r_pset.value]);   rOnChange();  }    function rBOnClick() {   c_pset.value = r_pset.value;   cOnChange();  }    function lBOnClick() {   var pset = c_pset.value;   pset = pset - 1;   if (pset < 1) {    pset = pset + 30;   }   pset = pset % 31;   c_pset.value = pset;   r_pset.value = pset;   cOnChange();   rOnChange();  }  function nBOnClick() {   var pset = c_pset.value;   pset = pset % 30 + 1;   c_pset.value = pset;   r_pset.value = pset;   cOnChange();   rOnChange();  }  function remBOnClick() {   rem = !rem;   if (rem){    send(\"remoteenable\");   } else {    send(\"remotedisable\");   }  }  function dispBOnClick() {   if (!lock) {    lock = true;    var c_saved = c_name.value;    var r_saved = r_name.value;    send(\"displaymessage\");    var tmp = JSON.parse(req.responseText).message;    c_name.value = tmp[0];     r_name.value = tmp[1];    setTimeout(()=>{      c_name.value = c_saved;      r_name.value = r_saved;     lock = false;    }, 2500)   }  }    function cOnChange(){   c_name.value = names[c_pset.value];   send(\"recallpreset?preset=\" + c_pset.value);  }    function rOnChange(){   r_name.value = names[r_pset.value];  }    function cnameOnChange(){   names[c_pset.value] = c_name.value;   writeName(c_pset.value,names[c_pset.value]);   rOnChange();  }    function send(url) {   var version = \"\";   if (document.getElementById('v2').checked) {    version = \"v2/\";   }   req = new XMLHttpRequest();   req.open(\"GET\", \"http://192.168.0.1/\" + version + url,false);    req.send(null);  }    function readPreset(){   send(\"currentpreset\");   return(parseInt(JSON.parse(req.responseText).currentpreset));  }    function readNames(){   send(\"presetnames\");   var tmp = JSON.parse(req.responseText).presetnames;   for (var i=0;i<30;i++){    names[i+1]=tmp[i];   }     }    function writeName(pset,name){   if (name != undefined) {    send(\"presetname=\" + name + \"&preset=\" + pset.toString());   }  } </script></html>";
-const static String PROGMEM setupPageString = "<html> <head>  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> </head> <style> table,th,td{ border:1px solid black; border-collapse: collapse; } th,td { padding: 1px; } input[type=number] { width: 45px; } </style> <body> <div style=\"display: flex;justify-content: space-between; max-width:245px\"> <label style=\"font-weight:bold;font-size:24px;\">Setup Page</label> <input type=\"button\" id=\"submit\" value=\"Submit\"> </div> <hr> <table id=\"MidiTable\" name=\"MidiTable\"> <tr> <th>Chan</th> <th>A</th> <th>B</th> <th>C</th> <th>D</th> <th>Tran</th> <th>Poly</th> <th>Velo</th> </tr> </table> <hr> <table id=\"BusTable\" name=\"BusTable\"> <tr> <th>Bus</th> <th>Fine</th> </tr> </table> <hr> <table id=\"MidiOptions\" name=\"MidiOptions\"> <tr> <th colspan=\"2\">MIDI Options</th> </tr> <tr> <td> <label for=\"PrgChEnbl\">Receive Program Change</label> </td> <td> <input type=\"checkbox\" id=\"PrgChEnbl\" name=\"PrgChEnbl\"> </td> </tr> <tr> <td> <label for=\"SendMidi\" id=\"SendMidiLabel\">Send 252e Midi Clock</label> </td> <td> <input type=\"checkbox\" id=\"SendMidi\" name=\"SendMidi\"> </td> </tr> </table> <hr> <label for=\"Device\"> <input type=\"radio\" id=\"Device\" name=\"usb\" value=\"1\" onclick=\"deviceOnClick()\">USB Device</label> <label for=\"Host\"> <input type=\"radio\" id=\"Host\" name=\"usb\" value=\"0\" onclick=\"hostOnClick()\">USB Host</label> <hr> <input type=\"checkbox\" id=\"Poll\" name=\"poll\"> <label for=\"Poll\">Poll modules on startup</label> <hr> <label for=\"ssid\">SSID:</label></br> <input type=\"text\" id=\"ssid\" name=\"ssid\" maxlength=\"32\" style=\"width:250;\"><br> <hr> <label for=\"pass\">Password (eight characters minimum):</label></br> <input type=\"text\" id=\"pass\" name=\"pass\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"pass2\">Re-enter Password:</label></br> <input type=\"text\" id=\"pass2\" name=\"pass2\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"submit\" id=\"errortext\" style=\"color:red;\"></label> <hr> Firmware v1.16 </body> <script> var req = new XMLHttpRequest(); var s = document.getElementById(\"ssid\"); var pwd = document.getElementById(\"pass\"); var pwd2 = document.getElementById(\"pass2\"); var submit = document.getElementById(\"submit\"); var errortext = document.getElementById(\"errortext\"); var busNames = [\"A\",\"B\",\"C\",\"D\"];  var busTable = document.getElementById(\"BusTable\"); for (var i = 0; i < 4; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var f = document.createElement('input'); f.type = 'number'; f.name = \"f\" + i; f.id = \"f\" + i; f.setAttribute('max','49'); f.setAttribute('min','-49'); td1.appendChild(document.createTextNode(busNames[i])); td2.appendChild(f); tr.appendChild(td1); tr.appendChild(td2); busTable.appendChild(tr); } var fineA = document.getElementById(\"f0\"); var fineB = document.getElementById(\"f1\"); var fineC = document.getElementById(\"f2\"); var fineD = document.getElementById(\"f3\");  var table = document.getElementById(\"MidiTable\"); for (var i = 1; i < 17; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var td3 = document.createElement('td'); var td4 = document.createElement('td'); var td5 = document.createElement('td'); var td6 = document.createElement('td'); var td7 = document.createElement('td'); var td8 = document.createElement('td'); var chan = document.createTextNode(i); var a = document.createElement('input'); a.type = \"checkbox\"; a.name = \"a\" + i; a.id = \"a\" + i; var b = document.createElement('input'); b.type = \"checkbox\"; b.name = \"b\" + i; b.id = \"b\" + i; var c = document.createElement('input'); c.type = \"checkbox\"; c.name = \"c\" + i; c.id = \"c\" + i; var d = document.createElement('input'); d.type = \"checkbox\"; d.name = \"d\" + i; d.id = \"d\" + i; var t = document.createElement('input'); t.type = 'number'; t.name = \"t\" + i; t.id = \"t\" + i; t.setAttribute('max','49'); t.setAttribute('min','-49'); var p = document.createElement('input'); p.type = \"checkbox\"; p.name = \"p\" + i; p.id = \"p\" + i; var v = document.createElement('input'); v.type = \"checkbox\"; v.name = \"v\" + i; v.id = \"v\" + i; td1.appendChild(chan); td2.appendChild(a); td3.appendChild(b); td4.appendChild(c); td5.appendChild(d); td6.appendChild(t); td7.appendChild(p); td8.appendChild(v); tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6); tr.appendChild(td7); tr.appendChild(td8); table.appendChild(tr); } submit.onclick = submitOnClick; send('getsetupdata1','GET',null); var parsedJson = JSON.parse(req.responseText); s.value = parsedJson.ssid; pwd.value = parsedJson.password; pwd2.value = pwd.value; if (parseInt(parsedJson.poll)==1) { document.getElementById(\"Poll\").checked = true; } if (parseInt(parsedJson.prgChEnbl)==1) { document.getElementById(\"PrgChEnbl\").checked = true; } if (parseInt(parsedJson.sendMidi)==1) { document.getElementById(\"SendMidi\").checked = true; } if (parseInt(parsedJson.usbMode)==1){ document.getElementById(\"Device\").checked = true; disable252eClock(false); } else { document.getElementById(\"Host\").checked = true; disable252eClock(true); } for (var i=0; i < 4; i++){ document.getElementById(\"f\" + i).value = parseInt(parsedJson.buses[i].fine); } send('getsetupdata2','GET',null); var parsedJson = JSON.parse(req.responseText); for (var i=0; i < 16; i++){ k = i + 1; var mask = parseInt(parsedJson.channels[i].mask); document.getElementById(\"a\" + k).checked = mask&0x8; document.getElementById(\"b\" + k).checked = mask&0x4; document.getElementById(\"c\" + k).checked = mask&0x2; document.getElementById(\"d\" + k).checked = mask&0x1; document.getElementById(\"t\" + k).value = parseInt(parsedJson.channels[i].tran); document.getElementById(\"p\" + k).checked = parseInt(parsedJson.channels[i].poly); document.getElementById(\"v\" + k).checked = parseInt(parsedJson.channels[i].velo); } function send(url,method,content) { req.open(method, \"http://192.168.0.1/\" + url,false);  req.send(content); }  function deviceOnClick(){ disable252eClock(false); }  function hostOnClick(){ disable252eClock(true); }  function disable252eClock(disable){ if (disable){ document.getElementById(\"SendMidi\").disabled=true; document.getElementById(\"SendMidiLabel\").style.color = 'gray'; } else { document.getElementById(\"SendMidi\").disabled=false; document.getElementById(\"SendMidiLabel\").style.color = 'black'; } }  function submitOnClick(){ if (pwd.value != pwd2.value) { errortext.innerHTML = \"Passwords do not match.\"; } else if ((pwd.value.length < 8) || (pwd2.value.length < 8)){ errortext.innerHTML = \"Password too short.\"; } else { var usb = \"0\"; if (document.getElementById(\"Device\").checked) { usb = \"1\"; } var poll = \"0\"; if (document.getElementById(\"Poll\").checked) { poll = \"1\"; } var prgChEnbl = \"0\"; if (document.getElementById(\"PrgChEnbl\").checked) { prgChEnbl = \"1\"; } var sendMidi = \"0\"; if (document.getElementById(\"SendMidi\").checked) { sendMidi = \"1\"; } errortext.innerHTML = \"\"; var response = { ssid : s.value, password : pwd.value, usbMode : usb, poll : poll, prgChEnbl : prgChEnbl, sendMidi : sendMidi, buses : [], channels : [] }; var busA = { bus: \"A\", fine: fineA.value.toString() }; response.buses.push(busA); var busB = { bus: \"B\", fine: fineB.value.toString() }; response.buses.push(busB); var busC = { bus: \"C\", fine: fineC.value.toString() }; response.buses.push(busC); var busD = { bus: \"D\", fine: fineD.value.toString() }; response.buses.push(busD);  for (var i = 1; i<17; i++){ var m = 0; if (document.getElementById(\"a\" + i).checked) {m = 0x8;} if (document.getElementById(\"b\" + i).checked) {m = m | 0x4}; if (document.getElementById(\"c\" + i).checked) {m = m | 0x2}; if (document.getElementById(\"d\" + i).checked) {m = m | 0x1}; var pp = 0; if (document.getElementById(\"p\" + i).checked) {pp = 1;} var vv = 0; if (document.getElementById(\"v\" + i).checked) {vv = 1;} var channel = { chan : i.toString(), mask : \"0x\" + m.toString(16), tran : document.getElementById(\"t\" + i).value.toString(), poly : pp.toString(), velo : vv.toString() }; response.channels.push(channel); } var responseString = JSON.stringify(response,undefined,2); req = new XMLHttpRequest(); req.open(\"POST\", \"http://192.168.0.1/postsetupdata\",true);  req.setRequestHeader(\"Content-Length\", responseString.length);     req.setRequestHeader(\"Content-Type\", \"application/x-www-form-urlencoded\"); req.send(responseString); }  }  </script> </html>";
+const static String PROGMEM setupPageString = "<html> <head>  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> </head> <style> table,th,td{ border:1px solid black; border-collapse: collapse; } th,td { padding: 1px; } input[type=number] { width: 45px; } </style> <body> <div style=\"display: flex;justify-content: space-between; max-width:245px\"> <label style=\"font-weight:bold;font-size:24px;\">Setup Page</label> <input type=\"button\" id=\"submit\" value=\"Submit\"> </div> <hr> <table id=\"MidiTable\" name=\"MidiTable\"> <tr> <th>Chan</th> <th>A</th> <th>B</th> <th>C</th> <th>D</th> <th>Tran</th> <th>Poly</th> <th>Velo</th> </tr> </table> <hr> <table id=\"BusTable\" name=\"BusTable\"> <tr> <th>Bus</th> <th>Fine</th> </tr> </table> <hr> <table id=\"MidiOptions\" name=\"MidiOptions\"> <tr> <th colspan=\"2\">MIDI Options</th> </tr> <tr> <td> <label for=\"PrgChEnbl\">Receive Program Change</label> </td> <td> <input type=\"checkbox\" id=\"PrgChEnbl\" name=\"PrgChEnbl\"> </td> </tr> <tr> <td> <label for=\"SendMidi\" id=\"SendMidiLabel\">Send 252e Midi Clock</label> </td> <td> <input type=\"checkbox\" id=\"SendMidi\" name=\"SendMidi\"> </td> </tr> </table> <hr> <label for=\"Device\"> <input type=\"radio\" id=\"Device\" name=\"usb\" value=\"1\" onclick=\"deviceOnClick()\">USB Device</label> <label for=\"Host\"> <input type=\"radio\" id=\"Host\" name=\"usb\" value=\"0\" onclick=\"hostOnClick()\">USB Host</label> <hr> <input type=\"checkbox\" id=\"Poll\" name=\"poll\"> <label for=\"Poll\">Poll modules on startup</label> <hr> <label for=\"ssid\">SSID:</label></br> <input type=\"text\" id=\"ssid\" name=\"ssid\" maxlength=\"32\" style=\"width:250;\"><br> <hr> <label for=\"pass\">Password (eight characters minimum):</label></br> <input type=\"text\" id=\"pass\" name=\"pass\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"pass2\">Re-enter Password:</label></br> <input type=\"text\" id=\"pass2\" name=\"pass2\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"submit\" id=\"errortext\" style=\"color:red;\"></label> <hr> Firmware v1.17 </body> <script> var req = new XMLHttpRequest(); var s = document.getElementById(\"ssid\"); var pwd = document.getElementById(\"pass\"); var pwd2 = document.getElementById(\"pass2\"); var submit = document.getElementById(\"submit\"); var errortext = document.getElementById(\"errortext\"); var busNames = [\"A\",\"B\",\"C\",\"D\"];  var busTable = document.getElementById(\"BusTable\"); for (var i = 0; i < 4; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var f = document.createElement('input'); f.type = 'number'; f.name = \"f\" + i; f.id = \"f\" + i; f.setAttribute('max','49'); f.setAttribute('min','-49'); td1.appendChild(document.createTextNode(busNames[i])); td2.appendChild(f); tr.appendChild(td1); tr.appendChild(td2); busTable.appendChild(tr); } var fineA = document.getElementById(\"f0\"); var fineB = document.getElementById(\"f1\"); var fineC = document.getElementById(\"f2\"); var fineD = document.getElementById(\"f3\");  var table = document.getElementById(\"MidiTable\"); for (var i = 1; i < 17; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var td3 = document.createElement('td'); var td4 = document.createElement('td'); var td5 = document.createElement('td'); var td6 = document.createElement('td'); var td7 = document.createElement('td'); var td8 = document.createElement('td'); var chan = document.createTextNode(i); var a = document.createElement('input'); a.type = \"checkbox\"; a.name = \"a\" + i; a.id = \"a\" + i; var b = document.createElement('input'); b.type = \"checkbox\"; b.name = \"b\" + i; b.id = \"b\" + i; var c = document.createElement('input'); c.type = \"checkbox\"; c.name = \"c\" + i; c.id = \"c\" + i; var d = document.createElement('input'); d.type = \"checkbox\"; d.name = \"d\" + i; d.id = \"d\" + i; var t = document.createElement('input'); t.type = 'number'; t.name = \"t\" + i; t.id = \"t\" + i; t.setAttribute('max','49'); t.setAttribute('min','-49'); var p = document.createElement('input'); p.type = \"checkbox\"; p.name = \"p\" + i; p.id = \"p\" + i; var v = document.createElement('input'); v.type = \"checkbox\"; v.name = \"v\" + i; v.id = \"v\" + i; td1.appendChild(chan); td2.appendChild(a); td3.appendChild(b); td4.appendChild(c); td5.appendChild(d); td6.appendChild(t); td7.appendChild(p); td8.appendChild(v); tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6); tr.appendChild(td7); tr.appendChild(td8); table.appendChild(tr); } submit.onclick = submitOnClick; send('getsetupdata1','GET',null); var parsedJson = JSON.parse(req.responseText); s.value = parsedJson.ssid; pwd.value = parsedJson.password; pwd2.value = pwd.value; if (parseInt(parsedJson.poll)==1) { document.getElementById(\"Poll\").checked = true; } if (parseInt(parsedJson.prgChEnbl)==1) { document.getElementById(\"PrgChEnbl\").checked = true; } if (parseInt(parsedJson.sendMidi)==1) { document.getElementById(\"SendMidi\").checked = true; } if (parseInt(parsedJson.usbMode)==1){ document.getElementById(\"Device\").checked = true; disable252eClock(false); } else { document.getElementById(\"Host\").checked = true; disable252eClock(true); } for (var i=0; i < 4; i++){ document.getElementById(\"f\" + i).value = parseInt(parsedJson.buses[i].fine); } send('getsetupdata2','GET',null); var parsedJson = JSON.parse(req.responseText); for (var i=0; i < 16; i++){ k = i + 1; var mask = parseInt(parsedJson.channels[i].mask); document.getElementById(\"a\" + k).checked = mask&0x8; document.getElementById(\"b\" + k).checked = mask&0x4; document.getElementById(\"c\" + k).checked = mask&0x2; document.getElementById(\"d\" + k).checked = mask&0x1; document.getElementById(\"t\" + k).value = parseInt(parsedJson.channels[i].tran); document.getElementById(\"p\" + k).checked = parseInt(parsedJson.channels[i].poly); document.getElementById(\"v\" + k).checked = parseInt(parsedJson.channels[i].velo); } function send(url,method,content) { req.open(method, \"http://192.168.0.1/\" + url,false);  req.send(content); }  function deviceOnClick(){ disable252eClock(false); }  function hostOnClick(){ disable252eClock(true); }  function disable252eClock(disable){ if (disable){ document.getElementById(\"SendMidi\").disabled=true; document.getElementById(\"SendMidiLabel\").style.color = 'gray'; } else { document.getElementById(\"SendMidi\").disabled=false; document.getElementById(\"SendMidiLabel\").style.color = 'black'; } }  function submitOnClick(){ if (pwd.value != pwd2.value) { errortext.innerHTML = \"Passwords do not match.\"; } else if ((pwd.value.length < 8) || (pwd2.value.length < 8)){ errortext.innerHTML = \"Password too short.\"; } else { var usb = \"0\"; if (document.getElementById(\"Device\").checked) { usb = \"1\"; } var poll = \"0\"; if (document.getElementById(\"Poll\").checked) { poll = \"1\"; } var prgChEnbl = \"0\"; if (document.getElementById(\"PrgChEnbl\").checked) { prgChEnbl = \"1\"; } var sendMidi = \"0\"; if (document.getElementById(\"SendMidi\").checked) { sendMidi = \"1\"; } errortext.innerHTML = \"\"; var response = { ssid : s.value, password : pwd.value, usbMode : usb, poll : poll, prgChEnbl : prgChEnbl, sendMidi : sendMidi, buses : [], channels : [] }; var busA = { bus: \"A\", fine: fineA.value.toString() }; response.buses.push(busA); var busB = { bus: \"B\", fine: fineB.value.toString() }; response.buses.push(busB); var busC = { bus: \"C\", fine: fineC.value.toString() }; response.buses.push(busC); var busD = { bus: \"D\", fine: fineD.value.toString() }; response.buses.push(busD);  for (var i = 1; i<17; i++){ var m = 0; if (document.getElementById(\"a\" + i).checked) {m = 0x8;} if (document.getElementById(\"b\" + i).checked) {m = m | 0x4}; if (document.getElementById(\"c\" + i).checked) {m = m | 0x2}; if (document.getElementById(\"d\" + i).checked) {m = m | 0x1}; var pp = 0; if (document.getElementById(\"p\" + i).checked) {pp = 1;} var vv = 0; if (document.getElementById(\"v\" + i).checked) {vv = 1;} var channel = { chan : i.toString(), mask : \"0x\" + m.toString(16), tran : document.getElementById(\"t\" + i).value.toString(), poly : pp.toString(), velo : vv.toString() }; response.channels.push(channel); } var responseString = JSON.stringify(response,undefined,2); req = new XMLHttpRequest(); req.open(\"POST\", \"http://192.168.0.1/postsetupdata\",true);  req.setRequestHeader(\"Content-Length\", responseString.length);     req.setRequestHeader(\"Content-Type\", \"application/x-www-form-urlencoded\"); req.send(responseString); }  }  </script> </html>";
 char ssid[33];    // your network SSID (name) max 32 characters plus termination
 char pass[64];    // your network password for WPA. Max is 63 plus termination
 int keyIndex = 0; // your network key Index number (needed only for WEP)
@@ -1398,12 +1398,8 @@ void requestEvent() {
 }
 
 void switchToMaster(){
-    delayMicroseconds(50); //either this one or the one on switchToSlave prevents lockup at boot.
-    Wire.end();
-  if (getSendMidiToUsb()) {
-    //Delay here to avoid truncating an incoming I2C message (probably not working)
-    //delayMicroseconds(5000); 
-  } 
+  delayMicroseconds(50); //might help
+  Wire.end();
   //Wire.begin sets bus to idle. Make sure bus is actually idle first.
   pinMode(SCL_PIN, INPUT);
   pinMode(SDA_PIN, INPUT);
@@ -1417,20 +1413,10 @@ void switchToMaster(){
     idle_time = micros() - start_time;
   }
   Wire.begin();
-  //This is where you can set I2C master registers. Note CTRLA has "PAC Write-Protection" so device must be disabled.
-  //sercom2.disableWIRE();
-  //SERCOM2->I2CM.CTRLA.bit.INACTOUT = 3; //bounce back from hang? No.
-  //SERCOM2->I2CM.CTRLA.bit.SCLSM = 1; //clock stretch only after ACK bit.
-  //SERCOM2->I2CM.CTRLA.bit.LOWTOUTEN = 1;//limit master clock stretching to free up bus.
-  //SERCOM2->I2CM.CTRLA.bit.MEXTTOEN = 1; 
-  //while ( SERCOM2->I2CM.SYNCBUSY.bit.SYSOP != 0 ) {};
-  //SERCOM2->I2CM.CTRLA.bit.SDAHOLD = 0x3; // 0x0=Disabled, 0x1=50-100ns, 0x2=300ns, 0x3=600ns
-  //SERCOM2->I2CM.CTRLB.bit.SMEN = 1; //what is smart mode anyway?
-  //sercom2.enableWIRE();
 }
 
 void switchToSlave(){
-    delayMicroseconds(50); //either this one or the one on switchToSlave prevents lockup at boot.
+    delayMicroseconds(50); //Wait for STOP condition before exiting master.
     Wire.end();
     Wire.begin(0x50 | CARD_ADDRESS,1);//Enable GeneralCall to receive MIDI and firmware message display from bus
     Wire.onReceive(receiveEvent);
@@ -1439,53 +1425,53 @@ void switchToSlave(){
 
 void sendRemoteEnable() {    
     //Remote Enable
-    switchToMaster();
-    Wire.beginTransmission(0); 
-    if (v2version) {
-        Wire.write(0x14);
-    } else {
-        Wire.write(0x04);
-        Wire.write(0x00);
-        Wire.write(0x22);
-        Wire.write(0x16);
-        Wire.write(0xFF);
+    if (masterBeginTransmission(0) == 0) {
+      if (v2version) {
+          Wire.write(0x14);
+      } else {
+          Wire.write(0x04);
+          Wire.write(0x00);
+          Wire.write(0x22);
+          Wire.write(0x16);
+          Wire.write(0xFF);
+      }
+      masterEndTransmission();
+      switchToSlave();
     }
-    masterEndTransmission();
-    switchToSlave();
 }
 
 void sendRemoteDisable() {
     //Remote Disable
-    switchToMaster();
-    Wire.beginTransmission(0);
-    if (v2version) {
-        Wire.write(0x15);
-    } else {
-        Wire.write(0x04);
-        Wire.write(0x00);
-        Wire.write(0x22);
-        Wire.write(0x17);
-        Wire.write(0xFF);
+    if (masterBeginTransmission(0) == 0) {
+      if (v2version) {
+          Wire.write(0x15);
+      } else {
+          Wire.write(0x04);
+          Wire.write(0x00);
+          Wire.write(0x22);
+          Wire.write(0x17);
+          Wire.write(0xFF);
+      }
+      masterEndTransmission();
+      switchToSlave();
     }
-    masterEndTransmission();
-    switchToSlave();
 }
 
 void sendPollingComplete() {    
     //Remote Enable
-    switchToMaster();
-    Wire.beginTransmission(0); 
-    if (v2version) {
-        Wire.write(0x14);
-    } else {
-        Wire.write(0x04);
-        Wire.write(0x00);
-        Wire.write(0x22);
-        Wire.write(0x14);
-        Wire.write(0xFF);
+    if (masterBeginTransmission(0) == 0) {
+      if (v2version) {
+          Wire.write(0x14);
+      } else {
+          Wire.write(0x04);
+          Wire.write(0x00);
+          Wire.write(0x22);
+          Wire.write(0x14);
+          Wire.write(0xFF);
+      }
+      Wire.endTransmission();
+      switchToSlave();
     }
-    Wire.endTransmission();
-    switchToSlave();
 }
 
 
@@ -1510,20 +1496,20 @@ void sendSavePreset(byte preset) {
     //Save Preset
     //Preset=0-29
     preset = preset & 0x1F;
-    switchToMaster();
-    Wire.beginTransmission(0);
-    if (v2version) {
-        Wire.write(0x01);
-        Wire.write(preset); 
-    } else {
-        Wire.write(0x04);
-        Wire.write(0x00);
-        Wire.write(0x22);
-        Wire.write(0x02);
-        Wire.write(preset);   
+    if (masterBeginTransmission(0) == 0) {
+      if (v2version) {
+          Wire.write(0x01);
+          Wire.write(preset); 
+      } else {
+          Wire.write(0x04);
+          Wire.write(0x00);
+          Wire.write(0x22);
+          Wire.write(0x02);
+          Wire.write(preset);   
+      }
+      masterEndTransmission();
+      switchToSlave();
     }
-    masterEndTransmission();
-    switchToSlave();
 }
 
 void sendRecallPreset(byte preset) {
@@ -1532,71 +1518,71 @@ void sendRecallPreset(byte preset) {
     //Recall Preset
     //Preset sent on bus as 0-29
     preset = preset & 0x1F;
-    setCurrentPreset(preset + 1); //Track current preset number (1-30)
-    switchToMaster();
-    Wire.beginTransmission(0);
-    if (v2version) {
-        Wire.write(0x00);
-        Wire.write(preset); 
-    } else {
-        Wire.write(0x04);
-        Wire.write(0x00);
-        Wire.write(0x22);
-        Wire.write(0x01);
-        Wire.write(preset);   
+    if (masterBeginTransmission(0) == 0) {
+      setCurrentPreset(preset + 1); //Track current preset number (1-30)
+      if (v2version) {
+          Wire.write(0x00);
+          Wire.write(preset); 
+      } else {
+          Wire.write(0x04);
+          Wire.write(0x00);
+          Wire.write(0x22);
+          Wire.write(0x01);
+          Wire.write(preset);   
+      }
+      masterEndTransmission();
+      switchToSlave();
     }
-    masterEndTransmission();
-    switchToSlave();
 }
 
 void sendBackupPresets(byte address) {
     //Fetch presets from specified module
     //Address 0x44=291e.
-    switchToMaster();
-    Wire.beginTransmission(0);  
-    if (v2version) {
-        Wire.write(0x2D);
-        Wire.write(address); //Module address
-        Wire.write(0x00); //Card memory address LSB
-        Wire.write(0x00); //Card memory address MSB
-        Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
-    } else {
-        Wire.write(0x07);
-        Wire.write(0x00);
-        Wire.write(0x22);
-        Wire.write(0x04);
-        Wire.write(address); //Module address
-        Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
-        Wire.write(0x00); //Card memory address LSB
-        Wire.write(0x00); //Card memory address MSB
+    if (masterBeginTransmission(0) == 0) {
+      if (v2version) {
+          Wire.write(0x2D);
+          Wire.write(address); //Module address
+          Wire.write(0x00); //Card memory address LSB
+          Wire.write(0x00); //Card memory address MSB
+          Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
+      } else {
+          Wire.write(0x07);
+          Wire.write(0x00);
+          Wire.write(0x22);
+          Wire.write(0x04);
+          Wire.write(address); //Module address
+          Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
+          Wire.write(0x00); //Card memory address LSB
+          Wire.write(0x00); //Card memory address MSB
+      }
+      masterEndTransmission();
+      switchToSlave();
     }
-    masterEndTransmission();
-    switchToSlave();
 }
 
 void sendRestorePresets(byte address) {
     //Request specified module to restore presets.
     //Address 0x44=291e.
-    switchToMaster();
-    Wire.beginTransmission(0);
-    if (v2version) {
-        Wire.write(0x2E);
-        Wire.write(address); //Module address
-        Wire.write(0x00); //Card memory address LSB
-        Wire.write(0x00); //Card memory address MSB
-        Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
-    } else {
-        Wire.write(0x07);
-        Wire.write(0x00);
-        Wire.write(0x22);
-        Wire.write(0x05);
-        Wire.write(address); //Module address
-        Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
-        Wire.write(0x00); //Card memory address LSB
-        Wire.write(0x00); //Card memory address MSB    
+    if (masterBeginTransmission(0) == 0) {
+      if (v2version) {
+          Wire.write(0x2E);
+          Wire.write(address); //Module address
+          Wire.write(0x00); //Card memory address LSB
+          Wire.write(0x00); //Card memory address MSB
+          Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
+      } else {
+          Wire.write(0x07);
+          Wire.write(0x00);
+          Wire.write(0x22);
+          Wire.write(0x05);
+          Wire.write(address); //Module address
+          Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
+          Wire.write(0x00); //Card memory address LSB
+          Wire.write(0x00); //Card memory address MSB    
+      }
+      masterEndTransmission();
+      switchToSlave();
     }
-    masterEndTransmission();
-    switchToSlave();
 }
 
 void sendMidiNoteOn(byte mask, byte note, byte velo){
@@ -1657,44 +1643,44 @@ void sendMidiNoteOff(byte mask, byte note, byte velo){
 
 void sendMidiClockStart(){
     //Send MIDI clock start event.
-    switchToMaster();
-    Wire.beginTransmission(0);
-    if (v2version) {
-
-    } else {
-        Wire.write(0x08);
-        Wire.write(0x00);
-        Wire.write(0x22);//addr
-        Wire.write(0x0F);
-        Wire.write(0xFA);
-        Wire.write(0x00);
-        Wire.write(0x00); //not sure what this is
-        Wire.write(0x00);
-        Wire.write(0x00);      
+    if (masterBeginTransmission(0) == 0) {
+      if (v2version) {
+  
+      } else {
+          Wire.write(0x08);
+          Wire.write(0x00);
+          Wire.write(0x22);//addr
+          Wire.write(0x0F);
+          Wire.write(0xFA);
+          Wire.write(0x00);
+          Wire.write(0x00); //not sure what this is
+          Wire.write(0x00);
+          Wire.write(0x00);      
+      }
+      masterEndTransmission();
+      switchToSlave();
     }
-    masterEndTransmission();
-    switchToSlave();
 }
 
 void sendMidiClockStop(){
     //Send MIDI clock stop event.
-    switchToMaster();
-    Wire.beginTransmission(0);
-    if (v2version) {
-
-    } else {
-        Wire.write(0x08);
-        Wire.write(0x00);
-        Wire.write(0x22);//addr
-        Wire.write(0x0F);
-        Wire.write(0xFC);
-        Wire.write(0x00);
-        Wire.write(0x00); //not sure what this is
-        Wire.write(0x00);
-        Wire.write(0x00);   
+    if (masterBeginTransmission(0) == 0) {
+      if (v2version) {
+  
+      } else {
+          Wire.write(0x08);
+          Wire.write(0x00);
+          Wire.write(0x22);//addr
+          Wire.write(0x0F);
+          Wire.write(0xFC);
+          Wire.write(0x00);
+          Wire.write(0x00); //not sure what this is
+          Wire.write(0x00);
+          Wire.write(0x00);   
+      }
+      masterEndTransmission();
+      switchToSlave();
     }
-    masterEndTransmission();
-    switchToSlave();
 }
 
 void sendMidiClock(){
@@ -1724,29 +1710,29 @@ void sendMidiFineTune(byte mask, byte tune){
     //Tune 0x00=-49, 0x32=An, 0x63=49
     mask = mask & 0xf;
     if (mask == 0) return;
-    switchToMaster();
-    DEBUG_MIDI_PRINT("Sending Fine Tune. Mask=");
-    DEBUG_MIDI_PRINTHEX(mask);
-    DEBUG_MIDI_PRINT(" Tune=");
-    DEBUG_MIDI_PRINTHEXLN(tune);
-    Wire.beginTransmission(0);
-    if (v2version) {
-        Wire.write(0xB0 | mask);
-        Wire.write(0x1F);
-        Wire.write(tune);
-    } else {
-        Wire.write(0x08);
-        Wire.write(0x00);
-        Wire.write(0x22);//addr
-        Wire.write(0x0F);
-        Wire.write(0xB0 | mask);
-        Wire.write(0x00);
-        Wire.write(0x1F);
-        Wire.write(tune);
-        Wire.write(0x00);    
+    if (masterBeginTransmission(0) == 0) {
+      DEBUG_MIDI_PRINT("Sending Fine Tune. Mask=");
+      DEBUG_MIDI_PRINTHEX(mask);
+      DEBUG_MIDI_PRINT(" Tune=");
+      DEBUG_MIDI_PRINTHEXLN(tune);
+      if (v2version) {
+          Wire.write(0xB0 | mask);
+          Wire.write(0x1F);
+          Wire.write(tune);
+      } else {
+          Wire.write(0x08);
+          Wire.write(0x00);
+          Wire.write(0x22);//addr
+          Wire.write(0x0F);
+          Wire.write(0xB0 | mask);
+          Wire.write(0x00);
+          Wire.write(0x1F);
+          Wire.write(tune);
+          Wire.write(0x00);    
+      }
+      masterEndTransmission();
+      switchToSlave();
     }
-    masterEndTransmission();
-    switchToSlave();
 }
 
 void sendMidiBend(byte mask, byte bend_lsb, byte bend_msb){
@@ -1756,25 +1742,25 @@ void sendMidiBend(byte mask, byte bend_lsb, byte bend_msb){
     //bend_lsb=0x00-0x7F fine tune of bend.
     mask = mask & 0xf;
     if (mask == 0) return;
-    switchToMaster();
-    Wire.beginTransmission(0); 
-    if (v2version) {
-        Wire.write(0xE0 | mask);
-        Wire.write(bend_lsb);
-        Wire.write(bend_msb);
-    } else {
-        Wire.write(0x08);
-        Wire.write(0x00);
-        Wire.write(0x22);//addr
-        Wire.write(0x0F);
-        Wire.write(0xE0 | mask);
-        Wire.write(0x00);
-        Wire.write(bend_lsb);
-        Wire.write(bend_msb);
-        Wire.write(0x00);   
+    if (masterBeginTransmission(0) == 0) {
+      if (v2version) {
+          Wire.write(0xE0 | mask);
+          Wire.write(bend_lsb);
+          Wire.write(bend_msb);
+      } else {
+          Wire.write(0x08);
+          Wire.write(0x00);
+          Wire.write(0x22);//addr
+          Wire.write(0x0F);
+          Wire.write(0xE0 | mask);
+          Wire.write(0x00);
+          Wire.write(bend_lsb);
+          Wire.write(bend_msb);
+          Wire.write(0x00);   
+      }
+      masterEndTransmission();
+      switchToSlave();
     }
-    masterEndTransmission();
-    switchToSlave();
 }
 
 int masterBeginTransmission(int addr){
@@ -1782,7 +1768,7 @@ int masterBeginTransmission(int addr){
   int result = 0;
   while (sercom2.isBusBusyWIRE()) {   
   }
-  if (SERCOM2->I2CM.STATUS.bit.BUSERR || SERCOM2->I2CM.STATUS.bit.RXNACK) {
+  if (SERCOM2->I2CM.STATUS.bit.BUSERR) {
     DEBUG_I2C_PRINTLN("I2C BUS PROBLEM BEFORE beginTransmission");
     DEBUG_I2C_PRINT("->BUSSTATE:");
     DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.BUSSTATE);
