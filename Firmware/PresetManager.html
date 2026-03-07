@@ -1,6 +1,7 @@
 <html>
 	<head>
 		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Preset Manager</title>
 		<style>
 			.p {
 				display: flex;
@@ -30,6 +31,7 @@
 				flex-direction: row;
 				justify-content: space-around;
 				align-items: center;
+				
 			}
 			.col {
 				display: flex;
@@ -38,6 +40,7 @@
 				align-items: center;
 				font-size:14px;
 				padding-inline: 4px;
+				margin: 0px;
 			}
 			.screw {
 				display: flex;
@@ -57,6 +60,8 @@
 				height:40px;
 				width:40px;
 				background-color: #777;
+				padding: 0px;
+				margin: 0px;
 
 			}
 			.d {
@@ -96,13 +101,13 @@
 				<div>PRESET &nbsp; MANAGER</div>
 			<div class="screw">+</div>
 		</div>
-		<div class="r row" style="border-bottom: 1px solid darkblue;">
+		<div class="r row" style="border-bottom: 1px solid darkblue;margin-left:0;padding-left:0">
 			<div class="col">
 				<button id="sB" type="button" class="b" style="background-color: #36f;" tabindex="1"></button>
-				<div style="height:2"></div>
+				<div style="height:2;margin-left:0;padding-left:0"></div>
 				<div>store</div>
 			</div>
-			<div class="d row">
+			<div class="d row" style="margin-left:0;padding-left:0">
 				<div class="dx col" >
 					<input id="current_preset" class="dc" style="width:21px;background-color: #afa;" disabled>
 					<input class="dc" disabled style="width:21px;background-color: #afa;">
@@ -112,7 +117,7 @@
 					<input id="recall_name" class="dc" disabled style="background-color: #afa;">
 				</div>
 				<div class="dx col" >
-					<input class="dc" disabled style="width:40px;background-color: #afa;">
+					<input class="dc" disabled style="width:40px;background-color: #afa; ">
 					<input id="recall_preset" class="dc" style="width:40px;" type="number" min="1" max="30" tabindex="3">
 				</div>
 			</div>
@@ -146,7 +151,12 @@
 				</div>
 			</div>
 			<div class="col" style="width:33%">
-				<button id="remB" type="button" class="b" tabindex="9"></button>
+				<button id="dispB" type="button" class="b" tabindex="9"></button>
+				<div style="height:2"></div>
+				<div>display</div>
+			</div>	
+			<div class="col" style="width:33%">
+				<button id="remB" type="button" class="b" tabindex="10"></button>
 				<div style="height:2"></div>
 				<div>remote</div>
 			</div>		  
@@ -166,6 +176,7 @@
 		var c_name = document.getElementById("current_name");
 		var r_name = document.getElementById("recall_name");
 		var names = [];
+		var lock = false;
 		r_pset.onchange = rOnChange;
 		c_name.onchange = cnameOnChange;
 		document.getElementById("sB").onclick = sBOnClick;
@@ -173,6 +184,7 @@
 		document.getElementById("lB").onclick = lBOnClick;
 		document.getElementById("nB").onclick = nBOnClick;
 		document.getElementById("remB").onclick = remBOnClick;
+		document.getElementById("dispB").onclick = dispBOnClick;
 		document.getElementById("v3").checked = true;
 		
 		readNames();
@@ -221,6 +233,22 @@
 				send("remoteenable");
 			} else {
 				send("remotedisable");
+			}
+		}
+		function dispBOnClick() {
+			if (!lock) {
+				lock = true;
+				var c_saved = c_name.value;
+				var r_saved = r_name.value;
+				send("displaymessage");
+				var tmp = JSON.parse(req.responseText).message;
+				c_name.value = tmp[0];	
+				r_name.value = tmp[1];
+				setTimeout(()=>{ 
+					c_name.value = c_saved;	
+					r_name.value = r_saved;
+					lock = false;
+				}, 2500)
 			}
 		}
 		
