@@ -1,7 +1,7 @@
 # 2WIRELESS
 # Wireless Preset Manager
 
-<img src="image.jpg" width="300" alt="Studio H Software Wireless Preset Manager">
+<img src="image.jpg" width="360" alt="Studio H Software Wireless Preset Manager">
 
 Connect to your Buchla 200e wirelessly and control it using a web page on your phone or computer. 
 Change and save presets, upload and download preset data, and even update module firmware.
