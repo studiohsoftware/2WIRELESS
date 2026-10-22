@@ -1,0 +1,232 @@
+# WireByte.cpp vs. the SAMD core 1.8.14 libraries/Wire/Wire.cpp
+#
+# The shipped WPM firmware (v1.18) was built with a locally modified Wire.cpp so that the I2C
+# slave request handler (requestEvent in 2Wireless.ino) is called on EVERY byte the master
+# requests and sends the byte itself with sercom2.sendDataSlaveWIRE(). The stock core calls the
+# handler at address match and then serves txBuffer on each data-ready interrupt. This vendored
+# copy (class TwoWireByte, global Wire, SERCOM2_Handler) carries that one behavioural change;
+# the rename and the include are mechanical. See the design spec, section 4.
+#
+--- /Users/oren/Library/Arduino15/packages/arduino/hardware/samd/1.8.14/libraries/Wire/Wire.cpp	2026-10-21 20:21:29
++++ src/WireByte.cpp	2026-10-21 23:01:28
+@@ -24,11 +24,11 @@
+ #include <Arduino.h>
+ #include <wiring_private.h>
+ 
+-#include "Wire.h"
++#include "WireByte.h"
+ 
+ using namespace arduino;
+ 
+-TwoWire::TwoWire(SERCOM * s, uint8_t pinSDA, uint8_t pinSCL)
++TwoWireByte::TwoWireByte(SERCOM * s, uint8_t pinSDA, uint8_t pinSCL)
+ {
+   this->sercom = s;
+   this->_uc_pinSDA=pinSDA;
+@@ -36,7 +36,7 @@
+   transmissionBegun = false;
+ }
+ 
+-void TwoWire::begin(void) {
++void TwoWireByte::begin(void) {
+   //Master Mode
+   sercom->initMasterWIRE(TWI_CLOCK);
+   sercom->enableWIRE();
+@@ -45,7 +45,7 @@
+   pinPeripheral(_uc_pinSCL, g_APinDescription[_uc_pinSCL].ulPinType);
+ }
+ 
+-void TwoWire::begin(uint8_t address, bool enableGeneralCall) {
++void TwoWireByte::begin(uint8_t address, bool enableGeneralCall) {
+   //Slave mode
+   sercom->initSlaveWIRE(address, enableGeneralCall);
+   sercom->enableWIRE();
+@@ -54,17 +54,17 @@
+   pinPeripheral(_uc_pinSCL, g_APinDescription[_uc_pinSCL].ulPinType);
+ }
+ 
+-void TwoWire::setClock(uint32_t baudrate) {
++void TwoWireByte::setClock(uint32_t baudrate) {
+   sercom->disableWIRE();
+   sercom->initMasterWIRE(baudrate);
+   sercom->enableWIRE();
+ }
+ 
+-void TwoWire::end() {
++void TwoWireByte::end() {
+   sercom->disableWIRE();
+ }
+ 
+-size_t TwoWire::requestFrom(uint8_t address, size_t quantity, bool stopBit)
++size_t TwoWireByte::requestFrom(uint8_t address, size_t quantity, bool stopBit)
+ {
+   if(quantity == 0)
+   {
+@@ -105,12 +105,12 @@
+   return byteRead;
+ }
+ 
+-size_t TwoWire::requestFrom(uint8_t address, size_t quantity)
++size_t TwoWireByte::requestFrom(uint8_t address, size_t quantity)
+ {
+   return requestFrom(address, quantity, true);
+ }
+ 
+-void TwoWire::beginTransmission(uint8_t address) {
++void TwoWireByte::beginTransmission(uint8_t address) {
+   // save address of target and clear buffer
+   txAddress = address;
+   txBuffer.clear();
+@@ -124,7 +124,7 @@
+ //  2 : NACK on transmit of address
+ //  3 : NACK on transmit of data
+ //  4 : Other error
+-uint8_t TwoWire::endTransmission(bool stopBit)
++uint8_t TwoWireByte::endTransmission(bool stopBit)
+ {
+   transmissionBegun = false ;
+ 
+@@ -154,12 +154,12 @@
+   return 0;
+ }
+ 
+-uint8_t TwoWire::endTransmission()
++uint8_t TwoWireByte::endTransmission()
+ {
+   return endTransmission(true);
+ }
+ 
+-size_t TwoWire::write(uint8_t ucData)
++size_t TwoWireByte::write(uint8_t ucData)
+ {
+   // No writing, without begun transmission or a full buffer
+   if ( !transmissionBegun || txBuffer.isFull() )
+@@ -172,7 +172,7 @@
+   return 1 ;
+ }
+ 
+-size_t TwoWire::write(const uint8_t *data, size_t quantity)
++size_t TwoWireByte::write(const uint8_t *data, size_t quantity)
+ {
+   //Try to store all data
+   for(size_t i = 0; i < quantity; ++i)
+@@ -186,38 +186,38 @@
+   return quantity;
+ }
+ 
+-int TwoWire::available(void)
++int TwoWireByte::available(void)
+ {
+   return rxBuffer.available();
+ }
+ 
+-int TwoWire::read(void)
++int TwoWireByte::read(void)
+ {
+   return rxBuffer.read_char();
+ }
+ 
+-int TwoWire::peek(void)
++int TwoWireByte::peek(void)
+ {
+   return rxBuffer.peek();
+ }
+ 
+-void TwoWire::flush(void)
++void TwoWireByte::flush(void)
+ {
+   // Do nothing, use endTransmission(..) to force
+   // data transfer.
+ }
+ 
+-void TwoWire::onReceive(void(*function)(int))
++void TwoWireByte::onReceive(void(*function)(int))
+ {
+   onReceiveCallback = function;
+ }
+ 
+-void TwoWire::onRequest(void(*function)(void))
++void TwoWireByte::onRequest(void(*function)(void))
+ {
+   onRequestCallback = function;
+ }
+ 
+-void TwoWire::onService(void)
++void TwoWireByte::onService(void)
+ {
+   if ( sercom->isSlaveWIRE() )
+   {
+@@ -257,13 +257,13 @@
+     {
+       if (sercom->isMasterReadOperationWIRE())
+       {
+-        uint8_t c = 0xff;
+-
+-        if( txBuffer.available() ) {
+-          c = txBuffer.read_char();
++        // WPM: per-byte serving. The request callback is called on every
++        // data-requested interrupt and is responsible for sending the byte
++        // with sercom->sendDataSlaveWIRE(). txBuffer is not used.
++        if(onRequestCallback)
++        {
++          onRequestCallback();
+         }
+-
+-        transmissionBegun = sercom->sendDataSlaveWIRE(c);
+       } else { //Received data
+         if (rxBuffer.isFull()) {
+           sercom->prepareNackBitWIRE(); 
+@@ -290,7 +290,7 @@
+     #define PERIPH_WIRE          sercom3
+     #define WIRE_IT_HANDLER      SERCOM3_Handler
+   #endif // PERIPH_WIRE
+-  arduino::TwoWire Wire(&PERIPH_WIRE, PIN_WIRE_SDA, PIN_WIRE_SCL);
++  arduino::TwoWireByte Wire(&PERIPH_WIRE, PIN_WIRE_SDA, PIN_WIRE_SCL);
+ 
+   void WIRE_IT_HANDLER(void) {
+     Wire.onService();
+@@ -298,7 +298,7 @@
+ #endif
+ 
+ #if WIRE_INTERFACES_COUNT > 1
+-  arduino::TwoWire Wire1(&PERIPH_WIRE1, PIN_WIRE1_SDA, PIN_WIRE1_SCL);
++  arduino::TwoWireByte Wire1(&PERIPH_WIRE1, PIN_WIRE1_SDA, PIN_WIRE1_SCL);
+ 
+   void WIRE1_IT_HANDLER(void) {
+     Wire1.onService();
+@@ -306,7 +306,7 @@
+ #endif
+ 
+ #if WIRE_INTERFACES_COUNT > 2
+-  arduino::TwoWire Wire2(&PERIPH_WIRE2, PIN_WIRE2_SDA, PIN_WIRE2_SCL);
++  arduino::TwoWireByte Wire2(&PERIPH_WIRE2, PIN_WIRE2_SDA, PIN_WIRE2_SCL);
+ 
+   void WIRE2_IT_HANDLER(void) {
+     Wire2.onService();
+@@ -314,7 +314,7 @@
+ #endif
+ 
+ #if WIRE_INTERFACES_COUNT > 3
+-  arduino::TwoWire Wire3(&PERIPH_WIRE3, PIN_WIRE3_SDA, PIN_WIRE3_SCL);
++  arduino::TwoWireByte Wire3(&PERIPH_WIRE3, PIN_WIRE3_SDA, PIN_WIRE3_SCL);
+ 
+   void WIRE3_IT_HANDLER(void) {
+     Wire3.onService();
+@@ -322,7 +322,7 @@
+ #endif
+ 
+ #if WIRE_INTERFACES_COUNT > 4
+-  arduino::TwoWire Wire4(&PERIPH_WIRE4, PIN_WIRE4_SDA, PIN_WIRE4_SCL);
++  arduino::TwoWireByte Wire4(&PERIPH_WIRE4, PIN_WIRE4_SDA, PIN_WIRE4_SCL);
+ 
+   void WIRE4_IT_HANDLER(void) {
+     Wire4.onService();
+@@ -330,7 +330,7 @@
+ #endif
+ 
+ #if WIRE_INTERFACES_COUNT > 5
+-  arduino::TwoWire Wire5(&PERIPH_WIRE5, PIN_WIRE5_SDA, PIN_WIRE5_SCL);
++  arduino::TwoWireByte Wire5(&PERIPH_WIRE5, PIN_WIRE5_SDA, PIN_WIRE5_SCL);
+ 
+   void WIRE5_IT_HANDLER(void) {
+     Wire5.onService();

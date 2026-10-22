@@ -1,0 +1,152 @@
+# Wed Oct 21 22:52:15 PDT 2026 bin=build/2Wireless/2Wireless.ino.bin port=/dev/cu.usbmodem83344201
+Set binary mode
+readWord(addr=0)=0x20007ffc
+readWord(addr=0xe000ed00)=0x410cc601
+readWord(addr=0x41002018)=0x10010305
+version()=v2.0 [Arduino:XYZ] Dec 20 2016 15:36:43
+chipId=0x10010005
+Connected at 921600 baud
+readWord(addr=0)=0x20007ffc
+readWord(addr=0xe000ed00)=0x410cc601
+readWord(addr=0x41002018)=0x10010305
+Atmel SMART device 0x10010005 found
+write(addr=0x20004000,size=0x34)
+writeWord(addr=0x20004030,value=0x10)
+writeWord(addr=0x20004020,value=0x20008000)
+Device       : ATSAMD21G18A
+readWord(addr=0)=0x20007ffc
+readWord(addr=0xe000ed00)=0x410cc601
+readWord(addr=0x41002018)=0x10010305
+Chip ID      : 10010005
+version()=v2.0 [Arduino:XYZ] Dec 20 2016 15:36:43
+Version      : v2.0 [Arduino:XYZ] Dec 20 2016 15:36:43
+Address      : 8192
+Pages        : 3968
+Page Size    : 64 bytes
+Total Size   : 248KB
+Planes       : 1
+Lock Regions : 16
+Locked       : readWord(addr=0x41004020)=0xffff
+readWord(addr=0x41004020)=0xffff
+readWord(addr=0x41004020)=0xffff
+readWord(addr=0x41004020)=0xffff
+readWord(addr=0x41004020)=0xffff
+readWord(addr=0x41004020)=0xffff
+readWord(addr=0x41004020)=0xffff
+readWord(addr=0x41004020)=0xffff
+readWord(addr=0x41004020)=0xffff
+readWord(addr=0x41004020)=0xffff
+readWord(addr=0x41004020)=0xffff
+readWord(addr=0x41004020)=0xffff
+readWord(addr=0x41004020)=0xffff
+readWord(addr=0x41004020)=0xffff
+readWord(addr=0x41004020)=0xffff
+readWord(addr=0x41004020)=0xffff
+none
+readWord(addr=0x41004018)=0
+Security     : false
+Boot Flash   : true
+readWord(addr=0x40000834)=0x7000a
+BOD          : true
+readWord(addr=0x40000834)=0x7000a
+BOR          : true
+Arduino      : FAST_CHIP_ERASE
+Arduino      : FAST_MULTI_PAGE_WRITE
+Arduino      : CAN_CHECKSUM_MEMORY_BUFFER
+Erase flash
+chipErase(addr=0x2000)
+done in 0.597 seconds
+
+Write 109940 bytes to flash (1718 pages)
+write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x2000, size=0x1000)
+[=                             ] 3% (64/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x3000, size=0x1000)
+[==                            ] 7% (128/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x4000, size=0x1000)
+[===                           ] 11% (192/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x5000, size=0x1000)
+[====                          ] 14% (256/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x6000, size=0x1000)
+[=====                         ] 18% (320/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x7000, size=0x1000)
+[======                        ] 22% (384/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x8000, size=0x1000)
+[=======                       ] 26% (448/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x9000, size=0x1000)
+[========                      ] 29% (512/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0xa000, size=0x1000)
+[==========                    ] 33% (576/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0xb000, size=0x1000)
+[===========                   ] 37% (640/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0xc000, size=0x1000)
+[============                  ] 40% (704/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0xd000, size=0x1000)
+[=============                 ] 44% (768/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0xe000, size=0x1000)
+[==============                ] 48% (832/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0xf000, size=0x1000)
+[===============               ] 52% (896/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x10000, size=0x1000)
+[================              ] 55% (960/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x11000, size=0x1000)
+[=================             ] 59% (1024/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x12000, size=0x1000)
+[==================            ] 63% (1088/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x13000, size=0x1000)
+[====================          ] 67% (1152/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x14000, size=0x1000)
+[=====================         ] 70% (1216/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x15000, size=0x1000)
+[======================        ] 74% (1280/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x16000, size=0x1000)
+[=======================       ] 78% (1344/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x17000, size=0x1000)
+[========================      ] 81% (1408/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x18000, size=0x1000)
+[=========================     ] 85% (1472/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x19000, size=0x1000)
+[==========================    ] 89% (1536/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x1a000, size=0x1000)
+[===========================   ] 93% (1600/1718 pages)write(addr=0x20005000,size=0x1000)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x1b000, size=0x1000)
+[============================= ] 96% (1664/1718 pages)write(addr=0x20005000,size=0xd80)
+writeBuffer(scr_addr=0x20005000, dst_addr=0x1c000, size=0xd80)
+[==============================] 100% (1718/1718 pages)
+done in 0.611 seconds
+
+Verify 109940 bytes of flash with checksum.
+checksumBuffer(start_addr=0x2000, size=0x1000) = 7b99
+checksumBuffer(start_addr=0x3000, size=0x1000) = df00
+checksumBuffer(start_addr=0x4000, size=0x1000) = 587b
+checksumBuffer(start_addr=0x5000, size=0x1000) = 4f65
+checksumBuffer(start_addr=0x6000, size=0x1000) = 93d0
+checksumBuffer(start_addr=0x7000, size=0x1000) = bd10
+checksumBuffer(start_addr=0x8000, size=0x1000) = 7de6
+checksumBuffer(start_addr=0x9000, size=0x1000) = ead6
+checksumBuffer(start_addr=0xa000, size=0x1000) = e894
+checksumBuffer(start_addr=0xb000, size=0x1000) = b5fb
+checksumBuffer(start_addr=0xc000, size=0x1000) = 3263
+checksumBuffer(start_addr=0xd000, size=0x1000) = a8db
+checksumBuffer(start_addr=0xe000, size=0x1000) = 3d3
+checksumBuffer(start_addr=0xf000, size=0x1000) = e2ec
+checksumBuffer(start_addr=0x10000, size=0x1000) = 9a72
+checksumBuffer(start_addr=0x11000, size=0x1000) = fdf3
+checksumBuffer(start_addr=0x12000, size=0x1000) = 6521
+checksumBuffer(start_addr=0x13000, size=0x1000) = fcf1
+checksumBuffer(start_addr=0x14000, size=0x1000) = 4c52
+checksumBuffer(start_addr=0x15000, size=0x1000) = 118c
+checksumBuffer(start_addr=0x16000, size=0x1000) = dccb
+checksumBuffer(start_addr=0x17000, size=0x1000) = a5d2
+checksumBuffer(start_addr=0x18000, size=0x1000) = c76c
+checksumBuffer(start_addr=0x19000, size=0x1000) = 3532
+checksumBuffer(start_addr=0x1a000, size=0x1000) = bfa9
+checksumBuffer(start_addr=0x1b000, size=0x1000) = 7fb0
+checksumBuffer(start_addr=0x1c000, size=0xd74) = 5988
+Verify successful
+done in 0.086 seconds
+CPU reset.
+readWord(addr=0)=0x20007ffc
+readWord(addr=0xe000ed00)=0x410cc601
+readWord(addr=0x41002018)=0x10010305
+writeWord(addr=0xe000ed0c,value=0x5fa0004)
