@@ -10,7 +10,13 @@
  *   11      D11   |  PA08  | "SDA"
  *   12      D12   |  PA09  | "SCL"
 */
-#include <Wire.h>
+#include "src/WireByte.h"
+#include "src/wpm_loader_blob.h" // first-stage FRAM loader, linked into .sketch_boot (0x2000)
+#include "src/wpm_version.h"
+#include "src/wpm_ota.h"
+#include "src/wpm_bus.h"
+#include "src/wpm_dump_dev.h"
+#include "src/wpm_json.h"
 #include <WiFi101.h>
 #include <SPI.h>
 #include <usbh_midi.h>
@@ -161,7 +167,9 @@ volatile int write_counter=0; //USed to auto increment write addresses during I2
 volatile int fram_address=0; //This is global only because it must span OnRequest calls during I2C READ from master. 
 volatile bool startup = true; //Used to free 206e when starting up.
 volatile bool write_i2c_to_fram = false; //Cache incoming i2c to FRAM.
-unsigned long readTime = 0; //used to detect idle to free up 206e at start.
+volatile unsigned long cardWriteTime = 0; //millis() of the last transaction addressed to the card (0x50); written in receiveEvent, read by wpm_bus.cpp.
+uint8_t wpm_isr_frame[256]; //the one ISR frame buffer, shared by the stock decoder path and the /dump path (receiveEvent cannot re-enter)
+volatile unsigned long readTime = 0; //used to detect idle to free up 206e at start; written in requestEvent, read by wpm_bus.cpp.
 volatile bool i2c_guard = false; //attempt to prevent switch to master while receiving
 
 bool isUsbDevice = true; //Select between USB Device and USB Host
@@ -195,7 +203,7 @@ bool velo[16] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}; //use velocity by default
 bool v2version=false; //used to support pre PRIMO firmware.
 SPISettings spiSettings(12000000, MSBFIRST, SPI_MODE0); //MKR1000 max is 12MHz. FRAM chip max is 40MHz.
 const static String PROGMEM homepageString = "<html> <head>  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">  <style>   .p {    display: flex;    flex-direction: column;    background-color:lightgray;    color:darkblue;    font-family:Arial;    font-weight:bold;    letter-spacing: 2px;    height: 218px;   }   .hf {    font-size:12px;    padding: 10px;    border: 1px solid darkblue;   }   .r {    font-style:italic;    font-size:20px;    padding: 10px;    border-left: 1px solid darkblue;    border-right: 1px solid darkblue;    height: 50px;   }   .row {    display: flex;    flex-direction: row;    justify-content: space-around;    align-items: center;       }   .col {    display: flex;    flex-direction: column;    justify-content: space-around;    align-items: center;    font-size:14px;    padding-inline: 4px;    margin: 0px;   }   .screw {    display: flex;    justify-content: center;    align-content: center;    flex-direction: column;    height: 18px;    width: 18px;    background-color: #999;    border-radius: 50%;    color: #444;    font-size:30px;    border: 1px solid black;   }   .b {    border-radius: 50%;    height:40px;    width:40px;    background-color: #777;    padding: 0px;    margin: 0px;   }   .d {    height: 50px;    background-color: white;    padding: 0px;    margin: 0px;    border: 1px solid black;   }   .dx {    height: 50px;    background-color: white;    padding: 0px;    margin: 0px;    border: 0px;   }     .dc {    font-family: Courier New;    font-weight:bold;    background-color: #cfc;    height: 50px;    border: 0px;   }   .hole {    height: 10px;    width: 10px;    background-color: #000;    border-radius: 50%;    display: inline-block;   }   </style> </head> <body>  <div class=\"p\">   <div class=\"hf row\">    <div class=\"screw\">+</div>    <div>PRESET &nbsp; MANAGER</div>   <div class=\"screw\">+</div>  </div>  <div class=\"r row\" style=\"border-bottom: 1px solid darkblue;margin-left:0;padding-left:0\">   <div class=\"col\">    <button id=\"sB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"1\"></button>    <div style=\"height:2;margin-left:0;padding-left:0\"></div>    <div>store</div>   </div>   <div class=\"d row\" style=\"margin-left:0;padding-left:0\">    <div class=\"dx col\" >     <input id=\"current_preset\" class=\"dc\" style=\"width:21px;background-color: #afa;\" disabled>     <input class=\"dc\" disabled style=\"width:21px;background-color: #afa;\">    </div>    <div class=\"dx col\" >     <input id=\"current_name\" class=\"dc\" maxlength=\"20\" tabindex=\"2\">     <input id=\"recall_name\" class=\"dc\" disabled style=\"background-color: #afa;\">    </div>    <div class=\"dx col\" >     <input class=\"dc\" disabled style=\"width:40px;background-color: #afa; \">     <input id=\"recall_preset\" class=\"dc\" style=\"width:40px;\" type=\"number\" min=\"1\" max=\"30\" tabindex=\"3\">    </div>   </div>   <div class=\"col\">    <button id=\"rB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"4\"></button>    <div style=\"height:2\"></div>    <div>recall</div>   </div>  </div>  <div class=\"r row\">   <div class=\"row\" style=\"width:200px\">    <div class=\"col\">     <button id=\"lB\" type=\"button\" class=\"b\" tabindex=\"5\"></button>     <div style=\"height:2\"></div>     <div>last</div>    </div>    <div class=\"col\">     <button id=\"nB\" type=\"button\" class=\"b\" tabindex=\"6\"></button>     <div style=\"height:2\"></div>     <div>next</div>    </div>   </div>   <div class=\"col\" style=\"align-items: flex-start;width:33%\">    <div class=\"row\" style=\"align-items: flex-start;\">     <input type=\"radio\" id=\"v3\" name=\"version\" value=\"v3\" tabindex=\"7\" hidden>     <label for=\"v3\" hidden>primo</label>    </div>    <div class=\"row\" style=\"align-items: flex-start;\">     <input type=\"radio\" id=\"v2\" name=\"version\" value=\"v2\" tabindex=\"8\" hidden>     <label for=\"v2\" hidden>v2    </label>    </div>   </div>   <div class=\"col\" style=\"width:33%\">    <button id=\"dispB\" type=\"button\" class=\"b\" tabindex=\"9\"></button>    <div style=\"height:2\"></div>    <div>display</div>   </div>    <div class=\"col\" style=\"width:33%\">    <button id=\"remB\" type=\"button\" class=\"b\" tabindex=\"10\"></button>    <div style=\"height:2\"></div>    <div>remote</div>   </div>      </div>  <div class=\"hf row\">   <div class=\"hole\"></div>   <div>STUDIO H SOFTWARE</div>   <div class=\"hole\"></div>  </div>  </div> </body> <script>  var rem = true;  var req;  var c_pset = document.getElementById(\"current_preset\");  var r_pset = document.getElementById(\"recall_preset\");  var c_name = document.getElementById(\"current_name\");  var r_name = document.getElementById(\"recall_name\");  var names = [];  var lock = false;  r_pset.onchange = rOnChange;  c_name.onchange = cnameOnChange;  document.getElementById(\"sB\").onclick = sBOnClick;  document.getElementById(\"rB\").onclick = rBOnClick;  document.getElementById(\"lB\").onclick = lBOnClick;  document.getElementById(\"nB\").onclick = nBOnClick;  document.getElementById(\"remB\").onclick = remBOnClick;  document.getElementById(\"dispB\").onclick = dispBOnClick;  document.getElementById(\"v3\").checked = true;    readNames();    c_pset.value = readPreset();  cOnChange();  r_pset.value = c_pset.value;  rOnChange();     function sBOnClick() {   send(\"savepreset?preset=\" + r_pset.value);   names[r_pset.value] = names[c_pset.value];   writeName(r_pset.value,names[r_pset.value]);   rOnChange();  }    function rBOnClick() {   c_pset.value = r_pset.value;   cOnChange();  }    function lBOnClick() {   var pset = c_pset.value;   pset = pset - 1;   if (pset < 1) {    pset = pset + 30;   }   pset = pset % 31;   c_pset.value = pset;   r_pset.value = pset;   cOnChange();   rOnChange();  }  function nBOnClick() {   var pset = c_pset.value;   pset = pset % 30 + 1;   c_pset.value = pset;   r_pset.value = pset;   cOnChange();   rOnChange();  }  function remBOnClick() {   rem = !rem;   if (rem){    send(\"remoteenable\");   } else {    send(\"remotedisable\");   }  }  function dispBOnClick() {   if (!lock) {    lock = true;    var c_saved = c_name.value;    var r_saved = r_name.value;    send(\"displaymessage\");    var tmp = JSON.parse(req.responseText).message;    c_name.value = tmp[0];     r_name.value = tmp[1];    setTimeout(()=>{      c_name.value = c_saved;      r_name.value = r_saved;     lock = false;    }, 2500)   }  }    function cOnChange(){   c_name.value = names[c_pset.value];   send(\"recallpreset?preset=\" + c_pset.value);  }    function rOnChange(){   r_name.value = names[r_pset.value];  }    function cnameOnChange(){   names[c_pset.value] = c_name.value;   writeName(c_pset.value,names[c_pset.value]);   rOnChange();  }    function send(url) {   var version = \"\";   if (document.getElementById('v2').checked) {    version = \"v2/\";   }   req = new XMLHttpRequest();   req.open(\"GET\", \"http://192.168.0.1/\" + version + url,false);    req.send(null);  }    function readPreset(){   send(\"currentpreset\");   return(parseInt(JSON.parse(req.responseText).currentpreset));  }    function readNames(){   send(\"presetnames\");   var tmp = JSON.parse(req.responseText).presetnames;   for (var i=0;i<30;i++){    names[i+1]=tmp[i];   }     }    function writeName(pset,name){   if (name != undefined) {    send(\"presetname=\" + name + \"&preset=\" + pset.toString());   }  } </script></html>";
-const static String PROGMEM setupPageString = "<html> <head>  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> </head> <style> table,th,td{ border:1px solid black; border-collapse: collapse; } th,td { padding: 1px; } input[type=number] { width: 45px; } </style> <body> <div style=\"display: flex;justify-content: space-between; max-width:245px\"> <label style=\"font-weight:bold;font-size:24px;\">Setup Page</label> <input type=\"button\" id=\"submit\" value=\"Submit\"> </div> <hr> <table id=\"MidiTable\" name=\"MidiTable\"> <tr> <th>Chan</th> <th>A</th> <th>B</th> <th>C</th> <th>D</th> <th>Tran</th> <th>Poly</th> <th>Velo</th> </tr> </table> <hr> <table id=\"BusTable\" name=\"BusTable\"> <tr> <th>Bus</th> <th>Fine</th> </tr> </table> <hr> <table id=\"MidiOptions\" name=\"MidiOptions\"> <tr> <th colspan=\"2\">MIDI Options</th> </tr> <tr> <td> <label for=\"PrgChEnbl\">Receive Program Change</label> </td> <td> <input type=\"checkbox\" id=\"PrgChEnbl\" name=\"PrgChEnbl\"> </td> </tr> <tr> <td> <label for=\"SendMidi\" id=\"SendMidiLabel\">Send 252e Midi Clock</label> </td> <td> <input type=\"checkbox\" id=\"SendMidi\" name=\"SendMidi\"> </td> </tr> </table> <hr> <label for=\"Device\"> <input type=\"radio\" id=\"Device\" name=\"usb\" value=\"1\" onclick=\"deviceOnClick()\">USB Device</label> <label for=\"Host\"> <input type=\"radio\" id=\"Host\" name=\"usb\" value=\"0\" onclick=\"hostOnClick()\">USB Host</label> <hr> <input type=\"checkbox\" id=\"Poll\" name=\"poll\"> <label for=\"Poll\">Poll modules on startup</label> <hr> <label for=\"ssid\">SSID:</label></br> <input type=\"text\" id=\"ssid\" name=\"ssid\" maxlength=\"32\" style=\"width:250;\"><br> <hr> <label for=\"pass\">Password (eight characters minimum):</label></br> <input type=\"text\" id=\"pass\" name=\"pass\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"pass2\">Re-enter Password:</label></br> <input type=\"text\" id=\"pass2\" name=\"pass2\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"submit\" id=\"errortext\" style=\"color:red;\"></label> <hr> Firmware v1.18 </body> <script> var req = new XMLHttpRequest(); var s = document.getElementById(\"ssid\"); var pwd = document.getElementById(\"pass\"); var pwd2 = document.getElementById(\"pass2\"); var submit = document.getElementById(\"submit\"); var errortext = document.getElementById(\"errortext\"); var busNames = [\"A\",\"B\",\"C\",\"D\"];  var busTable = document.getElementById(\"BusTable\"); for (var i = 0; i < 4; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var f = document.createElement('input'); f.type = 'number'; f.name = \"f\" + i; f.id = \"f\" + i; f.setAttribute('max','49'); f.setAttribute('min','-49'); td1.appendChild(document.createTextNode(busNames[i])); td2.appendChild(f); tr.appendChild(td1); tr.appendChild(td2); busTable.appendChild(tr); } var fineA = document.getElementById(\"f0\"); var fineB = document.getElementById(\"f1\"); var fineC = document.getElementById(\"f2\"); var fineD = document.getElementById(\"f3\");  var table = document.getElementById(\"MidiTable\"); for (var i = 1; i < 17; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var td3 = document.createElement('td'); var td4 = document.createElement('td'); var td5 = document.createElement('td'); var td6 = document.createElement('td'); var td7 = document.createElement('td'); var td8 = document.createElement('td'); var chan = document.createTextNode(i); var a = document.createElement('input'); a.type = \"checkbox\"; a.name = \"a\" + i; a.id = \"a\" + i; var b = document.createElement('input'); b.type = \"checkbox\"; b.name = \"b\" + i; b.id = \"b\" + i; var c = document.createElement('input'); c.type = \"checkbox\"; c.name = \"c\" + i; c.id = \"c\" + i; var d = document.createElement('input'); d.type = \"checkbox\"; d.name = \"d\" + i; d.id = \"d\" + i; var t = document.createElement('input'); t.type = 'number'; t.name = \"t\" + i; t.id = \"t\" + i; t.setAttribute('max','49'); t.setAttribute('min','-49'); var p = document.createElement('input'); p.type = \"checkbox\"; p.name = \"p\" + i; p.id = \"p\" + i; var v = document.createElement('input'); v.type = \"checkbox\"; v.name = \"v\" + i; v.id = \"v\" + i; td1.appendChild(chan); td2.appendChild(a); td3.appendChild(b); td4.appendChild(c); td5.appendChild(d); td6.appendChild(t); td7.appendChild(p); td8.appendChild(v); tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6); tr.appendChild(td7); tr.appendChild(td8); table.appendChild(tr); } submit.onclick = submitOnClick; send('getsetupdata1','GET',null); var parsedJson = JSON.parse(req.responseText); s.value = parsedJson.ssid; pwd.value = parsedJson.password; pwd2.value = pwd.value; if (parseInt(parsedJson.poll)==1) { document.getElementById(\"Poll\").checked = true; } if (parseInt(parsedJson.prgChEnbl)==1) { document.getElementById(\"PrgChEnbl\").checked = true; } if (parseInt(parsedJson.sendMidi)==1) { document.getElementById(\"SendMidi\").checked = true; } if (parseInt(parsedJson.usbMode)==1){ document.getElementById(\"Device\").checked = true; disable252eClock(false); } else { document.getElementById(\"Host\").checked = true; disable252eClock(true); } for (var i=0; i < 4; i++){ document.getElementById(\"f\" + i).value = parseInt(parsedJson.buses[i].fine); } send('getsetupdata2','GET',null); var parsedJson = JSON.parse(req.responseText); for (var i=0; i < 16; i++){ k = i + 1; var mask = parseInt(parsedJson.channels[i].mask); document.getElementById(\"a\" + k).checked = mask&0x8; document.getElementById(\"b\" + k).checked = mask&0x4; document.getElementById(\"c\" + k).checked = mask&0x2; document.getElementById(\"d\" + k).checked = mask&0x1; document.getElementById(\"t\" + k).value = parseInt(parsedJson.channels[i].tran); document.getElementById(\"p\" + k).checked = parseInt(parsedJson.channels[i].poly); document.getElementById(\"v\" + k).checked = parseInt(parsedJson.channels[i].velo); } function send(url,method,content) { req.open(method, \"http://192.168.0.1/\" + url,false);  req.send(content); }  function deviceOnClick(){ disable252eClock(false); }  function hostOnClick(){ disable252eClock(true); }  function disable252eClock(disable){ if (disable){ document.getElementById(\"SendMidi\").disabled=true; document.getElementById(\"SendMidiLabel\").style.color = 'gray'; } else { document.getElementById(\"SendMidi\").disabled=false; document.getElementById(\"SendMidiLabel\").style.color = 'black'; } }  function submitOnClick(){ if (pwd.value != pwd2.value) { errortext.innerHTML = \"Passwords do not match.\"; } else if ((pwd.value.length < 8) || (pwd2.value.length < 8)){ errortext.innerHTML = \"Password too short.\"; } else { var usb = \"0\"; if (document.getElementById(\"Device\").checked) { usb = \"1\"; } var poll = \"0\"; if (document.getElementById(\"Poll\").checked) { poll = \"1\"; } var prgChEnbl = \"0\"; if (document.getElementById(\"PrgChEnbl\").checked) { prgChEnbl = \"1\"; } var sendMidi = \"0\"; if (document.getElementById(\"SendMidi\").checked) { sendMidi = \"1\"; } errortext.innerHTML = \"\"; var response = { ssid : s.value, password : pwd.value, usbMode : usb, poll : poll, prgChEnbl : prgChEnbl, sendMidi : sendMidi, buses : [], channels : [] }; var busA = { bus: \"A\", fine: fineA.value.toString() }; response.buses.push(busA); var busB = { bus: \"B\", fine: fineB.value.toString() }; response.buses.push(busB); var busC = { bus: \"C\", fine: fineC.value.toString() }; response.buses.push(busC); var busD = { bus: \"D\", fine: fineD.value.toString() }; response.buses.push(busD);  for (var i = 1; i<17; i++){ var m = 0; if (document.getElementById(\"a\" + i).checked) {m = 0x8;} if (document.getElementById(\"b\" + i).checked) {m = m | 0x4}; if (document.getElementById(\"c\" + i).checked) {m = m | 0x2}; if (document.getElementById(\"d\" + i).checked) {m = m | 0x1}; var pp = 0; if (document.getElementById(\"p\" + i).checked) {pp = 1;} var vv = 0; if (document.getElementById(\"v\" + i).checked) {vv = 1;} var channel = { chan : i.toString(), mask : \"0x\" + m.toString(16), tran : document.getElementById(\"t\" + i).value.toString(), poly : pp.toString(), velo : vv.toString() }; response.channels.push(channel); } var responseString = JSON.stringify(response,undefined,2); req = new XMLHttpRequest(); req.open(\"POST\", \"http://192.168.0.1/postsetupdata\",true);  req.setRequestHeader(\"Content-Length\", responseString.length);     req.setRequestHeader(\"Content-Type\", \"application/x-www-form-urlencoded\"); req.send(responseString); }  }  </script> </html>";
+const static String PROGMEM setupPageString = "<html> <head>  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> </head> <style> table,th,td{ border:1px solid black; border-collapse: collapse; } th,td { padding: 1px; } input[type=number] { width: 45px; } </style> <body> <div style=\"display: flex;justify-content: space-between; max-width:245px\"> <label style=\"font-weight:bold;font-size:24px;\">Setup Page</label> <input type=\"button\" id=\"submit\" value=\"Submit\"> </div> <hr> <table id=\"MidiTable\" name=\"MidiTable\"> <tr> <th>Chan</th> <th>A</th> <th>B</th> <th>C</th> <th>D</th> <th>Tran</th> <th>Poly</th> <th>Velo</th> </tr> </table> <hr> <table id=\"BusTable\" name=\"BusTable\"> <tr> <th>Bus</th> <th>Fine</th> </tr> </table> <hr> <table id=\"MidiOptions\" name=\"MidiOptions\"> <tr> <th colspan=\"2\">MIDI Options</th> </tr> <tr> <td> <label for=\"PrgChEnbl\">Receive Program Change</label> </td> <td> <input type=\"checkbox\" id=\"PrgChEnbl\" name=\"PrgChEnbl\"> </td> </tr> <tr> <td> <label for=\"SendMidi\" id=\"SendMidiLabel\">Send 252e Midi Clock</label> </td> <td> <input type=\"checkbox\" id=\"SendMidi\" name=\"SendMidi\"> </td> </tr> </table> <hr> <label for=\"Device\"> <input type=\"radio\" id=\"Device\" name=\"usb\" value=\"1\" onclick=\"deviceOnClick()\">USB Device</label> <label for=\"Host\"> <input type=\"radio\" id=\"Host\" name=\"usb\" value=\"0\" onclick=\"hostOnClick()\">USB Host</label> <hr> <input type=\"checkbox\" id=\"Poll\" name=\"poll\"> <label for=\"Poll\">Poll modules on startup</label> <hr> <label for=\"ssid\">SSID:</label></br> <input type=\"text\" id=\"ssid\" name=\"ssid\" maxlength=\"32\" style=\"width:250;\"><br> <hr> <label for=\"pass\">Password (eight characters minimum):</label></br> <input type=\"text\" id=\"pass\" name=\"pass\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"pass2\">Re-enter Password:</label></br> <input type=\"text\" id=\"pass2\" name=\"pass2\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"submit\" id=\"errortext\" style=\"color:red;\"></label> <hr> Firmware v" FW_VERSION " </body> <script> var req = new XMLHttpRequest(); var s = document.getElementById(\"ssid\"); var pwd = document.getElementById(\"pass\"); var pwd2 = document.getElementById(\"pass2\"); var submit = document.getElementById(\"submit\"); var errortext = document.getElementById(\"errortext\"); var busNames = [\"A\",\"B\",\"C\",\"D\"];  var busTable = document.getElementById(\"BusTable\"); for (var i = 0; i < 4; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var f = document.createElement('input'); f.type = 'number'; f.name = \"f\" + i; f.id = \"f\" + i; f.setAttribute('max','49'); f.setAttribute('min','-49'); td1.appendChild(document.createTextNode(busNames[i])); td2.appendChild(f); tr.appendChild(td1); tr.appendChild(td2); busTable.appendChild(tr); } var fineA = document.getElementById(\"f0\"); var fineB = document.getElementById(\"f1\"); var fineC = document.getElementById(\"f2\"); var fineD = document.getElementById(\"f3\");  var table = document.getElementById(\"MidiTable\"); for (var i = 1; i < 17; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var td3 = document.createElement('td'); var td4 = document.createElement('td'); var td5 = document.createElement('td'); var td6 = document.createElement('td'); var td7 = document.createElement('td'); var td8 = document.createElement('td'); var chan = document.createTextNode(i); var a = document.createElement('input'); a.type = \"checkbox\"; a.name = \"a\" + i; a.id = \"a\" + i; var b = document.createElement('input'); b.type = \"checkbox\"; b.name = \"b\" + i; b.id = \"b\" + i; var c = document.createElement('input'); c.type = \"checkbox\"; c.name = \"c\" + i; c.id = \"c\" + i; var d = document.createElement('input'); d.type = \"checkbox\"; d.name = \"d\" + i; d.id = \"d\" + i; var t = document.createElement('input'); t.type = 'number'; t.name = \"t\" + i; t.id = \"t\" + i; t.setAttribute('max','49'); t.setAttribute('min','-49'); var p = document.createElement('input'); p.type = \"checkbox\"; p.name = \"p\" + i; p.id = \"p\" + i; var v = document.createElement('input'); v.type = \"checkbox\"; v.name = \"v\" + i; v.id = \"v\" + i; td1.appendChild(chan); td2.appendChild(a); td3.appendChild(b); td4.appendChild(c); td5.appendChild(d); td6.appendChild(t); td7.appendChild(p); td8.appendChild(v); tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6); tr.appendChild(td7); tr.appendChild(td8); table.appendChild(tr); } submit.onclick = submitOnClick; send('getsetupdata1','GET',null); var parsedJson = JSON.parse(req.responseText); s.value = parsedJson.ssid; pwd.value = parsedJson.password; pwd2.value = pwd.value; if (parseInt(parsedJson.poll)==1) { document.getElementById(\"Poll\").checked = true; } if (parseInt(parsedJson.prgChEnbl)==1) { document.getElementById(\"PrgChEnbl\").checked = true; } if (parseInt(parsedJson.sendMidi)==1) { document.getElementById(\"SendMidi\").checked = true; } if (parseInt(parsedJson.usbMode)==1){ document.getElementById(\"Device\").checked = true; disable252eClock(false); } else { document.getElementById(\"Host\").checked = true; disable252eClock(true); } for (var i=0; i < 4; i++){ document.getElementById(\"f\" + i).value = parseInt(parsedJson.buses[i].fine); } send('getsetupdata2','GET',null); var parsedJson = JSON.parse(req.responseText); for (var i=0; i < 16; i++){ k = i + 1; var mask = parseInt(parsedJson.channels[i].mask); document.getElementById(\"a\" + k).checked = mask&0x8; document.getElementById(\"b\" + k).checked = mask&0x4; document.getElementById(\"c\" + k).checked = mask&0x2; document.getElementById(\"d\" + k).checked = mask&0x1; document.getElementById(\"t\" + k).value = parseInt(parsedJson.channels[i].tran); document.getElementById(\"p\" + k).checked = parseInt(parsedJson.channels[i].poly); document.getElementById(\"v\" + k).checked = parseInt(parsedJson.channels[i].velo); } function send(url,method,content) { req.open(method, \"http://192.168.0.1/\" + url,false);  req.send(content); }  function deviceOnClick(){ disable252eClock(false); }  function hostOnClick(){ disable252eClock(true); }  function disable252eClock(disable){ if (disable){ document.getElementById(\"SendMidi\").disabled=true; document.getElementById(\"SendMidiLabel\").style.color = 'gray'; } else { document.getElementById(\"SendMidi\").disabled=false; document.getElementById(\"SendMidiLabel\").style.color = 'black'; } }  function submitOnClick(){ if (pwd.value != pwd2.value) { errortext.innerHTML = \"Passwords do not match.\"; } else if ((pwd.value.length < 8) || (pwd2.value.length < 8)){ errortext.innerHTML = \"Password too short.\"; } else { var usb = \"0\"; if (document.getElementById(\"Device\").checked) { usb = \"1\"; } var poll = \"0\"; if (document.getElementById(\"Poll\").checked) { poll = \"1\"; } var prgChEnbl = \"0\"; if (document.getElementById(\"PrgChEnbl\").checked) { prgChEnbl = \"1\"; } var sendMidi = \"0\"; if (document.getElementById(\"SendMidi\").checked) { sendMidi = \"1\"; } errortext.innerHTML = \"\"; var response = { ssid : s.value, password : pwd.value, usbMode : usb, poll : poll, prgChEnbl : prgChEnbl, sendMidi : sendMidi, buses : [], channels : [] }; var busA = { bus: \"A\", fine: fineA.value.toString() }; response.buses.push(busA); var busB = { bus: \"B\", fine: fineB.value.toString() }; response.buses.push(busB); var busC = { bus: \"C\", fine: fineC.value.toString() }; response.buses.push(busC); var busD = { bus: \"D\", fine: fineD.value.toString() }; response.buses.push(busD);  for (var i = 1; i<17; i++){ var m = 0; if (document.getElementById(\"a\" + i).checked) {m = 0x8;} if (document.getElementById(\"b\" + i).checked) {m = m | 0x4}; if (document.getElementById(\"c\" + i).checked) {m = m | 0x2}; if (document.getElementById(\"d\" + i).checked) {m = m | 0x1}; var pp = 0; if (document.getElementById(\"p\" + i).checked) {pp = 1;} var vv = 0; if (document.getElementById(\"v\" + i).checked) {vv = 1;} var channel = { chan : i.toString(), mask : \"0x\" + m.toString(16), tran : document.getElementById(\"t\" + i).value.toString(), poly : pp.toString(), velo : vv.toString() }; response.channels.push(channel); } var responseString = JSON.stringify(response,undefined,2); req = new XMLHttpRequest(); req.open(\"POST\", \"http://192.168.0.1/postsetupdata\",true);  req.setRequestHeader(\"Content-Length\", responseString.length);     req.setRequestHeader(\"Content-Type\", \"application/x-www-form-urlencoded\"); req.send(responseString); }  }  </script> </html>";
 char ssid[33];    // your network SSID (name) max 32 characters plus termination
 char pass[64];    // your network password for WPA. Max is 63 plus termination
 int keyIndex = 0; // your network key Index number (needed only for WEP)
@@ -719,7 +727,23 @@ const static byte PROGMEM favicon[] = {0x00, 0x00, 0x01, 0x00, 0x03, 0x00, 0x10,
 
 int status = WL_IDLE_STATUS;
 WiFiServer server(80);
+#ifdef WPM_DIAG
+#include <utility/WiFiSocket.h>
+static char diagLog[600]; static size_t diagLen = 0;
+static void diag(const char* k, long v) { int n = snprintf(diagLog + diagLen, sizeof diagLog - diagLen, "%s=%ld ", k, v); if (n > 0 && diagLen + n < sizeof diagLog) diagLen += n; }
+static void diagDump() { static unsigned long t; if (millis() - t < 3000) return; t = millis(); if (Serial) { Serial.print("DIAG ms="); Serial.print(millis()); Serial.print(" st="); Serial.print(WiFi.status()); Serial.print(" l0="); Serial.print(WiFiSocket.listening(0)); Serial.print(" "); Serial.println(diagLog); } }
+#define DIAG(k,v) diag(k,(long)(v))
+#define DIAG_HALT() for(;;){ diagDump(); }
+#else
+#define DIAG(k,v)
+#define DIAG_HALT() while (true)
+#endif
 WiFiClient client;
+unsigned long lastListenMs = 0;
+unsigned long lastServedMs = 0;
+#ifdef WPM_DIAG
+long rebegins = 0, periodicBegins = 0;
+#endif
 
 void setup() {
   //Set this stuff up first so we are ready for firmware requests from modules.
@@ -742,11 +766,20 @@ void setup() {
   DEBUG_PRINTLN("Access Point Web Server");
   #endif
 
-  // check for the presence of the shield:
+  // check for the presence of the shield. After a software reset the WINC1500 stays
+  // powered; WiFi.end() clears the driver's init flag so the next status() re-inits
+  // (and resets) the chip. Retry before giving up.
+  DIAG("rcause", PM->RCAUSE.reg);
+  for (int attempt = 0; attempt < 3; attempt++) {
+    DIAG("shield", WiFi.status());
+    if (WiFi.status() != WL_NO_SHIELD) break;
+    WiFi.end();
+    delay(500);
+  }
   if (WiFi.status() == WL_NO_SHIELD) {
     DEBUG_PRINTLN("WiFi shield not present");
     // don't continue
-    while (true);
+    DIAG_HALT();
   }
 
   // by default the local IP address of will be 192.168.1.1
@@ -772,17 +805,30 @@ void setup() {
 
   // Create open network. Change this line if you want to create an WEP network:
   //2WIRELESS added pass
-  if (digitalRead(WIFI_OPEN_PIN) || (sizeof(pass) < 8)) {
-    status = WiFi.beginAP(ssid);
-  } else {
-    status = WiFi.beginAP(ssid,pass);
+  // Up to 3 attempts: the first runs the stock sequence unchanged; a retry (after a
+  // software reset left the WINC with the old AP running) tears down and reconfigures.
+  for (int attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      WiFi.end();
+      delay(500);
+      WiFi.config(IPAddress(192, 168, 0, 1));
+    }
+    if (digitalRead(WIFI_OPEN_PIN) || (sizeof(pass) < 8)) {
+      status = WiFi.beginAP(ssid);
+    } else {
+      status = WiFi.beginAP(ssid,pass);
+    }
+    DIAG("ap", status);
+    if (status == WL_AP_LISTENING) break;
   }
   
   if (status != WL_AP_LISTENING) {
     DEBUG_PRINTLN("Creating access point failed");
     // don't continue
-    while (true);
+    DIAG_HALT();
   }
+  server.begin(); // first listener; loop() re-creates it on each association and after 10 s idle with a station connected
+  DIAG("l0", WiFiSocket.listening(0));
 
   // wait 10 seconds for connection:
   //delay(10000);
@@ -821,6 +867,11 @@ void setup() {
 
 
 void loop() {
+#ifdef WPM_DIAG
+  diagDump();
+#endif
+  wpm_bus_loop();
+  wpm_dump_loop();
   // compare the previous status to the current status
   if (status != WiFi.status()) {
     // it has changed update the variable
@@ -831,7 +882,11 @@ void loop() {
       DEBUG_PRINT("Device connected to AP, MAC address: ");
       WiFi.APClientMacAddress(remoteMac);
       printMacAddress(remoteMac);
+      // The WINC1500 drops the AP-mode listening socket when a station (re)associates while
+      // the driver still reports it as listening; recreate it (stock did this per association).
       server.begin();
+      lastListenMs = millis();
+      DIAG("rb", ++rebegins);
     } else {
       // a device has disconnected from the AP, and we are back in listening mode
       DEBUG_PRINTLN("Device disconnected from AP");
@@ -839,10 +894,20 @@ void loop() {
     }
   }
   
+  // Fallback for a disconnect+reconnect missed between two loop iterations (e.g. during a long
+  // capture): refresh the listener while a station is connected but nothing has been served for
+  // 10 s (a live listener needs no refresh, and a refresh refuses connections for a few ms).
+  // No client is ever active here.
+  if (status == WL_AP_CONNECTED && millis() - lastListenMs > 10000 && millis() - lastServedMs > 10000) {
+    server.begin();
+    lastListenMs = millis();
+    DIAG("pb", ++periodicBegins);
+  }
   client = server.available();   // listen for incoming clients
   //When web page is served, we return to this with no client. 
   //TO DO: If device was disconnected from AP, then it seems AP needs to be reconstructed here.
   if (client) {                             // if you get a client,
+    lastServedMs = millis();
     DEBUG_PRINTLN("new client");           // print a message out the serial port
     String currentLine = "";                // make a String to hold incoming data from the client
     String urlString = "";                  // string to hold the request URL
@@ -881,6 +946,23 @@ void loop() {
   pollUsbMidi(isUsbDevice);
 }
 
+//FRAM primitives are critical sections in thread mode. During /dump the I2C ISR calls framWrite while the
+//main loop may be inside its own FRAM SPI transaction (a route reading the preset or writing a setting): an
+//ISR write landing between a main-loop WREN and WRITE, or inside a read, would be lost or would corrupt the
+//main-loop access. In ISR context (VECTACTIVE != 0) the lock is a no-op. The I2C slave stretches SCL while
+//the ISR is masked; the longest masked span is one framWriteHexString burst: WREN, the 4-byte header and up to
+//128 data bytes, about 1 us per byte, so at most ~150 us.
+static inline uint32_t framLock() {
+    if (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) return 0xFFFFFFFFu;
+    uint32_t p = __get_PRIMASK();
+    __disable_irq();
+    return p;
+}
+static inline void framUnlock(uint32_t p) {
+    if (p != 0xFFFFFFFFu) __set_PRIMASK(p);
+}
+
+//Callers hold framLock() across this and the WRITE transaction that follows (WEL latch).
 void framEnableWrite(){
     SPI.beginTransaction(spiSettings);
     digitalWrite(SPI_CS, LOW); //Set CS low to select chip
@@ -894,6 +976,7 @@ void framWrite(int addr, uint8_t value){
     uint8_t addr_byte_upper = (0x3F0000 & addr) >>16;
     uint8_t addr_byte_middle = (0x00FF00 & addr) >>8;
     uint8_t addr_byte_lower = (0x0000FF & addr);
+    uint32_t lk = framLock();
     framEnableWrite();
     SPI.beginTransaction(spiSettings);
     digitalWrite(SPI_CS, LOW); //Set CS low to select chip
@@ -904,28 +987,42 @@ void framWrite(int addr, uint8_t value){
     SPI.transfer(value); // send value
     digitalWrite(SPI_CS, HIGH); //Set CS high to de-select
     SPI.endTransaction();
+    framUnlock(lk);
 }
 
 void framWriteHexString(int addr, String value){
-    //Address on the MB85RS2MTA is 18 bits total, requiring 3 bytes. 
-    uint8_t addr_byte_upper = (0x3F0000 & addr) >>16;
-    uint8_t addr_byte_middle = (0x00FF00 & addr) >>8;
-    uint8_t addr_byte_lower = (0x0000FF & addr);
-    framEnableWrite();
-    SPI.beginTransaction(spiSettings);
-    digitalWrite(SPI_CS, LOW); //Set CS low to select chip
-    SPI.transfer(FRAM_WRITE); // send write enable OPCODE
-    SPI.transfer(addr_byte_upper); // send address upper byte
-    SPI.transfer(addr_byte_middle); // send address middle byte
-    SPI.transfer(addr_byte_lower); // send address lower byte
-    String remainder = value;
-    while (remainder.length() >= 2){
-        uint8_t data = (int)strtol(remainder.substring(0,2).c_str(), nullptr, 16); 
-        SPI.transfer(data); // send value
-        remainder = remainder.substring(2,remainder.length());
+    //The hex is decoded into a local buffer BEFORE the lock is taken (String work is slow), then each chunk of
+    //up to 128 bytes is written in its own locked WREN + WRITE burst at the advancing address: the same bytes
+    //land at the same addresses as a single burst would put them. A trailing odd character is ignored, as before.
+    uint8_t buf[128];
+    int total = value.length() / 2;
+    int done = 0;
+    while (done < total) {
+        int n = total - done;
+        if (n > (int)sizeof buf) n = sizeof buf;
+        for (int i = 0; i < n; i++) {
+            char pair[3] = { value.charAt(2 * (done + i)), value.charAt(2 * (done + i) + 1), 0 };
+            buf[i] = (uint8_t)(int)strtol(pair, nullptr, 16);
+        }
+        int a = addr + done;
+        //Address on the MB85RS2MTA is 18 bits total, requiring 3 bytes.
+        uint8_t addr_byte_upper = (0x3F0000 & a) >>16;
+        uint8_t addr_byte_middle = (0x00FF00 & a) >>8;
+        uint8_t addr_byte_lower = (0x0000FF & a);
+        uint32_t lk = framLock();
+        framEnableWrite();
+        SPI.beginTransaction(spiSettings);
+        digitalWrite(SPI_CS, LOW); //Set CS low to select chip
+        SPI.transfer(FRAM_WRITE); // send write enable OPCODE
+        SPI.transfer(addr_byte_upper); // send address upper byte
+        SPI.transfer(addr_byte_middle); // send address middle byte
+        SPI.transfer(addr_byte_lower); // send address lower byte
+        for (int i = 0; i < n; i++) SPI.transfer(buf[i]); // send values
+        digitalWrite(SPI_CS, HIGH); //Set CS high to de-select
+        SPI.endTransaction();
+        framUnlock(lk);
+        done += n;
     }
-    digitalWrite(SPI_CS, HIGH); //Set CS high to de-select
-    SPI.endTransaction();
 }
 
 uint8_t framRead(int addr){
@@ -934,6 +1031,7 @@ uint8_t framRead(int addr){
     uint8_t addr_byte_upper = (0x3F0000 & addr) >>16;
     uint8_t addr_byte_middle = (0x00FF00 & addr) >>8;
     uint8_t addr_byte_lower = (0x0000FF & addr);
+    uint32_t lk = framLock();
     SPI.beginTransaction(spiSettings);
     digitalWrite(SPI_CS, LOW); //Set CS low to select chip
     SPI.transfer(FRAM_READ); // send write enable OPCODE
@@ -943,6 +1041,7 @@ uint8_t framRead(int addr){
     result = SPI.transfer(0); // read byte
     digitalWrite(SPI_CS, HIGH); //Set CS high to de-select
     SPI.endTransaction();
+    framUnlock(lk);
     return result;
 }
 
@@ -1304,36 +1403,27 @@ void setPassword(String password){
   }
 }
 
-void receiveEvent(int howMany) {
-    if(i2c_guard) return; //master busy
-    DEBUG_PRINTLN("receiveEvent");
-    if (write_i2c_to_fram) {
-      while (Wire.available() > 0) { 
-        uint8_t data = Wire.read();
-        //Cache to FRAM because MKR1000 is too slow to process data using a ring buffer.
-        framWrite(write_counter,data);
-        write_counter++;
-      }
-    } else {
-      if (Wire.available() > 4) {
+//Stock decode of a general-call frame of more than 4 bytes (formerly inline in receiveEvent): MIDI clock to USB,
+//module firmware display messages, and the bus-scan hooks. Called from the ISR; f holds the whole frame.
+//Bytes beyond the end of f read as 0xFF, like Wire.read() on an empty buffer.
+void wpm_stock_decode_frame(const uint8_t* f, int n) {
+        wpm_bus_note_frame();
         int command = 0;
-        command = command + (Wire.read() << 24);
-        command = command + (Wire.read() << 16);
-        command = command + (Wire.read() << 8);
-        command = command + Wire.read();
+        command = command + (f[0] << 24);
+        command = command + (f[1] << 16);
+        command = command + (f[2] << 8);
+        command = command + f[3];
+        //Module identity ACK (reply to QUERY): 04 22|00 <module addr> 1C FF
+        if (((command >> 24) & 0xFF) == 0x04 && (command & 0xFF) == 0x1C) wpm_bus_on_query_reply((command >> 8) & 0xFF);
         DEBUG_PRINTHEXLN(command);
         if (((command & MIDI_EVENT) == MIDI_EVENT) && getSendMidiToUsb()){
           //clock messages
-          switch(Wire.read()) {
+          switch(f[4]) {
             //Endpoint is 2 found by trial and error
             case 0xF8  : memcpy(midiUsbData, MIDI_CLK, 4); break;
             case 0xFA  : memcpy(midiUsbData, MIDI_CLK_START, 4); break;
             case 0xFB  : memcpy(midiUsbData, MIDI_CLK_CONT, 4); break;
             case 0xFC  : memcpy(midiUsbData, MIDI_CLK_STOP, 4); break;
-            //case 0xF8  : USB_Send(2, MIDI_CLK, 4);        MidiUSB.flush();break; 
-            //case 0xFA  : USB_Send(2, MIDI_CLK_START, 4);  MidiUSB.flush();break;
-            //case 0xFB  : USB_Send(2, MIDI_CLK_CONT, 4);   MidiUSB.flush();break;
-            //case 0xFC  : USB_Send(2, MIDI_CLK_STOP, 4);   MidiUSB.flush();break;
           }
         } else if ((command & DISPLAY_EVENT) == DISPLAY_EVENT) {
           //Firmware display messages
@@ -1343,12 +1433,40 @@ void receiveEvent(int howMany) {
           String moduleVersion = "";
           moduleVersion = moduleVersion + char(moduleAddr); //Store only address and version to fram
           int byteCount=0;
+          uint8_t ver7[7];
           while (byteCount < 7) {
-            moduleVersion = moduleVersion + char(Wire.read());
+            uint8_t vb = (4 + byteCount < n) ? f[4 + byteCount] : 0xFF;
+            ver7[byteCount] = vb;
+            moduleVersion = moduleVersion + char(vb);
             byteCount++;
           } 
+          //Note: the DISPLAY_EVENT mask match above is loose (stock behaviour), so a non-0x13 frame with a
+          //superset of those bits also reaches here.
+          wpm_bus_on_version_frame(moduleAddr, ver7);
           setDisplayMessage(0,moduleVersion);
         }
+}
+
+void receiveEvent(int howMany) {
+    if(i2c_guard) return; //master busy
+    DEBUG_PRINTLN("receiveEvent");
+    if (Wire.lastAddress() == (0x50 | CARD_ADDRESS) && howMany > 0) cardWriteTime = millis(); //card-write cool-down for the master guard
+    if (wpm_dump_active() && wpm_dump_isr_frame(howMany)) return; //byte-counting capture (/dump); false = leave this frame to the stock path
+    if (write_i2c_to_fram) {
+      while (Wire.available() > 0) { 
+        uint8_t data = Wire.read();
+        //Cache to FRAM because MKR1000 is too slow to process data using a ring buffer.
+        framWrite(write_counter,data);
+        write_counter++;
+      }
+    } else {
+      //Read the whole frame first, then decode from the buffer: the same decoder serves the general-call
+      //frames that the /dump ISR path forwards (wpm_stock_decode_frame). Stock only acted on frames > 4 bytes.
+      uint8_t* frame = wpm_isr_frame; //static buffer: keeps 256 bytes off the ISR stack
+      int fn = 0;
+      while (Wire.available() > 0 && fn < (int)sizeof wpm_isr_frame) frame[fn++] = (uint8_t)Wire.read();
+      if (fn > 4) {
+        wpm_stock_decode_frame(frame, fn);
         Wire.flush();
       }
    } 
@@ -1424,6 +1542,7 @@ void switchToSlave(){
 }
 
 void sendRemoteEnable() {    
+    if (wpm_bus_scan_active() || wpm_dump_active()) return; //bus job owns the bus
     //Remote Enable
     if (masterBeginTransmission(0) == 0) {
       if (v2version) {
@@ -1441,6 +1560,7 @@ void sendRemoteEnable() {
 }
 
 void sendRemoteDisable() {
+    if (wpm_bus_scan_active() || wpm_dump_active()) return; //bus job owns the bus
     //Remote Disable
     if (masterBeginTransmission(0) == 0) {
       if (v2version) {
@@ -1476,6 +1596,7 @@ void sendPollingComplete() {
 
 
 void sendQuery(byte address) {
+    if (wpm_bus_job_busy()) return; //not called today; guarded for symmetry with the other senders
     //Query Module
     if (v2version) {
         //Nothing. Query is not supported
@@ -1492,7 +1613,42 @@ void sendQuery(byte address) {
     }
 }
 
+// Bus-scan helpers: like sendQuery()/sendPollingComplete() but report whether the master send began.
+bool wpm_v2_pin() {
+    return digitalRead(V2VERSION_PIN);
+}
+
+bool wpm_bus_master_query(uint8_t address) {
+    if (wpm_v2_pin()) return false; //Query is not supported on a V2 bus
+    if (masterBeginTransmission(0) != 0) return false;
+    Wire.write(0x04);
+    Wire.write(address);
+    Wire.write(0x22);
+    Wire.write(0x1A);
+    Wire.write(0xFF);
+    Wire.endTransmission();
+    switchToSlave();
+    return true;
+}
+
+bool wpm_bus_master_polldone() {
+    if (masterBeginTransmission(0) != 0) return false;
+    if (v2version) {
+        Wire.write(0x14);
+    } else {
+        Wire.write(0x04);
+        Wire.write(0x00);
+        Wire.write(0x22);
+        Wire.write(0x14);
+        Wire.write(0xFF);
+    }
+    Wire.endTransmission();
+    switchToSlave();
+    return true;
+}
+
 void sendSavePreset(byte preset) {
+    if (wpm_bus_scan_active() || wpm_dump_active()) return; //bus job owns the bus
     //Save Preset
     //Preset=0-29
     preset = preset & 0x1F;
@@ -1513,6 +1669,7 @@ void sendSavePreset(byte preset) {
 }
 
 void sendRecallPreset(byte preset) {
+    if (wpm_bus_scan_active() || wpm_dump_active()) return; //bus job owns the bus
     DEBUG_PRINT("Recall preset:");
     DEBUG_PRINTHEXLN(preset);
     //Recall Preset
@@ -1558,6 +1715,31 @@ void sendBackupPresets(byte address) {
       masterEndTransmission();
       switchToSlave();
     }
+}
+
+//Byte-counting capture (/dump): sendBackupPresets() byte for byte, but reports whether the master send began.
+//Uses the physical V2 pin like the bus-scan helpers, so a /v2/ URL prefix does not change the frame.
+bool wpm_dump_master_backup(uint8_t address) {
+    if (masterBeginTransmission(0) != 0) return false;
+    if (wpm_v2_pin()) {
+        Wire.write(0x2D);
+        Wire.write(address); //Module address
+        Wire.write(0x00); //Card memory address LSB
+        Wire.write(0x00); //Card memory address MSB
+        Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
+    } else {
+        Wire.write(0x07);
+        Wire.write(0x00);
+        Wire.write(0x22);
+        Wire.write(0x04);
+        Wire.write(address); //Module address
+        Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
+        Wire.write(0x00); //Card memory address LSB
+        Wire.write(0x00); //Card memory address MSB
+    }
+    masterEndTransmission();
+    switchToSlave();
+    return true;
 }
 
 void sendRestorePresets(byte address) {
@@ -1764,6 +1946,8 @@ void sendMidiBend(byte mask, byte bend_lsb, byte bend_msb){
 }
 
 int masterBeginTransmission(int addr){
+  //A bus job (scan or dump) owns the bus: only its own sends (bracketed by wpm_job_master_begin/end) get through.
+  if (wpm_bus_job_busy() && !wpm_job_master_allowed()) return 1;
   i2c_guard = true; //prevent slave interrupt
   int result = 0;
   while (sercom2.isBusBusyWIRE()) {   
@@ -1987,7 +2171,16 @@ void handleWifiRequest(WiFiClient client, String urlString){
   if (urlString.indexOf("/v2") >= 0) {
       v2version = true;
   } 
-  if (urlString.indexOf("/remoteenable") >= 0) {
+  if ((urlString.indexOf("/remoteenable") >= 0 || urlString.indexOf("/remotedisable") >= 0 ||
+       urlString.indexOf("/savepreset?preset") >= 0 || urlString.indexOf("/recallpreset?preset") >= 0 ||
+       urlString.indexOf("/sendmidibytes") >= 0 ||
+       urlString.indexOf("/midinoteon?chan") >= 0 || urlString.indexOf("/midinoteoff?chan") >= 0 ||
+       urlString.indexOf("/midiclock") >= 0 || //also covers /midiclockstart and /midiclockstop
+       urlString.indexOf("/midifinetune?chan") >= 0 ||
+       urlString.indexOf("/midibend?chan") >= 0) && wpm_bus_job_busy()) {
+    wpm_send_json(client, wpm_json_err("busy")); //bus scan or dump owns the bus
+  }
+  else if (urlString.indexOf("/remoteenable") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
     DEBUG_PRINTLN("Remote Enable Received"); 
     sendRemoteEnable();
@@ -2149,6 +2342,9 @@ void handleWifiRequest(WiFiClient client, String urlString){
     DEBUG_HTTP_PRINTHEXLN(midiMessage.byte3);
     processMidiMessage(midiMessage);
   }
+  else if (urlString.indexOf("/getpresets?addr") >= 0 && wpm_bus_job_busy()) {
+    wpm_send_json(client, wpm_json_err("busy")); //bus scan or dump owns the bus
+  }
   else if (urlString.indexOf("/getpresets?addr") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/json",-1); //-1 is chunked encoding
     DEBUG_PRINTLN("Get Presets Received"); 
@@ -2164,11 +2360,11 @@ void handleWifiRequest(WiFiClient client, String urlString){
     }
     DEBUG_HTTP_PRINTHEXLN(address);
     write_i2c_to_fram = true; //Cache incoming i2c to FRAM 
+    write_counter=0; //initialize fram write locations
+    fram_address=0; //initialize fram write locations
     sendBackupPresets(address); 
     bool done = false;
     unsigned long lastTime = millis();
-    write_counter=0; //initialize fram write locations
-    fram_address=0; //initialize fram write locations
     //Begin the message
     String resultString = "{\r\n";
     resultString = resultString + "\"module_address\": \"0x" + String(address,HEX) + "\",\r\n";
@@ -2207,6 +2403,8 @@ void handleWifiRequest(WiFiClient client, String urlString){
     client.println("0");
     client.println();
     write_i2c_to_fram = false; //Stop Caching incoming i2c to FRAM 
+  } else if (urlString.indexOf("/setpresets?addr") >= 0 && wpm_bus_job_busy()) {
+    wpm_send_json(client, wpm_json_err("busy")); //bus scan or dump owns the bus
   } else if (urlString.indexOf("/setpresets?addr") >= 0) {
     writeHeader(client,"HTTP/1.1 200 OK","Content-type:text/plain",0);
     DEBUG_PRINTLN("Set Presets Received"); 
@@ -2747,6 +2945,29 @@ void handleWifiRequest(WiFiClient client, String urlString){
       tmp = setupPageString.substring(i,i+500);
     }
     client.println();   // The HTTP response ends with another blank line:
+  } else if (urlString.indexOf("/dump/status") >= 0) {
+    wpm_dump_handle_status(client);
+  } else if (urlString.indexOf("/dump/abort") >= 0) {
+    wpm_dump_handle_abort(client);
+  } else if (urlString.indexOf("/dump") >= 0) {
+    wpm_dump_handle_start(client, urlString);
+  } else if (urlString.indexOf("/bus/scan/status") >= 0) {
+    wpm_bus_handle_scan_status(client);
+  } else if (urlString.indexOf("/bus/scan") >= 0) {
+    wpm_bus_handle_scan(client, urlString);
+  } else if (urlString.indexOf("/bus/status") >= 0) {
+    wpm_bus_handle_status(client);
+  } else if (urlString.indexOf("/bus/polldone") >= 0) {
+    wpm_bus_handle_polldone(client);
+  } else if (urlString.indexOf("/ota/status") >= 0) {
+    wpm_ota_handle_status(client);
+  } else if (urlString.indexOf("/ota/abort") >= 0) {
+    wpm_ota_handle_abort(client);
+  } else if (urlString.indexOf("/ota/commit") >= 0) {
+    wpm_ota_handle_commit(client, urlString);
+  } else if (urlString.indexOf("/version") >= 0) {
+    DEBUG_PRINTLN("Version Received");
+    wpm_send_json(client, wpm_version_json(wpm_loader_present(), getUsbMode(), getPollOnStart()));
   } else {
     DEBUG_PRINTLN("Returning homepage");
     DEBUG_HTTP_PRINTLN(homepageString);
@@ -2951,6 +3172,7 @@ void handleBank1(uint32_t epAddr){
 }
 
 void processMidiMessage(midiEventPacket_t midiMessage){
+  if (wpm_bus_scan_active() || wpm_dump_active()) return; //MIDI is dropped while a bus job owns the bus
   DEBUG_MIDI_PRINT("Received: ");
   DEBUG_MIDI_PRINTHEX(midiMessage.header);
   uint8_t chan = midiMessage.byte1 & 0x0F;
