@@ -172,7 +172,7 @@
 						card_i2c_address.addr = "0009";
 						chip_count.addr = "000a";
 						chip_size.addr = "000b";
-						chip_size.data = "0003ffff"; //FRAM has 18 bit address.
+						chip_size.data = "00038000"; //FRAM has 18 bit address.
 						module_name.addr = "000f";
 						hardware_version.addr = "0013";
 						firmware_version.addr = "0015";
@@ -206,6 +206,7 @@
 						}
 						var total_size = (address - 0x2B).toString(16); //Now that last address is known, update data. 
 						firmware_size.data = total_size.padStart(8,'0'); // Zero pad to eight characters.
+						firmware_size.data = firmware_size.data.padEnd(40,'0'); //zero pad the end with 16 bytes
 					}
 					
 					var total_elements = 0;
@@ -276,7 +277,31 @@
 					} else {
 						if (!requestTimeout) {
 							textValue = textValue + "Done.<br/>";
-							textValue = textValue + "Reboot system with button held on " + filename.substring(0,4) + ".<br/>";
+							switch (filename.substring(0,4)) {
+							  case "223A":
+								textValue = textValue +  "Reboot system with the clock button held on the 223e arpeggiator. <br/>";
+								break;
+							  case "225S":
+								textValue = textValue +  "Reboot system with the data button held on the preset manager (same for 206e and 225e). <br/>";
+								break;
+							  case "251E":
+								textValue = textValue +  "Reboot system with remote enable held on the 251e.<br/> Note the 251e reads the entire file twice with a 3s delay between.<br/>";
+								break;
+							  case "256E":
+								textValue = textValue +  "The 256e has two CPUs. Use the A breakpoint and C breakpoint buttons to load each. (Two boots required.) <br/>";
+								break;
+							  case "281E":
+								textValue = textValue +  "The 281e has two CPUs. Use the green quadrature buttons to load each. (Two boots required.) <br/> The 281h also uses the quadrature button. <br/>";
+								break;
+							  case "285F":
+								textValue = textValue +  "Reboot system with the reference source button held on the 285e frequency shifter. <br/>";
+								break;
+							  case "285B":
+								textValue = textValue +  "Reboot system with the reference source button held on the 285e balanced modulator. <br/>";
+								break;
+							  default:
+								textValue = textValue + "Reboot system with remote enable held on the " + filename.substring(0,4) + ".<br/>";
+							}
 							document.getElementById("text").innerHTML = textValue;
 						}
 					}
