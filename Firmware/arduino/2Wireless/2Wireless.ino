@@ -161,8 +161,11 @@ volatile int write_counter=0; //USed to auto increment write addresses during I2
 volatile int fram_address=0; //This is global only because it must span OnRequest calls during I2C READ from master. 
 volatile bool startup = true; //Used to free 206e when starting up.
 volatile bool write_i2c_to_fram = false; //Cache incoming i2c to FRAM.
-unsigned long readTime = 0; //used to detect idle to free up 206e at start.
+volatile long readTime = 0; //used to detect I2C read activity.
 volatile bool i2c_guard = false; //attempt to prevent switch to master while receiving
+volatile bool onCrystal = false; //used to start 32kHz crystal
+volatile uint32_t cacheAddr = 0xFFFFFFFF; //Used to reduce clock stretching during sequential reads
+volatile uint8_t  cacheByte; //Used to reduce clock stretching during sequential reads
 
 bool isUsbDevice = true; //Select between USB Device and USB Host
 midiEventPacket_t midiMessage; //Convenience structure for carrying MIDI data
@@ -195,7 +198,7 @@ bool velo[16] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}; //use velocity by default
 bool v2version=false; //used to support pre PRIMO firmware.
 SPISettings spiSettings(12000000, MSBFIRST, SPI_MODE0); //MKR1000 max is 12MHz. FRAM chip max is 40MHz.
 const static String PROGMEM homepageString = "<html> <head>  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">  <style>   .p {    display: flex;    flex-direction: column;    background-color:lightgray;    color:darkblue;    font-family:Arial;    font-weight:bold;    letter-spacing: 2px;    height: 218px;   }   .hf {    font-size:12px;    padding: 10px;    border: 1px solid darkblue;   }   .r {    font-style:italic;    font-size:20px;    padding: 10px;    border-left: 1px solid darkblue;    border-right: 1px solid darkblue;    height: 50px;   }   .row {    display: flex;    flex-direction: row;    justify-content: space-around;    align-items: center;       }   .col {    display: flex;    flex-direction: column;    justify-content: space-around;    align-items: center;    font-size:14px;    padding-inline: 4px;    margin: 0px;   }   .screw {    display: flex;    justify-content: center;    align-content: center;    flex-direction: column;    height: 18px;    width: 18px;    background-color: #999;    border-radius: 50%;    color: #444;    font-size:30px;    border: 1px solid black;   }   .b {    border-radius: 50%;    height:40px;    width:40px;    background-color: #777;    padding: 0px;    margin: 0px;   }   .d {    height: 50px;    background-color: white;    padding: 0px;    margin: 0px;    border: 1px solid black;   }   .dx {    height: 50px;    background-color: white;    padding: 0px;    margin: 0px;    border: 0px;   }     .dc {    font-family: Courier New;    font-weight:bold;    background-color: #cfc;    height: 50px;    border: 0px;   }   .hole {    height: 10px;    width: 10px;    background-color: #000;    border-radius: 50%;    display: inline-block;   }   </style> </head> <body>  <div class=\"p\">   <div class=\"hf row\">    <div class=\"screw\">+</div>    <div>PRESET &nbsp; MANAGER</div>   <div class=\"screw\">+</div>  </div>  <div class=\"r row\" style=\"border-bottom: 1px solid darkblue;margin-left:0;padding-left:0\">   <div class=\"col\">    <button id=\"sB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"1\"></button>    <div style=\"height:2;margin-left:0;padding-left:0\"></div>    <div>store</div>   </div>   <div class=\"d row\" style=\"margin-left:0;padding-left:0\">    <div class=\"dx col\" >     <input id=\"current_preset\" class=\"dc\" style=\"width:21px;background-color: #afa;\" disabled>     <input class=\"dc\" disabled style=\"width:21px;background-color: #afa;\">    </div>    <div class=\"dx col\" >     <input id=\"current_name\" class=\"dc\" maxlength=\"20\" tabindex=\"2\">     <input id=\"recall_name\" class=\"dc\" disabled style=\"background-color: #afa;\">    </div>    <div class=\"dx col\" >     <input class=\"dc\" disabled style=\"width:40px;background-color: #afa; \">     <input id=\"recall_preset\" class=\"dc\" style=\"width:40px;\" type=\"number\" min=\"1\" max=\"30\" tabindex=\"3\">    </div>   </div>   <div class=\"col\">    <button id=\"rB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"4\"></button>    <div style=\"height:2\"></div>    <div>recall</div>   </div>  </div>  <div class=\"r row\">   <div class=\"row\" style=\"width:200px\">    <div class=\"col\">     <button id=\"lB\" type=\"button\" class=\"b\" tabindex=\"5\"></button>     <div style=\"height:2\"></div>     <div>last</div>    </div>    <div class=\"col\">     <button id=\"nB\" type=\"button\" class=\"b\" tabindex=\"6\"></button>     <div style=\"height:2\"></div>     <div>next</div>    </div>   </div>   <div class=\"col\" style=\"align-items: flex-start;width:33%\">    <div class=\"row\" style=\"align-items: flex-start;\">     <input type=\"radio\" id=\"v3\" name=\"version\" value=\"v3\" tabindex=\"7\" hidden>     <label for=\"v3\" hidden>primo</label>    </div>    <div class=\"row\" style=\"align-items: flex-start;\">     <input type=\"radio\" id=\"v2\" name=\"version\" value=\"v2\" tabindex=\"8\" hidden>     <label for=\"v2\" hidden>v2    </label>    </div>   </div>   <div class=\"col\" style=\"width:33%\">    <button id=\"dispB\" type=\"button\" class=\"b\" tabindex=\"9\"></button>    <div style=\"height:2\"></div>    <div>display</div>   </div>    <div class=\"col\" style=\"width:33%\">    <button id=\"remB\" type=\"button\" class=\"b\" tabindex=\"10\"></button>    <div style=\"height:2\"></div>    <div>remote</div>   </div>      </div>  <div class=\"hf row\">   <div class=\"hole\"></div>   <div>STUDIO H SOFTWARE</div>   <div class=\"hole\"></div>  </div>  </div> </body> <script>  var rem = true;  var req;  var c_pset = document.getElementById(\"current_preset\");  var r_pset = document.getElementById(\"recall_preset\");  var c_name = document.getElementById(\"current_name\");  var r_name = document.getElementById(\"recall_name\");  var names = [];  var lock = false;  r_pset.onchange = rOnChange;  c_name.onchange = cnameOnChange;  document.getElementById(\"sB\").onclick = sBOnClick;  document.getElementById(\"rB\").onclick = rBOnClick;  document.getElementById(\"lB\").onclick = lBOnClick;  document.getElementById(\"nB\").onclick = nBOnClick;  document.getElementById(\"remB\").onclick = remBOnClick;  document.getElementById(\"dispB\").onclick = dispBOnClick;  document.getElementById(\"v3\").checked = true;    readNames();    c_pset.value = readPreset();  cOnChange();  r_pset.value = c_pset.value;  rOnChange();     function sBOnClick() {   send(\"savepreset?preset=\" + r_pset.value);   names[r_pset.value] = names[c_pset.value];   writeName(r_pset.value,names[r_pset.value]);   rOnChange();  }    function rBOnClick() {   c_pset.value = r_pset.value;   cOnChange();  }    function lBOnClick() {   var pset = c_pset.value;   pset = pset - 1;   if (pset < 1) {    pset = pset + 30;   }   pset = pset % 31;   c_pset.value = pset;   r_pset.value = pset;   cOnChange();   rOnChange();  }  function nBOnClick() {   var pset = c_pset.value;   pset = pset % 30 + 1;   c_pset.value = pset;   r_pset.value = pset;   cOnChange();   rOnChange();  }  function remBOnClick() {   rem = !rem;   if (rem){    send(\"remoteenable\");   } else {    send(\"remotedisable\");   }  }  function dispBOnClick() {   if (!lock) {    lock = true;    var c_saved = c_name.value;    var r_saved = r_name.value;    send(\"displaymessage\");    var tmp = JSON.parse(req.responseText).message;    c_name.value = tmp[0];     r_name.value = tmp[1];    setTimeout(()=>{      c_name.value = c_saved;      r_name.value = r_saved;     lock = false;    }, 2500)   }  }    function cOnChange(){   c_name.value = names[c_pset.value];   send(\"recallpreset?preset=\" + c_pset.value);  }    function rOnChange(){   r_name.value = names[r_pset.value];  }    function cnameOnChange(){   names[c_pset.value] = c_name.value;   writeName(c_pset.value,names[c_pset.value]);   rOnChange();  }    function send(url) {   var version = \"\";   if (document.getElementById('v2').checked) {    version = \"v2/\";   }   req = new XMLHttpRequest();   req.open(\"GET\", \"http://192.168.0.1/\" + version + url,false);    req.send(null);  }    function readPreset(){   send(\"currentpreset\");   return(parseInt(JSON.parse(req.responseText).currentpreset));  }    function readNames(){   send(\"presetnames\");   var tmp = JSON.parse(req.responseText).presetnames;   for (var i=0;i<30;i++){    names[i+1]=tmp[i];   }     }    function writeName(pset,name){   if (name != undefined) {    send(\"presetname=\" + name + \"&preset=\" + pset.toString());   }  } </script></html>";
-const static String PROGMEM setupPageString = "<html> <head>  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> </head> <style> table,th,td{ border:1px solid black; border-collapse: collapse; } th,td { padding: 1px; } input[type=number] { width: 45px; } </style> <body> <div style=\"display: flex;justify-content: space-between; max-width:245px\"> <label style=\"font-weight:bold;font-size:24px;\">Setup Page</label> <input type=\"button\" id=\"submit\" value=\"Submit\"> </div> <hr> <table id=\"MidiTable\" name=\"MidiTable\"> <tr> <th>Chan</th> <th>A</th> <th>B</th> <th>C</th> <th>D</th> <th>Tran</th> <th>Poly</th> <th>Velo</th> </tr> </table> <hr> <table id=\"BusTable\" name=\"BusTable\"> <tr> <th>Bus</th> <th>Fine</th> </tr> </table> <hr> <table id=\"MidiOptions\" name=\"MidiOptions\"> <tr> <th colspan=\"2\">MIDI Options</th> </tr> <tr> <td> <label for=\"PrgChEnbl\">Receive Program Change</label> </td> <td> <input type=\"checkbox\" id=\"PrgChEnbl\" name=\"PrgChEnbl\"> </td> </tr> <tr> <td> <label for=\"SendMidi\" id=\"SendMidiLabel\">Send 252e Midi Clock</label> </td> <td> <input type=\"checkbox\" id=\"SendMidi\" name=\"SendMidi\"> </td> </tr> </table> <hr> <label for=\"Device\"> <input type=\"radio\" id=\"Device\" name=\"usb\" value=\"1\" onclick=\"deviceOnClick()\">USB Device</label> <label for=\"Host\"> <input type=\"radio\" id=\"Host\" name=\"usb\" value=\"0\" onclick=\"hostOnClick()\">USB Host</label> <hr> <input type=\"checkbox\" id=\"Poll\" name=\"poll\"> <label for=\"Poll\">Poll modules on startup</label> <hr> <label for=\"ssid\">SSID:</label></br> <input type=\"text\" id=\"ssid\" name=\"ssid\" maxlength=\"32\" style=\"width:250;\"><br> <hr> <label for=\"pass\">Password (eight characters minimum):</label></br> <input type=\"text\" id=\"pass\" name=\"pass\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"pass2\">Re-enter Password:</label></br> <input type=\"text\" id=\"pass2\" name=\"pass2\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"submit\" id=\"errortext\" style=\"color:red;\"></label> <hr> Firmware v1.18 </body> <script> var req = new XMLHttpRequest(); var s = document.getElementById(\"ssid\"); var pwd = document.getElementById(\"pass\"); var pwd2 = document.getElementById(\"pass2\"); var submit = document.getElementById(\"submit\"); var errortext = document.getElementById(\"errortext\"); var busNames = [\"A\",\"B\",\"C\",\"D\"];  var busTable = document.getElementById(\"BusTable\"); for (var i = 0; i < 4; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var f = document.createElement('input'); f.type = 'number'; f.name = \"f\" + i; f.id = \"f\" + i; f.setAttribute('max','49'); f.setAttribute('min','-49'); td1.appendChild(document.createTextNode(busNames[i])); td2.appendChild(f); tr.appendChild(td1); tr.appendChild(td2); busTable.appendChild(tr); } var fineA = document.getElementById(\"f0\"); var fineB = document.getElementById(\"f1\"); var fineC = document.getElementById(\"f2\"); var fineD = document.getElementById(\"f3\");  var table = document.getElementById(\"MidiTable\"); for (var i = 1; i < 17; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var td3 = document.createElement('td'); var td4 = document.createElement('td'); var td5 = document.createElement('td'); var td6 = document.createElement('td'); var td7 = document.createElement('td'); var td8 = document.createElement('td'); var chan = document.createTextNode(i); var a = document.createElement('input'); a.type = \"checkbox\"; a.name = \"a\" + i; a.id = \"a\" + i; var b = document.createElement('input'); b.type = \"checkbox\"; b.name = \"b\" + i; b.id = \"b\" + i; var c = document.createElement('input'); c.type = \"checkbox\"; c.name = \"c\" + i; c.id = \"c\" + i; var d = document.createElement('input'); d.type = \"checkbox\"; d.name = \"d\" + i; d.id = \"d\" + i; var t = document.createElement('input'); t.type = 'number'; t.name = \"t\" + i; t.id = \"t\" + i; t.setAttribute('max','49'); t.setAttribute('min','-49'); var p = document.createElement('input'); p.type = \"checkbox\"; p.name = \"p\" + i; p.id = \"p\" + i; var v = document.createElement('input'); v.type = \"checkbox\"; v.name = \"v\" + i; v.id = \"v\" + i; td1.appendChild(chan); td2.appendChild(a); td3.appendChild(b); td4.appendChild(c); td5.appendChild(d); td6.appendChild(t); td7.appendChild(p); td8.appendChild(v); tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6); tr.appendChild(td7); tr.appendChild(td8); table.appendChild(tr); } submit.onclick = submitOnClick; send('getsetupdata1','GET',null); var parsedJson = JSON.parse(req.responseText); s.value = parsedJson.ssid; pwd.value = parsedJson.password; pwd2.value = pwd.value; if (parseInt(parsedJson.poll)==1) { document.getElementById(\"Poll\").checked = true; } if (parseInt(parsedJson.prgChEnbl)==1) { document.getElementById(\"PrgChEnbl\").checked = true; } if (parseInt(parsedJson.sendMidi)==1) { document.getElementById(\"SendMidi\").checked = true; } if (parseInt(parsedJson.usbMode)==1){ document.getElementById(\"Device\").checked = true; disable252eClock(false); } else { document.getElementById(\"Host\").checked = true; disable252eClock(true); } for (var i=0; i < 4; i++){ document.getElementById(\"f\" + i).value = parseInt(parsedJson.buses[i].fine); } send('getsetupdata2','GET',null); var parsedJson = JSON.parse(req.responseText); for (var i=0; i < 16; i++){ k = i + 1; var mask = parseInt(parsedJson.channels[i].mask); document.getElementById(\"a\" + k).checked = mask&0x8; document.getElementById(\"b\" + k).checked = mask&0x4; document.getElementById(\"c\" + k).checked = mask&0x2; document.getElementById(\"d\" + k).checked = mask&0x1; document.getElementById(\"t\" + k).value = parseInt(parsedJson.channels[i].tran); document.getElementById(\"p\" + k).checked = parseInt(parsedJson.channels[i].poly); document.getElementById(\"v\" + k).checked = parseInt(parsedJson.channels[i].velo); } function send(url,method,content) { req.open(method, \"http://192.168.0.1/\" + url,false);  req.send(content); }  function deviceOnClick(){ disable252eClock(false); }  function hostOnClick(){ disable252eClock(true); }  function disable252eClock(disable){ if (disable){ document.getElementById(\"SendMidi\").disabled=true; document.getElementById(\"SendMidiLabel\").style.color = 'gray'; } else { document.getElementById(\"SendMidi\").disabled=false; document.getElementById(\"SendMidiLabel\").style.color = 'black'; } }  function submitOnClick(){ if (pwd.value != pwd2.value) { errortext.innerHTML = \"Passwords do not match.\"; } else if ((pwd.value.length < 8) || (pwd2.value.length < 8)){ errortext.innerHTML = \"Password too short.\"; } else { var usb = \"0\"; if (document.getElementById(\"Device\").checked) { usb = \"1\"; } var poll = \"0\"; if (document.getElementById(\"Poll\").checked) { poll = \"1\"; } var prgChEnbl = \"0\"; if (document.getElementById(\"PrgChEnbl\").checked) { prgChEnbl = \"1\"; } var sendMidi = \"0\"; if (document.getElementById(\"SendMidi\").checked) { sendMidi = \"1\"; } errortext.innerHTML = \"\"; var response = { ssid : s.value, password : pwd.value, usbMode : usb, poll : poll, prgChEnbl : prgChEnbl, sendMidi : sendMidi, buses : [], channels : [] }; var busA = { bus: \"A\", fine: fineA.value.toString() }; response.buses.push(busA); var busB = { bus: \"B\", fine: fineB.value.toString() }; response.buses.push(busB); var busC = { bus: \"C\", fine: fineC.value.toString() }; response.buses.push(busC); var busD = { bus: \"D\", fine: fineD.value.toString() }; response.buses.push(busD);  for (var i = 1; i<17; i++){ var m = 0; if (document.getElementById(\"a\" + i).checked) {m = 0x8;} if (document.getElementById(\"b\" + i).checked) {m = m | 0x4}; if (document.getElementById(\"c\" + i).checked) {m = m | 0x2}; if (document.getElementById(\"d\" + i).checked) {m = m | 0x1}; var pp = 0; if (document.getElementById(\"p\" + i).checked) {pp = 1;} var vv = 0; if (document.getElementById(\"v\" + i).checked) {vv = 1;} var channel = { chan : i.toString(), mask : \"0x\" + m.toString(16), tran : document.getElementById(\"t\" + i).value.toString(), poly : pp.toString(), velo : vv.toString() }; response.channels.push(channel); } var responseString = JSON.stringify(response,undefined,2); req = new XMLHttpRequest(); req.open(\"POST\", \"http://192.168.0.1/postsetupdata\",true);  req.setRequestHeader(\"Content-Length\", responseString.length);     req.setRequestHeader(\"Content-Type\", \"application/x-www-form-urlencoded\"); req.send(responseString); }  }  </script> </html>";
+const static String PROGMEM setupPageString = "<html> <head>  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> </head> <style> table,th,td{ border:1px solid black; border-collapse: collapse; } th,td { padding: 1px; } input[type=number] { width: 45px; } </style> <body> <div style=\"display: flex;justify-content: space-between; max-width:245px\"> <label style=\"font-weight:bold;font-size:24px;\">Setup Page</label> <input type=\"button\" id=\"submit\" value=\"Submit\"> </div> <hr> <table id=\"MidiTable\" name=\"MidiTable\"> <tr> <th>Chan</th> <th>A</th> <th>B</th> <th>C</th> <th>D</th> <th>Tran</th> <th>Poly</th> <th>Velo</th> </tr> </table> <hr> <table id=\"BusTable\" name=\"BusTable\"> <tr> <th>Bus</th> <th>Fine</th> </tr> </table> <hr> <table id=\"MidiOptions\" name=\"MidiOptions\"> <tr> <th colspan=\"2\">MIDI Options</th> </tr> <tr> <td> <label for=\"PrgChEnbl\">Receive Program Change</label> </td> <td> <input type=\"checkbox\" id=\"PrgChEnbl\" name=\"PrgChEnbl\"> </td> </tr> <tr> <td> <label for=\"SendMidi\" id=\"SendMidiLabel\">Send 252e Midi Clock</label> </td> <td> <input type=\"checkbox\" id=\"SendMidi\" name=\"SendMidi\"> </td> </tr> </table> <hr> <label for=\"Device\"> <input type=\"radio\" id=\"Device\" name=\"usb\" value=\"1\" onclick=\"deviceOnClick()\">USB Device</label> <label for=\"Host\"> <input type=\"radio\" id=\"Host\" name=\"usb\" value=\"0\" onclick=\"hostOnClick()\">USB Host</label> <hr> <input type=\"checkbox\" id=\"Poll\" name=\"poll\"> <label for=\"Poll\">Poll modules on startup</label> <hr> <label for=\"ssid\">SSID:</label></br> <input type=\"text\" id=\"ssid\" name=\"ssid\" maxlength=\"32\" style=\"width:250;\"><br> <hr> <label for=\"pass\">Password (eight characters minimum):</label></br> <input type=\"text\" id=\"pass\" name=\"pass\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"pass2\">Re-enter Password:</label></br> <input type=\"text\" id=\"pass2\" name=\"pass2\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"submit\" id=\"errortext\" style=\"color:red;\"></label> <hr> Firmware v1.19 </body> <script> var req = new XMLHttpRequest(); var s = document.getElementById(\"ssid\"); var pwd = document.getElementById(\"pass\"); var pwd2 = document.getElementById(\"pass2\"); var submit = document.getElementById(\"submit\"); var errortext = document.getElementById(\"errortext\"); var busNames = [\"A\",\"B\",\"C\",\"D\"];  var busTable = document.getElementById(\"BusTable\"); for (var i = 0; i < 4; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var f = document.createElement('input'); f.type = 'number'; f.name = \"f\" + i; f.id = \"f\" + i; f.setAttribute('max','49'); f.setAttribute('min','-49'); td1.appendChild(document.createTextNode(busNames[i])); td2.appendChild(f); tr.appendChild(td1); tr.appendChild(td2); busTable.appendChild(tr); } var fineA = document.getElementById(\"f0\"); var fineB = document.getElementById(\"f1\"); var fineC = document.getElementById(\"f2\"); var fineD = document.getElementById(\"f3\");  var table = document.getElementById(\"MidiTable\"); for (var i = 1; i < 17; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var td3 = document.createElement('td'); var td4 = document.createElement('td'); var td5 = document.createElement('td'); var td6 = document.createElement('td'); var td7 = document.createElement('td'); var td8 = document.createElement('td'); var chan = document.createTextNode(i); var a = document.createElement('input'); a.type = \"checkbox\"; a.name = \"a\" + i; a.id = \"a\" + i; var b = document.createElement('input'); b.type = \"checkbox\"; b.name = \"b\" + i; b.id = \"b\" + i; var c = document.createElement('input'); c.type = \"checkbox\"; c.name = \"c\" + i; c.id = \"c\" + i; var d = document.createElement('input'); d.type = \"checkbox\"; d.name = \"d\" + i; d.id = \"d\" + i; var t = document.createElement('input'); t.type = 'number'; t.name = \"t\" + i; t.id = \"t\" + i; t.setAttribute('max','49'); t.setAttribute('min','-49'); var p = document.createElement('input'); p.type = \"checkbox\"; p.name = \"p\" + i; p.id = \"p\" + i; var v = document.createElement('input'); v.type = \"checkbox\"; v.name = \"v\" + i; v.id = \"v\" + i; td1.appendChild(chan); td2.appendChild(a); td3.appendChild(b); td4.appendChild(c); td5.appendChild(d); td6.appendChild(t); td7.appendChild(p); td8.appendChild(v); tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6); tr.appendChild(td7); tr.appendChild(td8); table.appendChild(tr); } submit.onclick = submitOnClick; send('getsetupdata1','GET',null); var parsedJson = JSON.parse(req.responseText); s.value = parsedJson.ssid; pwd.value = parsedJson.password; pwd2.value = pwd.value; if (parseInt(parsedJson.poll)==1) { document.getElementById(\"Poll\").checked = true; } if (parseInt(parsedJson.prgChEnbl)==1) { document.getElementById(\"PrgChEnbl\").checked = true; } if (parseInt(parsedJson.sendMidi)==1) { document.getElementById(\"SendMidi\").checked = true; } if (parseInt(parsedJson.usbMode)==1){ document.getElementById(\"Device\").checked = true; disable252eClock(false); } else { document.getElementById(\"Host\").checked = true; disable252eClock(true); } for (var i=0; i < 4; i++){ document.getElementById(\"f\" + i).value = parseInt(parsedJson.buses[i].fine); } send('getsetupdata2','GET',null); var parsedJson = JSON.parse(req.responseText); for (var i=0; i < 16; i++){ k = i + 1; var mask = parseInt(parsedJson.channels[i].mask); document.getElementById(\"a\" + k).checked = mask&0x8; document.getElementById(\"b\" + k).checked = mask&0x4; document.getElementById(\"c\" + k).checked = mask&0x2; document.getElementById(\"d\" + k).checked = mask&0x1; document.getElementById(\"t\" + k).value = parseInt(parsedJson.channels[i].tran); document.getElementById(\"p\" + k).checked = parseInt(parsedJson.channels[i].poly); document.getElementById(\"v\" + k).checked = parseInt(parsedJson.channels[i].velo); } function send(url,method,content) { req.open(method, \"http://192.168.0.1/\" + url,false);  req.send(content); }  function deviceOnClick(){ disable252eClock(false); }  function hostOnClick(){ disable252eClock(true); }  function disable252eClock(disable){ if (disable){ document.getElementById(\"SendMidi\").disabled=true; document.getElementById(\"SendMidiLabel\").style.color = 'gray'; } else { document.getElementById(\"SendMidi\").disabled=false; document.getElementById(\"SendMidiLabel\").style.color = 'black'; } }  function submitOnClick(){ if (pwd.value != pwd2.value) { errortext.innerHTML = \"Passwords do not match.\"; } else if ((pwd.value.length < 8) || (pwd2.value.length < 8)){ errortext.innerHTML = \"Password too short.\"; } else { var usb = \"0\"; if (document.getElementById(\"Device\").checked) { usb = \"1\"; } var poll = \"0\"; if (document.getElementById(\"Poll\").checked) { poll = \"1\"; } var prgChEnbl = \"0\"; if (document.getElementById(\"PrgChEnbl\").checked) { prgChEnbl = \"1\"; } var sendMidi = \"0\"; if (document.getElementById(\"SendMidi\").checked) { sendMidi = \"1\"; } errortext.innerHTML = \"\"; var response = { ssid : s.value, password : pwd.value, usbMode : usb, poll : poll, prgChEnbl : prgChEnbl, sendMidi : sendMidi, buses : [], channels : [] }; var busA = { bus: \"A\", fine: fineA.value.toString() }; response.buses.push(busA); var busB = { bus: \"B\", fine: fineB.value.toString() }; response.buses.push(busB); var busC = { bus: \"C\", fine: fineC.value.toString() }; response.buses.push(busC); var busD = { bus: \"D\", fine: fineD.value.toString() }; response.buses.push(busD);  for (var i = 1; i<17; i++){ var m = 0; if (document.getElementById(\"a\" + i).checked) {m = 0x8;} if (document.getElementById(\"b\" + i).checked) {m = m | 0x4}; if (document.getElementById(\"c\" + i).checked) {m = m | 0x2}; if (document.getElementById(\"d\" + i).checked) {m = m | 0x1}; var pp = 0; if (document.getElementById(\"p\" + i).checked) {pp = 1;} var vv = 0; if (document.getElementById(\"v\" + i).checked) {vv = 1;} var channel = { chan : i.toString(), mask : \"0x\" + m.toString(16), tran : document.getElementById(\"t\" + i).value.toString(), poly : pp.toString(), velo : vv.toString() }; response.channels.push(channel); } var responseString = JSON.stringify(response,undefined,2); req = new XMLHttpRequest(); req.open(\"POST\", \"http://192.168.0.1/postsetupdata\",true);  req.setRequestHeader(\"Content-Length\", responseString.length);     req.setRequestHeader(\"Content-Type\", \"application/x-www-form-urlencoded\"); req.send(responseString); }  }  </script> </html>";
 char ssid[33];    // your network SSID (name) max 32 characters plus termination
 char pass[64];    // your network password for WPA. Max is 63 plus termination
 int keyIndex = 0; // your network key Index number (needed only for WEP)
@@ -723,16 +726,19 @@ WiFiClient client;
 
 void setup() {
   //Set this stuff up first so we are ready for firmware requests from modules.
+  startCrystal(); //Start 32kHz crystal (disabled with compiler flag CRYSTALLESS to speed up boot)
   pinMode(WIFI_OPEN_PIN,INPUT);
   pinMode(V2VERSION_PIN,INPUT);
   pinMode(LED_BUILTIN, OUTPUT);      // set the LED pin mode
   pinMode(LED_BUILTIN,OUTPUT); //built in LED on MKR1000
   pinMode(SPI_CS, OUTPUT); //SPI CS
   SPI.begin(); //FRAM communications
-  Wire.begin(0x50 | CARD_ADDRESS,1); //Enable GeneralCall to receive MIDI and firmware display messages from bus
   Wire.onReceive(receiveEvent);
   Wire.onRequest(requestEvent);
-
+  Wire.begin(0x50 | CARD_ADDRESS,1); //Enable GeneralCall to receive MIDI and firmware display messages from bus
+  NVIC_SetPriority(SERCOM2_IRQn, 1);     //prevent SysTick from causing I2C timing issues: above SysTick (2), below USB (0)
+  while (readTime == 0 && millis() < 500) {} // give the code loader time to start
+  if (readTime > 0) while (millis() - readTime < 5000) {} // loader seen: wait here during code load. 251e has a ~3s erase pause!
   #if defined DEBUG || defined DEBUG_HTTP || defined DEBUG_MIDI || defined DEBUG_PRESETS || defined DEBUG_USB || defined DEBUG_I2C
   Serial1.begin(115200);
   #endif
@@ -757,6 +763,7 @@ void setup() {
   //IPAddress dns(192,168,0,1);
   //WiFi.config(ip,gateway,subnet,dns);
   WiFi.config(IPAddress(192, 168, 0, 1));
+
 
   initializeFram(); //Store or retrieve MIDI (and other) configuration via FRAM.
 
@@ -871,6 +878,10 @@ void loop() {
         }
       } 
       pollUsbMidi(isUsbDevice);
+      if (!onCrystal && crystalReady()) {
+        switchDfllToCrystal();
+        onCrystal = true;
+      }
     }
     // close the connection:
     client.stop();
@@ -879,9 +890,61 @@ void loop() {
     DEBUG_PRINTLN();
   }
   pollUsbMidi(isUsbDevice);
+  if (!onCrystal && crystalReady()) {
+    switchDfllToCrystal();
+    onCrystal = true;
+  }
+}
+
+//SystemInit() in Arduino core (startup.c) normally starts the 32kHz crystal, but the startup
+//requires 2 seconds and delays execution of setup() and loop(). The delay is too much for the 
+//firmware load on Atmel based modules. Crystal startup disabled with CRYSTALLESS compiler flag
+//mkr1000.build.extra_flags=<existing flags copied from boards.txt> -DCRYSTALLESS
+//We then start the crystal manually in the sketch once the program is running. These routines 
+//handle the manual start.
+void startCrystal() {
+  SYSCTRL->XOSC32K.reg = SYSCTRL_XOSC32K_STARTUP(0x6) |   // ~2 s, but we don't wait
+                         SYSCTRL_XOSC32K_XTALEN |
+                         SYSCTRL_XOSC32K_EN32K;
+  SYSCTRL->XOSC32K.bit.ENABLE = 1;   // enable as a separate write, like the core does
+}
+
+bool crystalReady() {
+  return SYSCTRL->PCLKSR.bit.XOSC32KRDY;
+}
+
+void switchDfllToCrystal() {
+  // GCLK1 (the DFLL reference) -> XOSC32K instead of OSC32K
+  GCLK->GENCTRL.reg = GCLK_GENCTRL_ID(1) |
+                      GCLK_GENCTRL_SRC_XOSC32K |
+                      GCLK_GENCTRL_GENEN;
+  while (GCLK->STATUS.bit.SYNCBUSY);
+
+  // Make sure the DFLL reference channel is fed from GCLK1 (the core already does this)
+  GCLK->CLKCTRL.reg = GCLK_CLKCTRL_ID(GCLK_CLKCTRL_ID_DFLL48_Val) |
+                      GCLK_CLKCTRL_GEN_GCLK1 |
+                      GCLK_CLKCTRL_CLKEN;
+  while (GCLK->STATUS.bit.SYNCBUSY);
+
+  // Closed-loop multiplier: 48 MHz / 32.768 kHz ≈ 1465.
+  // Small coarse/fine steps so the CPU clock moves gently while it locks.
+  while (!SYSCTRL->PCLKSR.bit.DFLLRDY);
+  SYSCTRL->DFLLMUL.reg = SYSCTRL_DFLLMUL_CSTEP(4) |
+                         SYSCTRL_DFLLMUL_FSTEP(16) |
+                         SYSCTRL_DFLLMUL_MUL(48000000UL / 32768UL);
+
+  // Closed loop (MODE=1). Writing the whole register also clears USBCRM and CCDIS
+  // from the crystal-less setup, so the reference is now GCLK1 instead of USB.
+  while (!SYSCTRL->PCLKSR.bit.DFLLRDY);
+  SYSCTRL->DFLLCTRL.reg = SYSCTRL_DFLLCTRL_MODE | SYSCTRL_DFLLCTRL_ENABLE;
+  while (!SYSCTRL->PCLKSR.bit.DFLLRDY);
+
+  // Optional: wait for fine lock (a few ms)
+  // while (!SYSCTRL->PCLKSR.bit.DFLLLCKF);
 }
 
 void framEnableWrite(){
+    cacheAddr = 0xFFFFFFFF; //invalidate cached byte 
     SPI.beginTransaction(spiSettings);
     digitalWrite(SPI_CS, LOW); //Set CS low to select chip
     SPI.transfer(FRAM_WREN); // send write enable OPCODE
@@ -929,18 +992,17 @@ void framWriteHexString(int addr, String value){
 }
 
 uint8_t framRead(int addr){
-    uint8_t result = 0x00;
     //Address on the MB85RS2MTA is 18 bits total, requiring 3 bytes. 
     uint8_t addr_byte_upper = (0x3F0000 & addr) >>16;
     uint8_t addr_byte_middle = (0x00FF00 & addr) >>8;
     uint8_t addr_byte_lower = (0x0000FF & addr);
     SPI.beginTransaction(spiSettings);
     digitalWrite(SPI_CS, LOW); //Set CS low to select chip
-    SPI.transfer(FRAM_READ); // send write enable OPCODE
+    SPI.transfer(FRAM_READ); // send read enable OPCODE
     SPI.transfer(addr_byte_upper); // send address upper byte
     SPI.transfer(addr_byte_middle); // send address middle byte
     SPI.transfer(addr_byte_lower); // send address lower byte
-    result = SPI.transfer(0); // read byte
+    uint8_t result = SPI.transfer(0); // read byte
     digitalWrite(SPI_CS, HIGH); //Set CS high to de-select
     SPI.endTransaction();
     return result;
@@ -1305,6 +1367,7 @@ void setPassword(String password){
 }
 
 void receiveEvent(int howMany) {
+    if (howMany == 0) return; //Called after RXNACK during read opertion.
     if(i2c_guard) return; //master busy
     DEBUG_PRINTLN("receiveEvent");
     if (write_i2c_to_fram) {
@@ -1354,14 +1417,29 @@ void receiveEvent(int howMany) {
    } 
 }
 void requestEvent() {
-    //Wire.cpp modified so that this handler is called on every byte requested.
-    //Module reads presets here during preset restore. The module first sends an EEPROM memory
-    //address, then issues a (maybe large) number of byte read requests. 
-    //The number of bytes requested varies by module. 292e requests 8 bytes per preset, and 291e
-    //requests 253 bytes per preset. 251e is over 2k. When the module is done reading, it issues
-    //a STOP and this handler will not be called until the next time a restore is requested.
+    //Wire.cpp modified so that this handler is called on every byte requested, plus once
+    //more after the master NAKs the last byte of a read. Module reads presets here during
+    //preset restore: it first writes an EEPROM memory address (1-3 bytes), then reads a
+    //number of bytes that varies by module (292e: 8 per preset, 291e: 253, 251e: >2k).
+    //The Buchla code loaders read firmware one byte per transaction.
     DEBUG_PRINTLN("requestEvent");
-    if (Wire.available() > 0){
+    bool first = (Wire.available() > 0);   //address bytes still buffered => first byte of this read
+
+    //End of read: master NAK'd the last byte. Release SCL immediately; the Atmel 251e
+    //code loader hangs if SCL is held more than ~5us after its NAK. Then, while the
+    //master is idle (~65us before its next transaction), prefetch the next sequential
+    //byte so it can be sent without delay. Read twice: framRead() occasionally returns
+    //a transient 0x00 (cause unknown).
+    if (!first && sercom2.isRXNackReceivedWIRE()) {
+        sercom2.prepareCommandBitsWire(0x02);
+        cacheAddr = fram_address + read_counter;
+        uint8_t a = framRead(cacheAddr);
+        uint8_t b = framRead(cacheAddr);
+        if (a != b) b = framRead(cacheAddr);
+        cacheByte = b;
+        return;
+    }
+    if (first){
         //This is the first read following address write from the module.
         //The master wrote two or three bytes for the memory address, and we now retrieve it
         //from the rxBuffer. MSB is sent first, LSB second.
@@ -1390,8 +1468,8 @@ void requestEvent() {
         fram_address = fram_address | (addr_byte_middle) << 8;
         fram_address = fram_address | addr_byte_lower;
     } 
-    //Bypass Wire buffer and write byte directly to I2C.
-    int data = framRead(fram_address + read_counter);
+    uint32_t addr = fram_address + read_counter;
+    uint8_t data = (addr == cacheAddr) ? cacheByte : framRead(addr);   // cache hit means no stretch
     sercom2.sendDataSlaveWIRE(data);
     read_counter++;
     readTime = millis(); 
