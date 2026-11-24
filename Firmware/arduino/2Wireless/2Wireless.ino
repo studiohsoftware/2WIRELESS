@@ -37,6 +37,11 @@
 #define PASS_DEFAULT "BUCHLA200E"
 #define USB_MODE_DEVICE 1
 #define USB_MODE_HOST 0
+#define I2C_QUIET_US     1000   // idle time required before starting (their 92→82 gap is ~200 µs)
+#define I2C_MAX_WAIT_US  4000   // worst real case ~3 ms; longer = stuck bus, drop message
+#define I2C_ATTEMPTS     2      // one quick retry
+#define I2C_ERR_BUS_TAKEN  5    // another master STARTed after Wire.begin(); nothing sent
+#define I2C_ERR_NOT_QUIET  6    // bus never went quiet
 //RESERVED FRAM ADDRESSES 0x02BD19-0x2C128
 #define SSID_ADDR 0x02BD19 //32 byte locaton for SSID string
 #define PASS_ADDR 0x02BD3A //64 byte location for WPA password string.
@@ -156,13 +161,28 @@ JsonToken::JsonToken() {
     this->data = "";
 }
 
+struct I2CSnap { uint32_t status, ctrla, ctrlb, intflag, syncbusy, addr, data; };
+
+static I2CSnap snapI2C() {
+  I2CSnap s;
+  s.status   = SERCOM2->I2CM.STATUS.reg;
+  s.ctrla    = SERCOM2->I2CM.CTRLA.reg;
+  s.ctrlb    = SERCOM2->I2CM.CTRLB.reg;
+  s.intflag  = SERCOM2->I2CM.INTFLAG.reg;
+  s.syncbusy = SERCOM2->I2CM.SYNCBUSY.reg;
+  s.addr     = SERCOM2->I2CM.ADDR.reg;
+  s.data     = SERCOM2->I2CM.DATA.reg;
+  return s;
+}
+
+
+
 volatile int read_counter=0; //Used to auto increment read addresses during I2C READ from master.
 volatile int write_counter=0; //USed to auto increment write addresses during I2C WRITE from master.
 volatile int fram_address=0; //This is global only because it must span OnRequest calls during I2C READ from master. 
 volatile bool startup = true; //Used to free 206e when starting up.
 volatile bool write_i2c_to_fram = false; //Cache incoming i2c to FRAM.
 volatile long readTime = 0; //used to detect I2C read activity.
-volatile bool i2c_guard = false; //attempt to prevent switch to master while receiving
 volatile bool onCrystal = false; //used to start 32kHz crystal
 volatile uint32_t cacheAddr = 0xFFFFFFFF; //Used to reduce clock stretching during sequential reads
 volatile uint8_t  cacheByte; //Used to reduce clock stretching during sequential reads
@@ -198,7 +218,7 @@ bool velo[16] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}; //use velocity by default
 bool v2version=false; //used to support pre PRIMO firmware.
 SPISettings spiSettings(12000000, MSBFIRST, SPI_MODE0); //MKR1000 max is 12MHz. FRAM chip max is 40MHz.
 const static String PROGMEM homepageString = "<html> <head>  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">  <style>   .p {    display: flex;    flex-direction: column;    background-color:lightgray;    color:darkblue;    font-family:Arial;    font-weight:bold;    letter-spacing: 2px;    height: 218px;   }   .hf {    font-size:12px;    padding: 10px;    border: 1px solid darkblue;   }   .r {    font-style:italic;    font-size:20px;    padding: 10px;    border-left: 1px solid darkblue;    border-right: 1px solid darkblue;    height: 50px;   }   .row {    display: flex;    flex-direction: row;    justify-content: space-around;    align-items: center;       }   .col {    display: flex;    flex-direction: column;    justify-content: space-around;    align-items: center;    font-size:14px;    padding-inline: 4px;    margin: 0px;   }   .screw {    display: flex;    justify-content: center;    align-content: center;    flex-direction: column;    height: 18px;    width: 18px;    background-color: #999;    border-radius: 50%;    color: #444;    font-size:30px;    border: 1px solid black;   }   .b {    border-radius: 50%;    height:40px;    width:40px;    background-color: #777;    padding: 0px;    margin: 0px;   }   .d {    height: 50px;    background-color: white;    padding: 0px;    margin: 0px;    border: 1px solid black;   }   .dx {    height: 50px;    background-color: white;    padding: 0px;    margin: 0px;    border: 0px;   }     .dc {    font-family: Courier New;    font-weight:bold;    background-color: #cfc;    height: 50px;    border: 0px;   }   .hole {    height: 10px;    width: 10px;    background-color: #000;    border-radius: 50%;    display: inline-block;   }   </style> </head> <body>  <div class=\"p\">   <div class=\"hf row\">    <div class=\"screw\">+</div>    <div>PRESET &nbsp; MANAGER</div>   <div class=\"screw\">+</div>  </div>  <div class=\"r row\" style=\"border-bottom: 1px solid darkblue;margin-left:0;padding-left:0\">   <div class=\"col\">    <button id=\"sB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"1\"></button>    <div style=\"height:2;margin-left:0;padding-left:0\"></div>    <div>store</div>   </div>   <div class=\"d row\" style=\"margin-left:0;padding-left:0\">    <div class=\"dx col\" >     <input id=\"current_preset\" class=\"dc\" style=\"width:21px;background-color: #afa;\" disabled>     <input class=\"dc\" disabled style=\"width:21px;background-color: #afa;\">    </div>    <div class=\"dx col\" >     <input id=\"current_name\" class=\"dc\" maxlength=\"20\" tabindex=\"2\">     <input id=\"recall_name\" class=\"dc\" disabled style=\"background-color: #afa;\">    </div>    <div class=\"dx col\" >     <input class=\"dc\" disabled style=\"width:40px;background-color: #afa; \">     <input id=\"recall_preset\" class=\"dc\" style=\"width:40px;\" type=\"number\" min=\"1\" max=\"30\" tabindex=\"3\">    </div>   </div>   <div class=\"col\">    <button id=\"rB\" type=\"button\" class=\"b\" style=\"background-color: #36f;\" tabindex=\"4\"></button>    <div style=\"height:2\"></div>    <div>recall</div>   </div>  </div>  <div class=\"r row\">   <div class=\"row\" style=\"width:200px\">    <div class=\"col\">     <button id=\"lB\" type=\"button\" class=\"b\" tabindex=\"5\"></button>     <div style=\"height:2\"></div>     <div>last</div>    </div>    <div class=\"col\">     <button id=\"nB\" type=\"button\" class=\"b\" tabindex=\"6\"></button>     <div style=\"height:2\"></div>     <div>next</div>    </div>   </div>   <div class=\"col\" style=\"align-items: flex-start;width:33%\">    <div class=\"row\" style=\"align-items: flex-start;\">     <input type=\"radio\" id=\"v3\" name=\"version\" value=\"v3\" tabindex=\"7\" hidden>     <label for=\"v3\" hidden>primo</label>    </div>    <div class=\"row\" style=\"align-items: flex-start;\">     <input type=\"radio\" id=\"v2\" name=\"version\" value=\"v2\" tabindex=\"8\" hidden>     <label for=\"v2\" hidden>v2    </label>    </div>   </div>   <div class=\"col\" style=\"width:33%\">    <button id=\"dispB\" type=\"button\" class=\"b\" tabindex=\"9\"></button>    <div style=\"height:2\"></div>    <div>display</div>   </div>    <div class=\"col\" style=\"width:33%\">    <button id=\"remB\" type=\"button\" class=\"b\" tabindex=\"10\"></button>    <div style=\"height:2\"></div>    <div>remote</div>   </div>      </div>  <div class=\"hf row\">   <div class=\"hole\"></div>   <div>STUDIO H SOFTWARE</div>   <div class=\"hole\"></div>  </div>  </div> </body> <script>  var rem = true;  var req;  var c_pset = document.getElementById(\"current_preset\");  var r_pset = document.getElementById(\"recall_preset\");  var c_name = document.getElementById(\"current_name\");  var r_name = document.getElementById(\"recall_name\");  var names = [];  var lock = false;  r_pset.onchange = rOnChange;  c_name.onchange = cnameOnChange;  document.getElementById(\"sB\").onclick = sBOnClick;  document.getElementById(\"rB\").onclick = rBOnClick;  document.getElementById(\"lB\").onclick = lBOnClick;  document.getElementById(\"nB\").onclick = nBOnClick;  document.getElementById(\"remB\").onclick = remBOnClick;  document.getElementById(\"dispB\").onclick = dispBOnClick;  document.getElementById(\"v3\").checked = true;    readNames();    c_pset.value = readPreset();  cOnChange();  r_pset.value = c_pset.value;  rOnChange();     function sBOnClick() {   send(\"savepreset?preset=\" + r_pset.value);   names[r_pset.value] = names[c_pset.value];   writeName(r_pset.value,names[r_pset.value]);   rOnChange();  }    function rBOnClick() {   c_pset.value = r_pset.value;   cOnChange();  }    function lBOnClick() {   var pset = c_pset.value;   pset = pset - 1;   if (pset < 1) {    pset = pset + 30;   }   pset = pset % 31;   c_pset.value = pset;   r_pset.value = pset;   cOnChange();   rOnChange();  }  function nBOnClick() {   var pset = c_pset.value;   pset = pset % 30 + 1;   c_pset.value = pset;   r_pset.value = pset;   cOnChange();   rOnChange();  }  function remBOnClick() {   rem = !rem;   if (rem){    send(\"remoteenable\");   } else {    send(\"remotedisable\");   }  }  function dispBOnClick() {   if (!lock) {    lock = true;    var c_saved = c_name.value;    var r_saved = r_name.value;    send(\"displaymessage\");    var tmp = JSON.parse(req.responseText).message;    c_name.value = tmp[0];     r_name.value = tmp[1];    setTimeout(()=>{      c_name.value = c_saved;      r_name.value = r_saved;     lock = false;    }, 2500)   }  }    function cOnChange(){   c_name.value = names[c_pset.value];   send(\"recallpreset?preset=\" + c_pset.value);  }    function rOnChange(){   r_name.value = names[r_pset.value];  }    function cnameOnChange(){   names[c_pset.value] = c_name.value;   writeName(c_pset.value,names[c_pset.value]);   rOnChange();  }    function send(url) {   var version = \"\";   if (document.getElementById('v2').checked) {    version = \"v2/\";   }   req = new XMLHttpRequest();   req.open(\"GET\", \"http://192.168.0.1/\" + version + url,false);    req.send(null);  }    function readPreset(){   send(\"currentpreset\");   return(parseInt(JSON.parse(req.responseText).currentpreset));  }    function readNames(){   send(\"presetnames\");   var tmp = JSON.parse(req.responseText).presetnames;   for (var i=0;i<30;i++){    names[i+1]=tmp[i];   }     }    function writeName(pset,name){   if (name != undefined) {    send(\"presetname=\" + name + \"&preset=\" + pset.toString());   }  } </script></html>";
-const static String PROGMEM setupPageString = "<html> <head>  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> </head> <style> table,th,td{ border:1px solid black; border-collapse: collapse; } th,td { padding: 1px; } input[type=number] { width: 45px; } </style> <body> <div style=\"display: flex;justify-content: space-between; max-width:245px\"> <label style=\"font-weight:bold;font-size:24px;\">Setup Page</label> <input type=\"button\" id=\"submit\" value=\"Submit\"> </div> <hr> <table id=\"MidiTable\" name=\"MidiTable\"> <tr> <th>Chan</th> <th>A</th> <th>B</th> <th>C</th> <th>D</th> <th>Tran</th> <th>Poly</th> <th>Velo</th> </tr> </table> <hr> <table id=\"BusTable\" name=\"BusTable\"> <tr> <th>Bus</th> <th>Fine</th> </tr> </table> <hr> <table id=\"MidiOptions\" name=\"MidiOptions\"> <tr> <th colspan=\"2\">MIDI Options</th> </tr> <tr> <td> <label for=\"PrgChEnbl\">Receive Program Change</label> </td> <td> <input type=\"checkbox\" id=\"PrgChEnbl\" name=\"PrgChEnbl\"> </td> </tr> <tr> <td> <label for=\"SendMidi\" id=\"SendMidiLabel\">Send 252e Midi Clock</label> </td> <td> <input type=\"checkbox\" id=\"SendMidi\" name=\"SendMidi\"> </td> </tr> </table> <hr> <label for=\"Device\"> <input type=\"radio\" id=\"Device\" name=\"usb\" value=\"1\" onclick=\"deviceOnClick()\">USB Device</label> <label for=\"Host\"> <input type=\"radio\" id=\"Host\" name=\"usb\" value=\"0\" onclick=\"hostOnClick()\">USB Host</label> <hr> <input type=\"checkbox\" id=\"Poll\" name=\"poll\"> <label for=\"Poll\">Poll modules on startup</label> <hr> <label for=\"ssid\">SSID:</label></br> <input type=\"text\" id=\"ssid\" name=\"ssid\" maxlength=\"32\" style=\"width:250;\"><br> <hr> <label for=\"pass\">Password (eight characters minimum):</label></br> <input type=\"text\" id=\"pass\" name=\"pass\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"pass2\">Re-enter Password:</label></br> <input type=\"text\" id=\"pass2\" name=\"pass2\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"submit\" id=\"errortext\" style=\"color:red;\"></label> <hr> Firmware v1.19 </body> <script> var req = new XMLHttpRequest(); var s = document.getElementById(\"ssid\"); var pwd = document.getElementById(\"pass\"); var pwd2 = document.getElementById(\"pass2\"); var submit = document.getElementById(\"submit\"); var errortext = document.getElementById(\"errortext\"); var busNames = [\"A\",\"B\",\"C\",\"D\"];  var busTable = document.getElementById(\"BusTable\"); for (var i = 0; i < 4; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var f = document.createElement('input'); f.type = 'number'; f.name = \"f\" + i; f.id = \"f\" + i; f.setAttribute('max','49'); f.setAttribute('min','-49'); td1.appendChild(document.createTextNode(busNames[i])); td2.appendChild(f); tr.appendChild(td1); tr.appendChild(td2); busTable.appendChild(tr); } var fineA = document.getElementById(\"f0\"); var fineB = document.getElementById(\"f1\"); var fineC = document.getElementById(\"f2\"); var fineD = document.getElementById(\"f3\");  var table = document.getElementById(\"MidiTable\"); for (var i = 1; i < 17; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var td3 = document.createElement('td'); var td4 = document.createElement('td'); var td5 = document.createElement('td'); var td6 = document.createElement('td'); var td7 = document.createElement('td'); var td8 = document.createElement('td'); var chan = document.createTextNode(i); var a = document.createElement('input'); a.type = \"checkbox\"; a.name = \"a\" + i; a.id = \"a\" + i; var b = document.createElement('input'); b.type = \"checkbox\"; b.name = \"b\" + i; b.id = \"b\" + i; var c = document.createElement('input'); c.type = \"checkbox\"; c.name = \"c\" + i; c.id = \"c\" + i; var d = document.createElement('input'); d.type = \"checkbox\"; d.name = \"d\" + i; d.id = \"d\" + i; var t = document.createElement('input'); t.type = 'number'; t.name = \"t\" + i; t.id = \"t\" + i; t.setAttribute('max','49'); t.setAttribute('min','-49'); var p = document.createElement('input'); p.type = \"checkbox\"; p.name = \"p\" + i; p.id = \"p\" + i; var v = document.createElement('input'); v.type = \"checkbox\"; v.name = \"v\" + i; v.id = \"v\" + i; td1.appendChild(chan); td2.appendChild(a); td3.appendChild(b); td4.appendChild(c); td5.appendChild(d); td6.appendChild(t); td7.appendChild(p); td8.appendChild(v); tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6); tr.appendChild(td7); tr.appendChild(td8); table.appendChild(tr); } submit.onclick = submitOnClick; send('getsetupdata1','GET',null); var parsedJson = JSON.parse(req.responseText); s.value = parsedJson.ssid; pwd.value = parsedJson.password; pwd2.value = pwd.value; if (parseInt(parsedJson.poll)==1) { document.getElementById(\"Poll\").checked = true; } if (parseInt(parsedJson.prgChEnbl)==1) { document.getElementById(\"PrgChEnbl\").checked = true; } if (parseInt(parsedJson.sendMidi)==1) { document.getElementById(\"SendMidi\").checked = true; } if (parseInt(parsedJson.usbMode)==1){ document.getElementById(\"Device\").checked = true; disable252eClock(false); } else { document.getElementById(\"Host\").checked = true; disable252eClock(true); } for (var i=0; i < 4; i++){ document.getElementById(\"f\" + i).value = parseInt(parsedJson.buses[i].fine); } send('getsetupdata2','GET',null); var parsedJson = JSON.parse(req.responseText); for (var i=0; i < 16; i++){ k = i + 1; var mask = parseInt(parsedJson.channels[i].mask); document.getElementById(\"a\" + k).checked = mask&0x8; document.getElementById(\"b\" + k).checked = mask&0x4; document.getElementById(\"c\" + k).checked = mask&0x2; document.getElementById(\"d\" + k).checked = mask&0x1; document.getElementById(\"t\" + k).value = parseInt(parsedJson.channels[i].tran); document.getElementById(\"p\" + k).checked = parseInt(parsedJson.channels[i].poly); document.getElementById(\"v\" + k).checked = parseInt(parsedJson.channels[i].velo); } function send(url,method,content) { req.open(method, \"http://192.168.0.1/\" + url,false);  req.send(content); }  function deviceOnClick(){ disable252eClock(false); }  function hostOnClick(){ disable252eClock(true); }  function disable252eClock(disable){ if (disable){ document.getElementById(\"SendMidi\").disabled=true; document.getElementById(\"SendMidiLabel\").style.color = 'gray'; } else { document.getElementById(\"SendMidi\").disabled=false; document.getElementById(\"SendMidiLabel\").style.color = 'black'; } }  function submitOnClick(){ if (pwd.value != pwd2.value) { errortext.innerHTML = \"Passwords do not match.\"; } else if ((pwd.value.length < 8) || (pwd2.value.length < 8)){ errortext.innerHTML = \"Password too short.\"; } else { var usb = \"0\"; if (document.getElementById(\"Device\").checked) { usb = \"1\"; } var poll = \"0\"; if (document.getElementById(\"Poll\").checked) { poll = \"1\"; } var prgChEnbl = \"0\"; if (document.getElementById(\"PrgChEnbl\").checked) { prgChEnbl = \"1\"; } var sendMidi = \"0\"; if (document.getElementById(\"SendMidi\").checked) { sendMidi = \"1\"; } errortext.innerHTML = \"\"; var response = { ssid : s.value, password : pwd.value, usbMode : usb, poll : poll, prgChEnbl : prgChEnbl, sendMidi : sendMidi, buses : [], channels : [] }; var busA = { bus: \"A\", fine: fineA.value.toString() }; response.buses.push(busA); var busB = { bus: \"B\", fine: fineB.value.toString() }; response.buses.push(busB); var busC = { bus: \"C\", fine: fineC.value.toString() }; response.buses.push(busC); var busD = { bus: \"D\", fine: fineD.value.toString() }; response.buses.push(busD);  for (var i = 1; i<17; i++){ var m = 0; if (document.getElementById(\"a\" + i).checked) {m = 0x8;} if (document.getElementById(\"b\" + i).checked) {m = m | 0x4}; if (document.getElementById(\"c\" + i).checked) {m = m | 0x2}; if (document.getElementById(\"d\" + i).checked) {m = m | 0x1}; var pp = 0; if (document.getElementById(\"p\" + i).checked) {pp = 1;} var vv = 0; if (document.getElementById(\"v\" + i).checked) {vv = 1;} var channel = { chan : i.toString(), mask : \"0x\" + m.toString(16), tran : document.getElementById(\"t\" + i).value.toString(), poly : pp.toString(), velo : vv.toString() }; response.channels.push(channel); } var responseString = JSON.stringify(response,undefined,2); req = new XMLHttpRequest(); req.open(\"POST\", \"http://192.168.0.1/postsetupdata\",true);  req.setRequestHeader(\"Content-Length\", responseString.length);     req.setRequestHeader(\"Content-Type\", \"application/x-www-form-urlencoded\"); req.send(responseString); }  }  </script> </html>";
+const static String PROGMEM setupPageString = "<html> <head>  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> </head> <style> table,th,td{ border:1px solid black; border-collapse: collapse; } th,td { padding: 1px; } input[type=number] { width: 45px; } </style> <body> <div style=\"display: flex;justify-content: space-between; max-width:245px\"> <label style=\"font-weight:bold;font-size:24px;\">Setup Page</label> <input type=\"button\" id=\"submit\" value=\"Submit\"> </div> <hr> <table id=\"MidiTable\" name=\"MidiTable\"> <tr> <th>Chan</th> <th>A</th> <th>B</th> <th>C</th> <th>D</th> <th>Tran</th> <th>Poly</th> <th>Velo</th> </tr> </table> <hr> <table id=\"BusTable\" name=\"BusTable\"> <tr> <th>Bus</th> <th>Fine</th> </tr> </table> <hr> <table id=\"MidiOptions\" name=\"MidiOptions\"> <tr> <th colspan=\"2\">MIDI Options</th> </tr> <tr> <td> <label for=\"PrgChEnbl\">Receive Program Change</label> </td> <td> <input type=\"checkbox\" id=\"PrgChEnbl\" name=\"PrgChEnbl\"> </td> </tr> <tr> <td> <label for=\"SendMidi\" id=\"SendMidiLabel\">Send 252e Midi Clock</label> </td> <td> <input type=\"checkbox\" id=\"SendMidi\" name=\"SendMidi\"> </td> </tr> </table> <hr> <label for=\"Device\"> <input type=\"radio\" id=\"Device\" name=\"usb\" value=\"1\" onclick=\"deviceOnClick()\">USB Device</label> <label for=\"Host\"> <input type=\"radio\" id=\"Host\" name=\"usb\" value=\"0\" onclick=\"hostOnClick()\">USB Host</label> <hr> <input type=\"checkbox\" id=\"Poll\" name=\"poll\"> <label for=\"Poll\">Poll modules on startup</label> <hr> <label for=\"ssid\">SSID:</label></br> <input type=\"text\" id=\"ssid\" name=\"ssid\" maxlength=\"32\" style=\"width:250;\"><br> <hr> <label for=\"pass\">Password (eight characters minimum):</label></br> <input type=\"text\" id=\"pass\" name=\"pass\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"pass2\">Re-enter Password:</label></br> <input type=\"text\" id=\"pass2\" name=\"pass2\" maxlength=\"63\" style=\"width:250;\"><br> <label for=\"submit\" id=\"errortext\" style=\"color:red;\"></label> <hr> Firmware v1.20 </body> <script> var req = new XMLHttpRequest(); var s = document.getElementById(\"ssid\"); var pwd = document.getElementById(\"pass\"); var pwd2 = document.getElementById(\"pass2\"); var submit = document.getElementById(\"submit\"); var errortext = document.getElementById(\"errortext\"); var busNames = [\"A\",\"B\",\"C\",\"D\"];  var busTable = document.getElementById(\"BusTable\"); for (var i = 0; i < 4; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var f = document.createElement('input'); f.type = 'number'; f.name = \"f\" + i; f.id = \"f\" + i; f.setAttribute('max','49'); f.setAttribute('min','-49'); td1.appendChild(document.createTextNode(busNames[i])); td2.appendChild(f); tr.appendChild(td1); tr.appendChild(td2); busTable.appendChild(tr); } var fineA = document.getElementById(\"f0\"); var fineB = document.getElementById(\"f1\"); var fineC = document.getElementById(\"f2\"); var fineD = document.getElementById(\"f3\");  var table = document.getElementById(\"MidiTable\"); for (var i = 1; i < 17; i++) { var tr = document.createElement('tr'); var td1 = document.createElement('td'); var td2 = document.createElement('td'); var td3 = document.createElement('td'); var td4 = document.createElement('td'); var td5 = document.createElement('td'); var td6 = document.createElement('td'); var td7 = document.createElement('td'); var td8 = document.createElement('td'); var chan = document.createTextNode(i); var a = document.createElement('input'); a.type = \"checkbox\"; a.name = \"a\" + i; a.id = \"a\" + i; var b = document.createElement('input'); b.type = \"checkbox\"; b.name = \"b\" + i; b.id = \"b\" + i; var c = document.createElement('input'); c.type = \"checkbox\"; c.name = \"c\" + i; c.id = \"c\" + i; var d = document.createElement('input'); d.type = \"checkbox\"; d.name = \"d\" + i; d.id = \"d\" + i; var t = document.createElement('input'); t.type = 'number'; t.name = \"t\" + i; t.id = \"t\" + i; t.setAttribute('max','49'); t.setAttribute('min','-49'); var p = document.createElement('input'); p.type = \"checkbox\"; p.name = \"p\" + i; p.id = \"p\" + i; var v = document.createElement('input'); v.type = \"checkbox\"; v.name = \"v\" + i; v.id = \"v\" + i; td1.appendChild(chan); td2.appendChild(a); td3.appendChild(b); td4.appendChild(c); td5.appendChild(d); td6.appendChild(t); td7.appendChild(p); td8.appendChild(v); tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6); tr.appendChild(td7); tr.appendChild(td8); table.appendChild(tr); } submit.onclick = submitOnClick; send('getsetupdata1','GET',null); var parsedJson = JSON.parse(req.responseText); s.value = parsedJson.ssid; pwd.value = parsedJson.password; pwd2.value = pwd.value; if (parseInt(parsedJson.poll)==1) { document.getElementById(\"Poll\").checked = true; } if (parseInt(parsedJson.prgChEnbl)==1) { document.getElementById(\"PrgChEnbl\").checked = true; } if (parseInt(parsedJson.sendMidi)==1) { document.getElementById(\"SendMidi\").checked = true; } if (parseInt(parsedJson.usbMode)==1){ document.getElementById(\"Device\").checked = true; disable252eClock(false); } else { document.getElementById(\"Host\").checked = true; disable252eClock(true); } for (var i=0; i < 4; i++){ document.getElementById(\"f\" + i).value = parseInt(parsedJson.buses[i].fine); } send('getsetupdata2','GET',null); var parsedJson = JSON.parse(req.responseText); for (var i=0; i < 16; i++){ k = i + 1; var mask = parseInt(parsedJson.channels[i].mask); document.getElementById(\"a\" + k).checked = mask&0x8; document.getElementById(\"b\" + k).checked = mask&0x4; document.getElementById(\"c\" + k).checked = mask&0x2; document.getElementById(\"d\" + k).checked = mask&0x1; document.getElementById(\"t\" + k).value = parseInt(parsedJson.channels[i].tran); document.getElementById(\"p\" + k).checked = parseInt(parsedJson.channels[i].poly); document.getElementById(\"v\" + k).checked = parseInt(parsedJson.channels[i].velo); } function send(url,method,content) { req.open(method, \"http://192.168.0.1/\" + url,false);  req.send(content); }  function deviceOnClick(){ disable252eClock(false); }  function hostOnClick(){ disable252eClock(true); }  function disable252eClock(disable){ if (disable){ document.getElementById(\"SendMidi\").disabled=true; document.getElementById(\"SendMidiLabel\").style.color = 'gray'; } else { document.getElementById(\"SendMidi\").disabled=false; document.getElementById(\"SendMidiLabel\").style.color = 'black'; } }  function submitOnClick(){ if (pwd.value != pwd2.value) { errortext.innerHTML = \"Passwords do not match.\"; } else if ((pwd.value.length < 8) || (pwd2.value.length < 8)){ errortext.innerHTML = \"Password too short.\"; } else { var usb = \"0\"; if (document.getElementById(\"Device\").checked) { usb = \"1\"; } var poll = \"0\"; if (document.getElementById(\"Poll\").checked) { poll = \"1\"; } var prgChEnbl = \"0\"; if (document.getElementById(\"PrgChEnbl\").checked) { prgChEnbl = \"1\"; } var sendMidi = \"0\"; if (document.getElementById(\"SendMidi\").checked) { sendMidi = \"1\"; } errortext.innerHTML = \"\"; var response = { ssid : s.value, password : pwd.value, usbMode : usb, poll : poll, prgChEnbl : prgChEnbl, sendMidi : sendMidi, buses : [], channels : [] }; var busA = { bus: \"A\", fine: fineA.value.toString() }; response.buses.push(busA); var busB = { bus: \"B\", fine: fineB.value.toString() }; response.buses.push(busB); var busC = { bus: \"C\", fine: fineC.value.toString() }; response.buses.push(busC); var busD = { bus: \"D\", fine: fineD.value.toString() }; response.buses.push(busD);  for (var i = 1; i<17; i++){ var m = 0; if (document.getElementById(\"a\" + i).checked) {m = 0x8;} if (document.getElementById(\"b\" + i).checked) {m = m | 0x4}; if (document.getElementById(\"c\" + i).checked) {m = m | 0x2}; if (document.getElementById(\"d\" + i).checked) {m = m | 0x1}; var pp = 0; if (document.getElementById(\"p\" + i).checked) {pp = 1;} var vv = 0; if (document.getElementById(\"v\" + i).checked) {vv = 1;} var channel = { chan : i.toString(), mask : \"0x\" + m.toString(16), tran : document.getElementById(\"t\" + i).value.toString(), poly : pp.toString(), velo : vv.toString() }; response.channels.push(channel); } var responseString = JSON.stringify(response,undefined,2); req = new XMLHttpRequest(); req.open(\"POST\", \"http://192.168.0.1/postsetupdata\",true);  req.setRequestHeader(\"Content-Length\", responseString.length);     req.setRequestHeader(\"Content-Type\", \"application/x-www-form-urlencoded\"); req.send(responseString); }  }  </script> </html>";
 char ssid[33];    // your network SSID (name) max 32 characters plus termination
 char pass[64];    // your network password for WPA. Max is 63 plus termination
 int keyIndex = 0; // your network key Index number (needed only for WEP)
@@ -1368,7 +1388,6 @@ void setPassword(String password){
 
 void receiveEvent(int howMany) {
     if (howMany == 0) return; //Called after RXNACK during read opertion.
-    if(i2c_guard) return; //master busy
     DEBUG_PRINTLN("receiveEvent");
     if (write_i2c_to_fram) {
       while (Wire.available() > 0) { 
@@ -1475,22 +1494,42 @@ void requestEvent() {
     readTime = millis(); 
 }
 
-void switchToMaster(){
-  delayMicroseconds(50); //might help
-  Wire.end();
-  //Wire.begin sets bus to idle. Make sure bus is actually idle first.
+static void printI2C(const char *tag, int result, const I2CSnap &s) {
+  DEBUG_I2C_PRINT(tag);
+  DEBUG_I2C_PRINT(" RESULT:");   DEBUG_I2C_PRINT(result);
+  DEBUG_I2C_PRINT(" BUSSTATE:"); DEBUG_I2C_PRINT((s.status >> 4) & 0x3);
+  DEBUG_I2C_PRINT(" BUSERR:");   DEBUG_I2C_PRINT(s.status & 0x1);
+  DEBUG_I2C_PRINT(" ARBLOST:");  DEBUG_I2C_PRINT((s.status >> 1) & 0x1);
+  DEBUG_I2C_PRINT(" NACK:");     DEBUG_I2C_PRINT((s.status >> 2) & 0x1);
+  DEBUG_I2C_PRINT(" CLKHOLD:");  DEBUG_I2C_PRINT((s.status >> 7) & 0x1);
+  DEBUG_I2C_PRINT(" STATUS:");   DEBUG_I2C_PRINTHEX(s.status);
+  DEBUG_I2C_PRINT(" CTRLA:");    DEBUG_I2C_PRINTHEX(s.ctrla);
+  DEBUG_I2C_PRINT(" CTRLB:");    DEBUG_I2C_PRINTHEX(s.ctrlb);
+  DEBUG_I2C_PRINT(" INTFLAG:");  DEBUG_I2C_PRINTHEX(s.intflag);
+  DEBUG_I2C_PRINT(" SYNCBUSY:"); DEBUG_I2C_PRINTHEX(s.syncbusy);
+  DEBUG_I2C_PRINT(" ADDR:");     DEBUG_I2C_PRINTHEX(s.addr);
+  DEBUG_I2C_PRINT(" DATA:");     DEBUG_I2C_PRINTHEX(s.data);
+  DEBUG_I2C_PRINTLN("");
+}
+
+// True once SDA and SCL have both been high for quietUs; false after maxUs.
+bool waitBusQuiet(uint32_t quietUs, uint32_t maxUs) {
   pinMode(SCL_PIN, INPUT);
   pinMode(SDA_PIN, INPUT);
-  int start_time = micros();
-  int idle_time = 0;
-  while (idle_time < 50) {
-    //Each clock cycle is about 10uS. These digitalRead calls take a few uS each.
-    if ((digitalRead(SCL_PIN) == LOW) || (digitalRead(SDA_PIN) == LOW)) {
-      start_time = micros();
-    }
-    idle_time = micros() - start_time;
+  uint32_t t0 = micros(), lastLow = t0;
+  while (micros() - lastLow < quietUs) {
+    if (digitalRead(SCL_PIN) == LOW || digitalRead(SDA_PIN) == LOW) lastLow = micros();
+    if (micros() - t0 > maxUs) return false;
   }
-  Wire.begin();
+  return true;
+}
+
+bool switchToMaster() {
+  Wire.end();
+  while (Wire.available()) { Wire.read(); }
+  if (!waitBusQuiet(I2C_QUIET_US, I2C_MAX_WAIT_US)) return false;
+  Wire.begin(); // SWRST: clears BUSERR/ARBLOST, forces IDLE
+  return true;
 }
 
 void switchToSlave(){
@@ -1501,462 +1540,451 @@ void switchToSlave(){
     Wire.onRequest(requestEvent);
 }
 
-void sendRemoteEnable() {    
-    //Remote Enable
-    if (masterBeginTransmission(0) == 0) {
-      if (v2version) {
-          Wire.write(0x14);
-      } else {
-          Wire.write(0x04);
-          Wire.write(0x00);
-          Wire.write(0x22);
-          Wire.write(0x16);
-          Wire.write(0xFF);
-      }
-      masterEndTransmission();
-      switchToSlave();
+int masterBeginTransmission(uint8_t addr) {
+  if (!switchToMaster()) return I2C_ERR_NOT_QUIET;
+  Wire.beginTransmission(addr);       // buffers only; nothing on the bus yet
+  return 0;
+}
+
+int masterEndTransmission() {
+  if (SERCOM2->I2CM.STATUS.bit.BUSSTATE != 1) { // someone STARTed since Wire.begin()
+    DEBUG_I2C_PRINTLN("I2C BUS TAKEN BEFORE SEND - skipped");
+    return I2C_ERR_BUS_TAKEN;
+  }
+  int r = Wire.endTransmission(true);
+  if (r != 0) {
+    I2CSnap s = snapI2C();            // 1) capture
+    Wire.end();                       // 2) release the bus
+    printI2C("I2C FAIL", r, s);       // 3) print
+  }
+  return r;
+}
+
+int sendGeneralCall(const uint8_t *msg, size_t len) {
+  int r = -1;
+  for (int attempt = 0; attempt < I2C_ATTEMPTS && r != 0; attempt++) {
+    if (attempt > 0) delayMicroseconds(random(50, 250));
+    r = masterBeginTransmission(0);
+    if (r == 0) {
+      Wire.write(msg, len);
+      r = masterEndTransmission();
     }
+    switchToSlave(); 
+  }
+  return r;
+}
+
+void sendRemoteEnable() {    
+  //Remote Enable
+  if (v2version) {
+    const uint8_t msg[] = { 
+      0x14 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("Remote Enable dropped");
+    } 
+  } else {
+    const uint8_t msg[] = { 
+      0x04, 
+      0x00, 
+      0x22,  /*addr*/
+      0x16,
+      0xFF 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("Remote Enable dropped");
+    } 
+  }
 }
 
 void sendRemoteDisable() {
-    //Remote Disable
-    if (masterBeginTransmission(0) == 0) {
-      if (v2version) {
-          Wire.write(0x15);
-      } else {
-          Wire.write(0x04);
-          Wire.write(0x00);
-          Wire.write(0x22);
-          Wire.write(0x17);
-          Wire.write(0xFF);
-      }
-      masterEndTransmission();
-      switchToSlave();
+  //Remote Disable
+  if (v2version) {
+    const uint8_t msg[] = { 
+      0x15 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("Remote Disable dropped");
+    } 
+  } else {
+    const uint8_t msg[] = { 
+      0x04, 
+      0x00, 
+      0x22,  /*addr*/
+      0x17,
+      0xFF 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("Remote Disable dropped");
     }
+  }
 }
 
 void sendPollingComplete() {    
-    //Remote Enable
-    if (masterBeginTransmission(0) == 0) {
-      if (v2version) {
-          Wire.write(0x14);
-      } else {
-          Wire.write(0x04);
-          Wire.write(0x00);
-          Wire.write(0x22);
-          Wire.write(0x14);
-          Wire.write(0xFF);
-      }
-      Wire.endTransmission();
-      switchToSlave();
+  //I AM HERE
+  if (v2version) {
+    const uint8_t msg[] = { 
+      0x14 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("I AM HERE dropped");
+    }       
+  } else {
+    const uint8_t msg[] = { 
+      0x04, 
+      0x00, 
+      0x22,  /*addr*/
+      0x14,
+      0xFF 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("I AM HERE dropped");
     }
+  }
 }
 
 
 void sendQuery(byte address) {
-    //Query Module
-    if (v2version) {
-        //Nothing. Query is not supported
-    } else {
-        switchToMaster();
-        Wire.beginTransmission(0);
-        Wire.write(0x04);
-        Wire.write(address);
-        Wire.write(0x22);
-        Wire.write(0x1A);
-        Wire.write(0xFF);
-        Wire.endTransmission();
-        switchToSlave();
+  //Query Module
+  if (v2version) {
+    //Nothing. Query is not supported
+    return; 
+  } else {
+    const uint8_t msg[] = { 
+      0x04, 
+      address, 
+      0x22,  /*addr*/
+      0x1A,
+      0xFF 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("Module Query dropped");
     }
+  }
 }
 
 void sendSavePreset(byte preset) {
-    //Save Preset
-    //Preset=0-29
-    preset = preset & 0x1F;
-    if (masterBeginTransmission(0) == 0) {
-      if (v2version) {
-          Wire.write(0x01);
-          Wire.write(preset); 
-      } else {
-          Wire.write(0x04);
-          Wire.write(0x00);
-          Wire.write(0x22);
-          Wire.write(0x02);
-          Wire.write(preset);   
-      }
-      masterEndTransmission();
-      switchToSlave();
-    }
+  //Save Preset
+  //Preset=0-29
+  preset = preset & 0x1F;
+  if (v2version) {
+    const uint8_t msg[] = { 
+      0x01,
+      preset 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("Save Preset dropped");
+    } 
+  } else {
+    const uint8_t msg[] = { 
+      0x04, 
+      0x00, 
+      0x22,  /*addr*/
+      0x02,
+      preset 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("Save Preset dropped");
+    } 
+  }
 }
 
 void sendRecallPreset(byte preset) {
-    DEBUG_PRINT("Recall preset:");
-    DEBUG_PRINTHEXLN(preset);
-    //Recall Preset
-    //Preset sent on bus as 0-29
-    preset = preset & 0x1F;
-    if (masterBeginTransmission(0) == 0) {
-      setCurrentPreset(preset + 1); //Track current preset number (1-30)
-      if (v2version) {
-          Wire.write(0x00);
-          Wire.write(preset); 
-      } else {
-          Wire.write(0x04);
-          Wire.write(0x00);
-          Wire.write(0x22);
-          Wire.write(0x01);
-          Wire.write(preset);   
-      }
-      masterEndTransmission();
-      switchToSlave();
-    }
+  DEBUG_PRINT("Recall preset:");
+  DEBUG_PRINTHEXLN(preset);
+  //Recall Preset
+  //Preset sent on bus as 0-29
+  preset = preset & 0x1F;
+  setCurrentPreset(preset + 1); //Track current preset number (1-30)
+  if (v2version) {
+    const uint8_t msg[] = { 
+      0x00,
+      preset 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("Recall Preset dropped");
+    } 
+  } else {
+    const uint8_t msg[] = { 
+      0x04, 
+      0x00, 
+      0x22,  /*addr*/
+      0x01,
+      preset 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("Recall Preset dropped");
+    }        
+  }
 }
 
 void sendBackupPresets(byte address) {
-    //Fetch presets from specified module
-    //Address 0x44=291e.
-    if (masterBeginTransmission(0) == 0) {
-      if (v2version) {
-          Wire.write(0x2D);
-          Wire.write(address); //Module address
-          Wire.write(0x00); //Card memory address LSB
-          Wire.write(0x00); //Card memory address MSB
-          Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
-      } else {
-          Wire.write(0x07);
-          Wire.write(0x00);
-          Wire.write(0x22);
-          Wire.write(0x04);
-          Wire.write(address); //Module address
-          Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
-          Wire.write(0x00); //Card memory address LSB
-          Wire.write(0x00); //Card memory address MSB
-      }
-      masterEndTransmission();
-      switchToSlave();
+  //Fetch presets from specified module
+  //Address 0x44=291e.
+  if (v2version) {
+    const uint8_t msg[] = { 
+      0x2D,
+      address,//Module address
+      0x00,//Card memory address LSB
+      0x00,//Card memory address MSB
+      CARD_ADDRESS //Card address lower byte. Upper byte is always 0x50.
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("Backup Presets dropped");
+    } 
+  } else {
+    const uint8_t msg[] = { 
+      0x07, 
+      0x00, 
+      0x22,  /*addr*/
+      0x04,
+      address,//Module address
+      CARD_ADDRESS,//Card address lower byte. Upper byte is always 0x50.
+      0x00, //Card memory address LSB
+      0x00  //Card memory address MSB
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("Backup Presets dropped");
     }
+  }
 }
 
 void sendRestorePresets(byte address) {
-    //Request specified module to restore presets.
-    //Address 0x44=291e.
-    if (masterBeginTransmission(0) == 0) {
-      if (v2version) {
-          Wire.write(0x2E);
-          Wire.write(address); //Module address
-          Wire.write(0x00); //Card memory address LSB
-          Wire.write(0x00); //Card memory address MSB
-          Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
-      } else {
-          Wire.write(0x07);
-          Wire.write(0x00);
-          Wire.write(0x22);
-          Wire.write(0x05);
-          Wire.write(address); //Module address
-          Wire.write(CARD_ADDRESS); //Card address lower byte. Upper byte is always 0x50. 
-          Wire.write(0x00); //Card memory address LSB
-          Wire.write(0x00); //Card memory address MSB    
-      }
-      masterEndTransmission();
-      switchToSlave();
+  //Request specified module to restore presets.
+  //Address 0x44=291e.
+  if (v2version) {
+    const uint8_t msg[] = { 
+      0x2E,
+      address,//Module address
+      0x00,//Card memory address LSB
+      0x00,//Card memory address MSB
+      CARD_ADDRESS //Card address lower byte. Upper byte is always 0x50. 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("Restore Presets dropped");
+    } 
+  } else {
+    const uint8_t msg[] = { 
+      0x07, 
+      0x00, 
+      0x22,  /*addr*/
+      0x05,
+      address,//Module address
+      CARD_ADDRESS,//Card address lower byte. Upper byte is always 0x50.
+      0x00,//Card memory address LSB
+      0x00 //Card memory address MSB
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("Restore Presets dropped");
     }
+  }
 }
 
 void sendMidiNoteOn(byte mask, byte note, byte velo){
-    //Send MIDI note ON event.
-    //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
-    //Note 0=C-1, 127=G9.
-    //Velo=0-255.
-    mask = mask & 0xf;
-    if (mask == 0) return;
-    if (masterBeginTransmission(0) == 0) {
-      if (v2version) {
-          Wire.write(0x90 | mask);
-          Wire.write(note);
-          Wire.write(velo);
-      } else {
-          Wire.write(0x08);
-          Wire.write(0x00);
-          Wire.write(0x22); //addr
-          Wire.write(0x0F);
-          Wire.write(0x90 | mask);
-          Wire.write(0x00);
-          Wire.write(note);
-          Wire.write(velo);
-          Wire.write(0x00);   
-      }
-      masterEndTransmission();
-      switchToSlave();
-    }
+  //Send MIDI note ON event.
+  //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
+  //Note 0=C-1, 127=G9.
+  //Velo=0-255.
+  mask = mask & 0xf;
+  if (mask == 0) return;
+  if (v2version) {
+    const uint8_t msg[] = { 
+      (uint8_t)(0x90 | mask),
+      note, 
+      velo 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("MIDI NOTE ON dropped");
+    } 
+  } else {
+    const uint8_t msg[] = { 
+      0x08, 
+      0x00, 
+      0x22,  /*addr*/
+      0x0F,
+      (uint8_t)(0x90 | mask), 
+      0x00, 
+      note, 
+      velo, 
+      0x00 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("MIDI NOTE ON dropped");
+    }  
+  }
 }
 
 void sendMidiNoteOff(byte mask, byte note, byte velo){
-    //Send MIDI note OFF event.
-    //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
-    //Note 0=C-1, 127=G9.
-    //Velo=0-255.
-    mask = mask & 0xf;
-    if (mask == 0) return;
-    if (masterBeginTransmission(0) == 0) {
-      if (v2version) {
-          Wire.write(0x80 | mask);
-          Wire.write(note);
-          Wire.write(velo);
-      } else {
-          Wire.write(0x08);
-          Wire.write(0x00);
-          Wire.write(0x22);//addr
-          Wire.write(0x0F);
-          Wire.write(0x80 | mask);
-          Wire.write(0x00);
-          Wire.write(note);
-          Wire.write(velo);
-          Wire.write(0x00);
-      }
-      masterEndTransmission();
-      switchToSlave(); 
-    }
+  //Send MIDI note OFF event.
+  //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
+  //Note 0=C-1, 127=G9.
+  //Velo=0-255.
+  mask = mask & 0xf;
+  if (mask == 0) return;
+  if (v2version) {
+    const uint8_t msg[] = { 
+      (uint8_t)(0x80 | mask),
+      note, 
+      velo 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("MIDI NOTE OFF dropped");
+    } 
+  } else {
+    const uint8_t msg[] = { 
+      0x08, 
+      0x00, 
+      0x22,  /*addr*/
+      0x0F,
+      (uint8_t)(0x80 | mask), 
+      0x00, 
+      note, 
+      velo, 
+      0x00 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("MIDI NOTE OFF dropped");
+    } 
+  }
 }
 
 void sendMidiClockStart(){
-    //Send MIDI clock start event.
-    if (masterBeginTransmission(0) == 0) {
-      if (v2version) {
-  
-      } else {
-          Wire.write(0x08);
-          Wire.write(0x00);
-          Wire.write(0x22);//addr
-          Wire.write(0x0F);
-          Wire.write(0xFA);
-          Wire.write(0x00);
-          Wire.write(0x00); //not sure what this is
-          Wire.write(0x00);
-          Wire.write(0x00);      
-      }
-      masterEndTransmission();
-      switchToSlave();
-    }
+  //Send MIDI clock start event.
+  if (v2version) {
+    return; //TODO Need V2 clock data
+  } else {   
+    const uint8_t msg[] = {
+      0x08, 
+      0x00, 
+      0x22, /*addr*/ 
+      0x0F, 
+      0xFA, 
+      0x00, 
+      0x00, /*?*/ 
+      0x00, 
+      0x00
+    };   
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("MIDI clock start dropped");
+    } 
+  }
 }
 
 void sendMidiClockStop(){
-    //Send MIDI clock stop event.
-    if (masterBeginTransmission(0) == 0) {
-      if (v2version) {
-  
-      } else {
-          Wire.write(0x08);
-          Wire.write(0x00);
-          Wire.write(0x22);//addr
-          Wire.write(0x0F);
-          Wire.write(0xFC);
-          Wire.write(0x00);
-          Wire.write(0x00); //not sure what this is
-          Wire.write(0x00);
-          Wire.write(0x00);   
-      }
-      masterEndTransmission();
-      switchToSlave();
-    }
+  //Send MIDI clock stop event.
+  if (v2version) {
+    return; //TODO Need V2 clock data
+  } else { 
+    const uint8_t msg[] = {
+      0x08, 
+      0x00, 
+      0x22, /*addr*/ 
+      0x0F, 
+      0xFC, 
+      0x00, 
+      0x00, /*?*/ 
+      0x00, 
+      0x00
+    };   
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("MIDI clock stop dropped");
+    } 
+  }
 }
 
-void sendMidiClock(){
-  //Send MIDI clock event. 24 per beat required?
-  if (masterBeginTransmission(0) == 0) {
-    if (v2version) {
-
-    } else {
-        Wire.write(0x08);
-        Wire.write(0x00);
-        Wire.write(0x22);//addr
-        Wire.write(0x0F);
-        Wire.write(0xF8);
-        Wire.write(0x00);
-        Wire.write(0x00); //not sure what this is
-        Wire.write(0x00);
-        Wire.write(0x00);   
-    }
-    masterEndTransmission();
-    switchToSlave();      
+void sendMidiClock() {
+  if (v2version) {
+    return;   //TODO Need V2 clock data
+  } else {
+    const uint8_t msg[] = {
+      0x08, 
+      0x00, 
+      0x22, /*addr*/ 
+      0x0F, 
+      0xF8, 
+      0x00, 
+      0x00, /*?*/ 
+      0x00, 
+      0x00
+    };   
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("MIDI clock dropped");
+    } 
   }
 }
 
 void sendMidiFineTune(byte mask, byte tune){
-    //Send MIDI Fine Tune event.
-    //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
-    //Tune 0x00=-49, 0x32=An, 0x63=49
-    mask = mask & 0xf;
-    if (mask == 0) return;
-    if (masterBeginTransmission(0) == 0) {
-      DEBUG_MIDI_PRINT("Sending Fine Tune. Mask=");
-      DEBUG_MIDI_PRINTHEX(mask);
-      DEBUG_MIDI_PRINT(" Tune=");
-      DEBUG_MIDI_PRINTHEXLN(tune);
-      if (v2version) {
-          Wire.write(0xB0 | mask);
-          Wire.write(0x1F);
-          Wire.write(tune);
-      } else {
-          Wire.write(0x08);
-          Wire.write(0x00);
-          Wire.write(0x22);//addr
-          Wire.write(0x0F);
-          Wire.write(0xB0 | mask);
-          Wire.write(0x00);
-          Wire.write(0x1F);
-          Wire.write(tune);
-          Wire.write(0x00);    
-      }
-      masterEndTransmission();
-      switchToSlave();
-    }
+  //Send MIDI Fine Tune event.
+  //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
+  //Tune 0x00=-49, 0x32=An, 0x63=49
+  mask = mask & 0xf;
+  if (mask == 0) return;
+  DEBUG_MIDI_PRINT("Sending Fine Tune. Mask=");
+  DEBUG_MIDI_PRINTHEX(mask);
+  DEBUG_MIDI_PRINT(" Tune=");
+  DEBUG_MIDI_PRINTHEXLN(tune);
+  if (v2version) {
+    const uint8_t msg[] = { 
+      (uint8_t)(0xB0 | mask),
+      0x1F, 
+      tune 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("MIDI FINE TUNE dropped");
+    } 
+  } else {
+    const uint8_t msg[] = { 
+      0x08, 
+      0x00, 
+      0x22,  /*addr*/
+      0x0F,
+      (uint8_t)(0xB0 | mask), 
+      0x00, 
+      0x1F, 
+      tune, 
+      0x00 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("MIDI FINE TUNE dropped");
+    }   
+  }
 }
 
 void sendMidiBend(byte mask, byte bend_lsb, byte bend_msb){
-    //Send MIDI Bend.
-    //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
-    //bend_msb 0x00=min bend, 0x40=no bend, 0x7F=max bend.
-    //bend_lsb=0x00-0x7F fine tune of bend.
-    mask = mask & 0xf;
-    if (mask == 0) return;
-    if (masterBeginTransmission(0) == 0) {
-      if (v2version) {
-          Wire.write(0xE0 | mask);
-          Wire.write(bend_lsb);
-          Wire.write(bend_msb);
-      } else {
-          Wire.write(0x08);
-          Wire.write(0x00);
-          Wire.write(0x22);//addr
-          Wire.write(0x0F);
-          Wire.write(0xE0 | mask);
-          Wire.write(0x00);
-          Wire.write(bend_lsb);
-          Wire.write(bend_msb);
-          Wire.write(0x00);   
-      }
-      masterEndTransmission();
-      switchToSlave();
+  //Send MIDI Bend.
+  //Mask 0x8=bus A, 0x4=bus B, 0xF=ALL
+  //bend_msb 0x00=min bend, 0x40=no bend, 0x7F=max bend.
+  //bend_lsb=0x00-0x7F fine tune of bend.
+  mask = mask & 0xf;
+  if (mask == 0) return;
+  if (v2version) {
+    const uint8_t msg[] = { 
+      (uint8_t)(0xE0 | mask),
+      bend_lsb, 
+      bend_msb 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("MIDI FINE TUNE dropped");
     }
-}
-
-int masterBeginTransmission(int addr){
-  i2c_guard = true; //prevent slave interrupt
-  int result = 0;
-  while (sercom2.isBusBusyWIRE()) {   
-  }
-  if (SERCOM2->I2CM.STATUS.bit.BUSERR) {
-    DEBUG_I2C_PRINTLN("I2C BUS PROBLEM BEFORE beginTransmission");
-    DEBUG_I2C_PRINT("->BUSSTATE:");
-    DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.BUSSTATE);
-    DEBUG_I2C_PRINT(" BUSERR:");
-    DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.BUSERR);
-    DEBUG_I2C_PRINT(" NACK:");
-    DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.RXNACK);
-    DEBUG_I2C_PRINT(" ARBLOST:");
-    DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.ARBLOST);
-    DEBUG_I2C_PRINT(" STATUS:");
-    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.STATUS.reg);
-    DEBUG_I2C_PRINT(" CTRLA:");
-    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.CTRLA.reg);
-    DEBUG_I2C_PRINT(" CTRLB:");
-    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.CTRLB.reg);
-    DEBUG_I2C_PRINT(" INTFLAG:");
-    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.INTFLAG.reg);
-    DEBUG_I2C_PRINT(" SYNCBUSY:");
-    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.SYNCBUSY.reg);
-    DEBUG_I2C_PRINT(" ADDR:");
-    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.ADDR.reg);
-    DEBUG_I2C_PRINT(" DATA:");
-    DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.DATA.reg);
-    DEBUG_I2C_PRINT(" MB:");
-    DEBUG_I2C_PRINTLN(SERCOM2->I2CM.INTFLAG.bit.MB);
-    result = 1;
-  } else {
-    switchToMaster();
-    Wire.beginTransmission(addr);
-  }
-  i2c_guard = false;
-  return result;
-}
-
-void masterEndTransmission() {
-    i2c_guard = true; //prevent slave interrupt
-    //Arduino sends I2C when endTransmission is called. 
-    //Here we take care around that call, avoiding it if bus is busy.
-    //and applying a delay and reset if there was a critical error.
-    //Debug statements added to dump registers.
-    //Note that debug statements introduce delays and will help
-    //recover from errors, so delay seemed to be needed.
-    //The delay is adjustable and only applies when a critical error
-    //has occured.
-    int result = 0;
-    if (!sercom2.isBusIdleWIRE() || SERCOM2->I2CM.STATUS.bit.BUSERR || SERCOM2->I2CM.STATUS.bit.RXNACK) {
-      //Too late to cancel already pending beginTransmission.
-      DEBUG_I2C_PRINTLN("I2C BUS IS BUSY AFTER beginTransmission");
+  } else {  
+    const uint8_t msg[] = { 
+      0x08, 
+      0x00, 
+      0x22,  /*addr*/
+      0x0F,
+      (uint8_t)(0xE0 | mask), 
+      0x00, 
+      bend_lsb, 
+      bend_msb, 
+      0x00 
+    };
+    if (sendGeneralCall(msg, sizeof msg) != 0) {
+      DEBUG_I2C_PRINTLN("MIDI FINE TUNE dropped");
     } 
-    while (sercom2.isBusBusyWIRE()) {       
-    }
-    //1 here is supposed to cause the master to stop after sending.
-    //Not sure it helps.
-    result = Wire.endTransmission(1);
-    if (result !=0) {
-      DEBUG_I2C_PRINT("I2C RESULT:");
-      DEBUG_I2C_PRINT(result);
-      DEBUG_I2C_PRINT(" BUSSTATE:");
-      DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.BUSSTATE);
-      DEBUG_I2C_PRINT(" BUSERR:");
-      DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.BUSERR);
-      DEBUG_I2C_PRINT(" NACK:");
-      DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.RXNACK);
-      DEBUG_I2C_PRINT(" ARBLOST:");
-      DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.ARBLOST);
-      DEBUG_I2C_PRINT(" STATUS:");
-      DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.STATUS.reg);
-      DEBUG_I2C_PRINT(" CTRLA:");
-      DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.CTRLA.reg);
-      DEBUG_I2C_PRINT(" CTRLB:");
-      DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.CTRLB.reg);
-      DEBUG_I2C_PRINT(" INTFLAG:");
-      DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.INTFLAG.reg);
-      DEBUG_I2C_PRINT(" SYNCBUSY:");
-      DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.SYNCBUSY.reg);
-      DEBUG_I2C_PRINT(" ADDR:");
-      DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.ADDR.reg);
-      DEBUG_I2C_PRINT(" DATA:");
-      DEBUG_I2C_PRINTHEX(SERCOM2->I2CM.DATA.reg);
-      DEBUG_I2C_PRINT(" MB:");
-      DEBUG_I2C_PRINTLN(SERCOM2->I2CM.INTFLAG.bit.MB);
-    }
-    //Error case
-    int delays = 0;
-    int maxdelays = 5; //ten microseconds per delay.
-    if (sercom2.isRXNackReceivedWIRE()){
-      delays = 0;
-      maxdelays = 5; //ten microseconds per delay.
-      while (sercom2.isRXNackReceivedWIRE() && (delays < maxdelays)) {
-        delays++;
-        delayMicroseconds(10);
-      }
-      DEBUG_I2C_PRINT(" NACK:");
-      DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.RXNACK);
-      DEBUG_I2C_PRINT(" DELAYS: "); 
-      DEBUG_I2C_PRINTLN(delays);    
-    } else if (SERCOM2->I2CM.STATUS.bit.BUSERR) {
-      delays = 0;
-      maxdelays = 5; //ten microseconds per delay.
-      while (SERCOM2->I2CM.STATUS.bit.BUSERR && (delays < maxdelays)) {
-        delays++;
-        delayMicroseconds(10);
-      }
-      DEBUG_I2C_PRINT(" BUSERR:");
-      DEBUG_I2C_PRINT(SERCOM2->I2CM.STATUS.bit.BUSERR);
-      DEBUG_I2C_PRINT(" DELAYS: "); 
-      DEBUG_I2C_PRINTLN(delays);     
-    }
-    i2c_guard = false; //prevent slave interrupt
+  }
 }
+
+
 
 void getJsonToken(JsonToken* token, WiFiClient client) {
     bool done = false;
@@ -3033,7 +3061,14 @@ void processMidiMessage(midiEventPacket_t midiMessage){
   DEBUG_MIDI_PRINTHEX(midiMessage.header);
   uint8_t chan = midiMessage.byte1 & 0x0F;
   switch (midiMessage.byte1 & 0xF0) {
-    case 0x90 : {processMidiNoteOn(chan, midiMessage.byte2, midiMessage.byte3);break;}
+    case 0x90 : {
+                  //Treat NOTE ON with zero velocity as NOTE OFF
+                  uint8_t velo = midiMessage.byte3;
+                  if (velo == 0x00) 
+                    {processMidiNoteOff(chan, midiMessage.byte2, velo);break;} 
+                    else 
+                    {processMidiNoteOn(chan, midiMessage.byte2, velo);break;}
+                }
     case 0x80 : {processMidiNoteOff(chan, midiMessage.byte2, midiMessage.byte3);break;}
     case 0xF0 : {processClockMessage(midiMessage.byte1);break;}
     case 0xE0 : {sendMidiBend(mask[chan], midiMessage.byte2, midiMessage.byte3);break;}
